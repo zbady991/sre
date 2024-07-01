@@ -1,0 +1,73 @@
+import Joi from 'joi';
+import Agent from '@sre/AgentManager/Agent.class';
+import { createLogger } from '@sre/Core/Logger';
+
+export default class Component {
+    public hasReadOutput = false;
+    public hasPostProcess = true;
+    public alwaysActive = false; //for components like readable memories
+    public exclusive = false; //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
+    protected configSchema;
+    constructor() {}
+    init() {}
+
+    createComponentLogger(agent: Agent, name: string) {
+        const logger = createLogger(name || this.constructor.name, agent.agentRuntime?.debug);
+
+        return logger;
+    }
+    async validateConfig(config) {
+        if (!this.configSchema) return {};
+        if (config.data._templateVars) {
+            //Accept dynamically added template data
+            for (let tplVar in config.data._templateVars) {
+                this.configSchema = this.configSchema.append({ [tplVar]: Joi.any() });
+            }
+        }
+        const valid = await this.configSchema.validate(config.data);
+        if (valid.error) {
+            return {
+                id: config.id,
+                name: config.name,
+                _error: `Schema Validation error: ${valid?.error?.message} on component ${config.displayName}:${config.title}`,
+                _debug: `Schema Validation error: ${valid?.error?.message} on component ${config.displayName}:${config.title}`,
+            };
+        }
+
+        return {};
+    }
+
+    async process(input, config, agent: Agent, req?: any): Promise<any> {
+        // console.log(
+        //     `Called component ${this.constructor.name}\n ID=${config.id} \ninput ${JSON.stringify(input, null, 2)} \nand config ${JSON.stringify(
+        //         config,
+        //         null,
+        //         2,
+        //     )}`,
+        // );
+        const _input = input;
+
+        // modify the input object for component's process method
+        for (const [key, value] of Object.entries(_input)) {
+            input[key] = value;
+        }
+    }
+    async postProcess(output, config, agent: Agent, req?: any): Promise<any> {
+        if (output?.result) {
+            delete output?.result?._debug;
+            if (!output?.result?._error) delete output?.result?._error;
+        }
+        return output;
+    }
+    async enable(config, agent: Agent): Promise<any> {}
+    async disable(config, agent: Agent): Promise<any> {}
+    readOutput(id, config, agent: Agent): any {
+        return null;
+    }
+    hasOutput(id, config, agent: Agent): any {
+        return false;
+    }
+    public getRouter() {
+        return null;
+    }
+}

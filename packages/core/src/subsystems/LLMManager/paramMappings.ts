@@ -1,0 +1,47 @@
+export default {
+    OpenAI: {
+        maxTokens: 'max_tokens',
+        temperature: 'temperature',
+        stopSequences: 'stop',
+        topP: 'top_p',
+        frequencyPenalty: 'frequency_penalty',
+        presencePenalty: 'presence_penalty',
+    },
+    cohere: {
+        maxTokens: 'max_tokens',
+        temperature: 'temperature',
+        stopSequences: 'stop_sequences',
+        topP: 'p',
+        topK: 'k',
+        frequencyPenalty: 'frequency_penalty',
+        presencePenalty: 'presence_penalty',
+    },
+    togetherAI: {
+        maxTokens: 'max_tokens',
+        temperature: 'temperature',
+        stopSequences: 'stop',
+        topP: 'top_p',
+        topK: 'top_k',
+        frequencyPenalty: 'repetition_penalty',
+    },
+    Claude: {
+        maxTokens: 'max_tokens',
+        temperature: 'temperature',
+        stopSequences: 'stop_sequences',
+        topP: 'top_p',
+        topK: 'top_k',
+    },
+    GoogleAI: {
+        maxTokens: 'maxOutputTokens',
+        temperature: 'temperature',
+        stopSequences: 'stopSequences',
+        topP: 'topP',
+        topK: 'topK',
+    },
+    Groq: {
+        maxTokens: 'max_tokens',
+        temperature: 'temperature',
+        stopSequences: 'stop',
+        topP: 'top_p',
+    },
+};

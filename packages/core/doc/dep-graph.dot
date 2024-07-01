@@ -1,0 +1,196 @@
+strict digraph "dependency-cruiser output"{
+    rankdir="LR" splines="true" overlap="false" nodesep="0.16" ranksep="0.18" fontname="Helvetica-bold" fontsize="9" style="rounded,bold,filled" fillcolor="#ffffff" compound="true"
+    node [shape="box" style="rounded, filled" height="0.2" color="black" fillcolor="#ffffcc" fontcolor="black" fontname="Helvetica" fontsize="9"]
+    edge [arrowhead="normal" arrowsize="0.6" penwidth="2.0" color="#00000033" fontname="Helvetica" fontsize="9"]
+
+    "crypto" [label=<crypto> tooltip="crypto" URL="https://nodejs.org/api/crypto.html" color="grey" fontcolor="grey"]
+    "events" [label=<events> tooltip="events" URL="https://nodejs.org/api/events.html" color="grey" fontcolor="grey"]
+    "fs" [label=<fs> tooltip="fs" URL="https://nodejs.org/api/fs.html" color="grey" fontcolor="grey"]
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@aws-sdk" {label="@aws-sdk" "node_modules/@aws-sdk/client-s3" [label=<client-s3> tooltip="client-s3" URL="https://www.npmjs.com/package/@aws-sdk/client-s3" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@node-rs" {label="@node-rs" "node_modules/@node-rs/xxhash" [label=<xxhash> tooltip="xxhash" URL="https://www.npmjs.com/package/@node-rs/xxhash" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } }
+    subgraph "cluster_node_modules" {label="node_modules" "node_modules/dotenv" [label=<dotenv> tooltip="dotenv" URL="https://www.npmjs.com/package/dotenv" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] }
+    subgraph "cluster_node_modules" {label="node_modules" "node_modules/ioredis" [label=<ioredis> tooltip="ioredis" URL="https://www.npmjs.com/package/ioredis" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] }
+    subgraph "cluster_node_modules" {label="node_modules" "node_modules/joi" [label=<joi> tooltip="joi" URL="https://www.npmjs.com/package/joi" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] }
+    subgraph "cluster_node_modules" {label="node_modules" "node_modules/jsonrepair" [label=<jsonrepair> tooltip="jsonrepair" URL="https://www.npmjs.com/package/jsonrepair" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] }
+    subgraph "cluster_node_modules" {label="node_modules" "node_modules/source-map-support" [label=<source-map-support> tooltip="source-map-support" URL="https://www.npmjs.com/package/source-map-support" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] }
+    subgraph "cluster_node_modules" {label="node_modules" "node_modules/winston" [label=<winston> tooltip="winston" URL="https://www.npmjs.com/package/winston" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] }
+    subgraph "cluster_node_modules" {label="node_modules" "node_modules/winston-transport" [label=<winston-transport> tooltip="winston-transport" URL="https://www.npmjs.com/package/winston-transport" shape="box3d" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] }
+    "os" [label=<os> tooltip="os" URL="https://nodejs.org/api/os.html" color="grey" fontcolor="grey"]
+    "path" [label=<path> tooltip="path" URL="https://nodejs.org/api/path.html" color="grey" fontcolor="grey"]
+    "process" [label=<process> tooltip="process" URL="https://nodejs.org/api/process.html" color="grey" fontcolor="grey"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/Agent.class.ts" [label=<Agent.class.ts> tooltip="Agent.class.ts" URL="src/AgentManager/Agent.class.ts" fillcolor="#ddfeff"] } }
+    "src/AgentManager/Agent.class.ts" -> "src/Components/Component.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/Agent.class.ts" -> "src/Components/index.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/Agent.class.ts" -> "src/config.ts"
+    "src/AgentManager/Agent.class.ts" -> "src/services/logger.ts"
+    "src/AgentManager/Agent.class.ts" -> "src/services/utils.ts"
+    "src/AgentManager/Agent.class.ts" -> "src/utils/index.ts"
+    "src/AgentManager/Agent.class.ts" -> "src/AgentManager/AgentLogger.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/Agent.class.ts" -> "src/AgentManager/AgentRequest.class.ts"
+    "src/AgentManager/Agent.class.ts" -> "src/AgentManager/AgentRuntime.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/Agent.class.ts" -> "src/AgentManager/AgentSettings.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/Agent.class.ts" -> "src/AgentManager/OSResourceMonitor.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/AgentLogger.class.ts" [label=<AgentLogger.class.ts> tooltip="AgentLogger.class.ts" URL="src/AgentManager/AgentLogger.class.ts" fillcolor="#ddfeff"] } }
+    "src/AgentManager/AgentLogger.class.ts" -> "src/services/logger.ts"
+    "src/AgentManager/AgentLogger.class.ts" -> "src/types/AgentLogger.types.ts"
+    "src/AgentManager/AgentLogger.class.ts" -> "src/utils/index.ts"
+    "src/AgentManager/AgentLogger.class.ts" -> "src/AgentManager/Agent.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/AgentRequest.class.ts" [label=<AgentRequest.class.ts> tooltip="AgentRequest.class.ts" URL="src/AgentManager/AgentRequest.class.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/AgentRuntime.class.ts" [label=<AgentRuntime.class.ts> tooltip="AgentRuntime.class.ts" URL="src/AgentManager/AgentRuntime.class.ts" fillcolor="#ddfeff"] } }
+    "src/AgentManager/AgentRuntime.class.ts" -> "src/Components/Component.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/AgentRuntime.class.ts" -> "src/Components/index.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/AgentRuntime.class.ts" -> "src/config.ts"
+    "src/AgentManager/AgentRuntime.class.ts" -> "src/MemoryManager/RuntimeContext.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/AgentRuntime.class.ts" -> "src/services/logger.ts"
+    "src/AgentManager/AgentRuntime.class.ts" -> "src/utils/index.ts"
+    "src/AgentManager/AgentRuntime.class.ts" -> "src/AgentManager/Agent.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/AgentRuntime.class.ts" -> "fs" [style="dashed" penwidth="1.0"]
+    "src/AgentManager/AgentRuntime.class.ts" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/AgentSettings.class.ts" [label=<AgentSettings.class.ts> tooltip="AgentSettings.class.ts" URL="src/AgentManager/AgentSettings.class.ts" fillcolor="#ddfeff"] } }
+    "src/AgentManager/AgentSettings.class.ts" -> "src/Core/SmythRuntime.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/AgentManager/AgentSettings.class.ts" -> "src/services/logger.ts"
+    "src/AgentManager/AgentSettings.class.ts" -> "src/AgentManager/EmbodimentSettings.class.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/EmbodimentSettings.class.ts" [label=<EmbodimentSettings.class.ts> tooltip="EmbodimentSettings.class.ts" URL="src/AgentManager/EmbodimentSettings.class.ts" fillcolor="#ddfeff"] } }
+    "src/AgentManager/EmbodimentSettings.class.ts" -> "src/services/logger.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/ForkedAgent.class.ts" [label=<ForkedAgent.class.ts> tooltip="ForkedAgent.class.ts" URL="src/AgentManager/ForkedAgent.class.ts" fillcolor="#ddfeff"] } }
+    "src/AgentManager/ForkedAgent.class.ts" -> "src/services/logger.ts"
+    "src/AgentManager/ForkedAgent.class.ts" -> "src/utils/index.ts"
+    "src/AgentManager/ForkedAgent.class.ts" -> "src/AgentManager/Agent.class.ts"
+    "src/AgentManager/ForkedAgent.class.ts" -> "src/AgentManager/AgentRequest.class.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/IAgentDataConnector.ts" [label=<IAgentDataConnector.ts> tooltip="IAgentDataConnector.ts" URL="src/AgentManager/IAgentDataConnector.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/AgentManager" {label="AgentManager" "src/AgentManager/OSResourceMonitor.ts" [label=<OSResourceMonitor.ts> tooltip="OSResourceMonitor.ts" URL="src/AgentManager/OSResourceMonitor.ts" fillcolor="#ddfeff"] } }
+    "src/AgentManager/OSResourceMonitor.ts" -> "os" [style="dashed" penwidth="1.0"]
+    "src/AgentManager/OSResourceMonitor.ts" -> "process" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Components" {label="Components" "src/Components/APIEndpoint.class.ts" [label=<APIEndpoint.class.ts> tooltip="APIEndpoint.class.ts" URL="src/Components/APIEndpoint.class.ts" fillcolor="#ddfeff"] } }
+    "src/Components/APIEndpoint.class.ts" -> "src/AgentManager/Agent.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/APIEndpoint.class.ts" -> "src/AgentManager/AgentRequest.class.ts"
+    "src/Components/APIEndpoint.class.ts" -> "src/Components/Component.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/APIEndpoint.class.ts" -> "node_modules/joi" [penwidth="1.0"]
+    "src/Components/APIEndpoint.class.ts" -> "node_modules/jsonrepair" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Components" {label="Components" "src/Components/APIOutput.class.ts" [label=<APIOutput.class.ts> tooltip="APIOutput.class.ts" URL="src/Components/APIOutput.class.ts" fillcolor="#ddfeff"] } }
+    "src/Components/APIOutput.class.ts" -> "src/AgentManager/Agent.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/APIOutput.class.ts" -> "src/Components/Component.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/APIOutput.class.ts" -> "node_modules/joi" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Components" {label="Components" "src/Components/Component.class.ts" [label=<Component.class.ts> tooltip="Component.class.ts" URL="src/Components/Component.class.ts" fillcolor="#ddfeff"] } }
+    "src/Components/Component.class.ts" -> "src/AgentManager/Agent.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/Component.class.ts" -> "src/services/logger.ts"
+    "src/Components/Component.class.ts" -> "node_modules/joi" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Components" {label="Components" "src/Components/PromptGenerator.class.ts" [label=<PromptGenerator.class.ts> tooltip="PromptGenerator.class.ts" URL="src/Components/PromptGenerator.class.ts" fillcolor="#ddfeff"] } }
+    "src/Components/PromptGenerator.class.ts" -> "src/AgentManager/Agent.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/PromptGenerator.class.ts" -> "src/services/utils.ts"
+    "src/Components/PromptGenerator.class.ts" -> "src/Components/Component.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/PromptGenerator.class.ts" -> "node_modules/joi" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Components" {label="Components" "src/Components/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/Components/index.ts" fillcolor="#ddfeff"] } }
+    "src/Components/index.ts" -> "src/Components/APIEndpoint.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/index.ts" -> "src/Components/APIOutput.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/index.ts" -> "src/Components/Component.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Components/index.ts" -> "src/Components/PromptGenerator.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Core" {label="Core" "src/Core/ConnectorsService.ts" [label=<ConnectorsService.ts> tooltip="ConnectorsService.ts" URL="src/Core/ConnectorsService.ts" fillcolor="#ddfeff"] } }
+    "src/Core/ConnectorsService.ts" -> "src/types/SRE.types.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Core" {label="Core" "src/Core/SmythRuntime.class.ts" [label=<SmythRuntime.class.ts> tooltip="SmythRuntime.class.ts" URL="src/Core/SmythRuntime.class.ts" fillcolor="#ddfeff"] } }
+    "src/Core/SmythRuntime.class.ts" -> "src/AgentManager/Agent.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Core/SmythRuntime.class.ts" -> "src/AgentManager/AgentRequest.class.ts"
+    "src/Core/SmythRuntime.class.ts" -> "src/AgentManager/AgentSettings.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/Core/SmythRuntime.class.ts" -> "src/AgentManager/IAgentDataConnector.ts"
+    "src/Core/SmythRuntime.class.ts" -> "src/IO/Storage/IStorageConnector.ts"
+    "src/Core/SmythRuntime.class.ts" -> "src/MemoryManager/Cache/ICacheConnector.ts"
+    "src/Core/SmythRuntime.class.ts" -> "src/Security/SecurityDataProvider.class.ts"
+    "src/Core/SmythRuntime.class.ts" -> "src/types/SRE.types.ts"
+    "src/Core/SmythRuntime.class.ts" -> "src/Core/ConnectorsService.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Core" {label="Core" "src/Core/boot.ts" [label=<boot.ts> tooltip="boot.ts" URL="src/Core/boot.ts" fillcolor="#ddfeff"] } }
+    "src/Core/boot.ts" -> "src/IO/Storage/index.ts"
+    "src/Core/boot.ts" -> "src/MemoryManager/Cache/index.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/IO" {label="IO" subgraph "cluster_src/IO/Storage" {label="Storage" "src/IO/Storage/IStorageConnector.ts" [label=<IStorageConnector.ts> tooltip="IStorageConnector.ts" URL="src/IO/Storage/IStorageConnector.ts" fillcolor="#ddfeff"] } } }
+    "src/IO/Storage/IStorageConnector.ts" -> "src/types/ACL.types.ts"
+    "src/IO/Storage/IStorageConnector.ts" -> "src/types/Storage.types.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/IO" {label="IO" subgraph "cluster_src/IO/Storage" {label="Storage" "src/IO/Storage/SmythFS.class.ts" [label=<SmythFS.class.ts> tooltip="SmythFS.class.ts" URL="src/IO/Storage/SmythFS.class.ts" fillcolor="#ddfeff"] } } }
+    "src/IO/Storage/SmythFS.class.ts" -> "src/Core/SmythRuntime.class.ts"
+    "src/IO/Storage/SmythFS.class.ts" -> "src/Security/ACL.helper.ts"
+    "src/IO/Storage/SmythFS.class.ts" -> "src/types/ACL.types.ts"
+    "src/IO/Storage/SmythFS.class.ts" -> "src/types/Storage.types.ts"
+    "src/IO/Storage/SmythFS.class.ts" -> "src/IO/Storage/IStorageConnector.ts"
+    "src/IO/Storage/SmythFS.class.ts" -> "crypto" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/IO" {label="IO" subgraph "cluster_src/IO/Storage" {label="Storage" subgraph "cluster_src/IO/Storage/connectors" {label="connectors" "src/IO/Storage/connectors/S3Storage.class.ts" [label=<S3Storage.class.ts> tooltip="S3Storage.class.ts" URL="src/IO/Storage/connectors/S3Storage.class.ts" fillcolor="#ddfeff"] } } } }
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/Core/SmythRuntime.class.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/Security/ACL.helper.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/Security/IAccessRightsProvider.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/services/logger.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/types/ACL.types.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/types/AWS.types.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/types/SRE.types.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/types/Storage.types.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/utils/index.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "src/IO/Storage/IStorageConnector.ts"
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "node_modules/@aws-sdk/client-s3" [penwidth="1.0"]
+    "src/IO/Storage/connectors/S3Storage.class.ts" -> "stream" [style="dashed" penwidth="1.0" arrowhead="onormal"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/IO" {label="IO" subgraph "cluster_src/IO/Storage" {label="Storage" "src/IO/Storage/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/IO/Storage/index.ts" fillcolor="#ddfeff"] } } }
+    "src/IO/Storage/index.ts" -> "src/Core/ConnectorsService.ts"
+    "src/IO/Storage/index.ts" -> "src/types/SRE.types.ts"
+    "src/IO/Storage/index.ts" -> "src/IO/Storage/connectors/S3Storage.class.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/IO" {label="IO" subgraph "cluster_src/IO/VectorDB" {label="VectorDB" "src/IO/VectorDB/VectorDB.class.ts" [label=<VectorDB.class.ts> tooltip="no-orphans" URL="src/IO/VectorDB/VectorDB.class.ts" fillcolor="#ccffcc" fontcolor="orange" color="orange"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/MemoryManager" {label="MemoryManager" subgraph "cluster_src/MemoryManager/Cache" {label="Cache" "src/MemoryManager/Cache/ICacheConnector.ts" [label=<ICacheConnector.ts> tooltip="ICacheConnector.ts" URL="src/MemoryManager/Cache/ICacheConnector.ts" fillcolor="#ddfeff"] } } }
+    "src/MemoryManager/Cache/ICacheConnector.ts" -> "src/types/ACL.types.ts"
+    "src/MemoryManager/Cache/ICacheConnector.ts" -> "src/types/Cache.types.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/MemoryManager" {label="MemoryManager" subgraph "cluster_src/MemoryManager/Cache" {label="Cache" subgraph "cluster_src/MemoryManager/Cache/connectors" {label="connectors" "src/MemoryManager/Cache/connectors/RedisCache.class.ts" [label=<RedisCache.class.ts> tooltip="RedisCache.class.ts" URL="src/MemoryManager/Cache/connectors/RedisCache.class.ts" fillcolor="#ddfeff"] } } } }
+    "src/MemoryManager/Cache/connectors/RedisCache.class.ts" -> "src/Security/ACL.helper.ts"
+    "src/MemoryManager/Cache/connectors/RedisCache.class.ts" -> "src/services/logger.ts"
+    "src/MemoryManager/Cache/connectors/RedisCache.class.ts" -> "src/types/ACL.types.ts"
+    "src/MemoryManager/Cache/connectors/RedisCache.class.ts" -> "src/types/Cache.types.ts"
+    "src/MemoryManager/Cache/connectors/RedisCache.class.ts" -> "src/types/Redis.types.ts"
+    "src/MemoryManager/Cache/connectors/RedisCache.class.ts" -> "src/MemoryManager/Cache/ICacheConnector.ts"
+    "src/MemoryManager/Cache/connectors/RedisCache.class.ts" -> "node_modules/ioredis" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/MemoryManager" {label="MemoryManager" subgraph "cluster_src/MemoryManager/Cache" {label="Cache" "src/MemoryManager/Cache/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/MemoryManager/Cache/index.ts" fillcolor="#ddfeff"] } } }
+    "src/MemoryManager/Cache/index.ts" -> "src/Core/ConnectorsService.ts"
+    "src/MemoryManager/Cache/index.ts" -> "src/types/SRE.types.ts"
+    "src/MemoryManager/Cache/index.ts" -> "src/MemoryManager/Cache/connectors/RedisCache.class.ts"
+    "src/MemoryManager/Cache/index.ts" -> "src/MemoryManager/Cache/ICacheConnector.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/MemoryManager" {label="MemoryManager" "src/MemoryManager/RuntimeContext.ts" [label=<RuntimeContext.ts> tooltip="RuntimeContext.ts" URL="src/MemoryManager/RuntimeContext.ts" fillcolor="#ddfeff"] } }
+    "src/MemoryManager/RuntimeContext.ts" -> "src/AgentManager/AgentRuntime.class.ts" [xlabel="no-circular" tooltip="no-circular" arrowhead="normalnoneodot" fontcolor="orange" color="orange"]
+    "src/MemoryManager/RuntimeContext.ts" -> "src/config.ts"
+    "src/MemoryManager/RuntimeContext.ts" -> "src/utils/index.ts"
+    "src/MemoryManager/RuntimeContext.ts" -> "events" [style="dashed" penwidth="1.0"]
+    "src/MemoryManager/RuntimeContext.ts" -> "fs" [style="dashed" penwidth="1.0"]
+    "src/MemoryManager/RuntimeContext.ts" -> "path" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Security" {label="Security" "src/Security/ACL.helper.ts" [label=<ACL.helper.ts> tooltip="ACL.helper.ts" URL="src/Security/ACL.helper.ts" fillcolor="#ddfeff"] } }
+    "src/Security/ACL.helper.ts" -> "src/types/ACL.types.ts"
+    "src/Security/ACL.helper.ts" -> "node_modules/@node-rs/xxhash" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Security" {label="Security" "src/Security/IAccessRightsProvider.ts" [label=<IAccessRightsProvider.ts> tooltip="IAccessRightsProvider.ts" URL="src/Security/IAccessRightsProvider.ts" fillcolor="#ddfeff"] } }
+    "src/Security/IAccessRightsProvider.ts" -> "src/types/ACL.types.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Security" {label="Security" "src/Security/SecurityDataProvider.class.ts" [label=<SecurityDataProvider.class.ts> tooltip="SecurityDataProvider.class.ts" URL="src/Security/SecurityDataProvider.class.ts" fillcolor="#ddfeff"] } }
+    "src/Security/SecurityDataProvider.class.ts" -> "src/types/ACL.types.ts"
+    "src/Security/SecurityDataProvider.class.ts" -> "src/Security/IAccessRightsProvider.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/Security" {label="Security" subgraph "cluster_src/Security/Vault" {label="Vault" "src/Security/Vault/index.ts" [label=<index.ts> tooltip="no-orphans" URL="src/Security/Vault/index.ts" fillcolor="#ccffcc" fontcolor="orange" color="orange"] } } }
+    subgraph "cluster_src" {label="src" "src/config.ts" [label=<config.ts> tooltip="config.ts" URL="src/config.ts" fillcolor="#ddfeff"] }
+    "src/config.ts" -> "node_modules/dotenv" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" "src/constants.ts" [label=<constants.ts> tooltip="no-orphans" URL="src/constants.ts" fillcolor="#ccffcc" fontcolor="orange" color="orange"] }
+    subgraph "cluster_src" {label="src" "src/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/index.ts" fillcolor="#ddfeff"] }
+    "src/index.ts" -> "src/AgentManager/Agent.class.ts"
+    "src/index.ts" -> "src/AgentManager/AgentRequest.class.ts"
+    "src/index.ts" -> "src/AgentManager/AgentSettings.class.ts"
+    "src/index.ts" -> "src/Core/boot.ts"
+    "src/index.ts" -> "src/Core/SmythRuntime.class.ts"
+    "src/index.ts" -> "node_modules/source-map-support" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/services" {label="services" "src/services/logger.ts" [label=<logger.ts> tooltip="logger.ts" URL="src/services/logger.ts" fillcolor="#ddfeff"] } }
+    "src/services/logger.ts" -> "node_modules/dotenv" [penwidth="1.0"]
+    "src/services/logger.ts" -> "node_modules/winston" [penwidth="1.0"]
+    "src/services/logger.ts" -> "node_modules/winston-transport" [xlabel="no-non-package-json" tooltip="no-non-package-json" penwidth="1.0" fontcolor="red" color="red"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/services" {label="services" "src/services/utils.ts" [label=<utils.ts> tooltip="utils.ts" URL="src/services/utils.ts" fillcolor="#ddfeff"] } }
+    "src/services/utils.ts" -> "src/services/logger.ts"
+    "src/services/utils.ts" -> "node_modules/jsonrepair" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/types" {label="types" "src/types/ACL.types.ts" [label=<ACL.types.ts> tooltip="ACL.types.ts" URL="src/types/ACL.types.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/types" {label="types" "src/types/AWS.types.ts" [label=<AWS.types.ts> tooltip="AWS.types.ts" URL="src/types/AWS.types.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/types" {label="types" "src/types/AgentLogger.types.ts" [label=<AgentLogger.types.ts> tooltip="AgentLogger.types.ts" URL="src/types/AgentLogger.types.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/types" {label="types" "src/types/Cache.types.ts" [label=<Cache.types.ts> tooltip="Cache.types.ts" URL="src/types/Cache.types.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/types" {label="types" "src/types/Redis.types.ts" [label=<Redis.types.ts> tooltip="Redis.types.ts" URL="src/types/Redis.types.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/types" {label="types" "src/types/SRE.types.ts" [label=<SRE.types.ts> tooltip="SRE.types.ts" URL="src/types/SRE.types.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/types" {label="types" "src/types/Storage.types.ts" [label=<Storage.types.ts> tooltip="Storage.types.ts" URL="src/types/Storage.types.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/utils" {label="utils" "src/utils/data.utils.ts" [label=<data.utils.ts> tooltip="data.utils.ts" URL="src/utils/data.utils.ts" fillcolor="#ddfeff"] } }
+    "src/utils/data.utils.ts" -> "stream" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/utils" {label="utils" "src/utils/date-time.utils.ts" [label=<date-time.utils.ts> tooltip="date-time.utils.ts" URL="src/utils/date-time.utils.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/utils" {label="utils" "src/utils/general.utils.ts" [label=<general.utils.ts> tooltip="general.utils.ts" URL="src/utils/general.utils.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/utils" {label="utils" "src/utils/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/utils/index.ts" fillcolor="#ddfeff"] } }
+    "src/utils/index.ts" -> "src/utils/data.utils.ts" [arrowhead="inv"]
+    "src/utils/index.ts" -> "src/utils/date-time.utils.ts" [arrowhead="inv"]
+    "src/utils/index.ts" -> "src/utils/general.utils.ts" [arrowhead="inv"]
+    "stream" [label=<stream> tooltip="stream" URL="https://nodejs.org/api/stream.html" color="grey" fontcolor="grey"]
+}

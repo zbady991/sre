@@ -1,0 +1,229 @@
+import Joi from 'joi';
+
+import Agent from '@sre/AgentManager/Agent.class';
+import Component from './Component.class';
+
+import { jsonrepair } from 'jsonrepair';
+import AgentRequest from '@sre/AgentManager/AgentRequest.class';
+import { ensureStrongDataType } from '@sre/helpers/DataType.helper';
+import { SmythFile } from '@sre/IO/Storage/SmythFile.class';
+
+// Utility function to check for empty values
+function isEmpty(value: any): boolean {
+    return (
+        value === undefined ||
+        value === null ||
+        (typeof value === 'string' && value.trim() === '') ||
+        (Array.isArray(value) && value.length === 0) ||
+        (typeof value === 'object' && value !== null && Object.keys(value).length === 0)
+    );
+}
+function isTemplateVar(str: string = ''): boolean {
+    if (!str || typeof str !== 'string') return false;
+    return (str?.match(/{{(.*?)}}/g) ?? []).length > 0;
+}
+function isKeyTemplateVar(str: string = ''): boolean {
+    if (!str || typeof str !== 'string') return false;
+    return (str?.match(/{{KEY\((.*?)\)}}/g) ?? []).length > 0;
+}
+
+function parseTemplate(str: string = '', data: any = {}, options: { escapeString?: boolean } = {}): string {
+    return str.replace(/{{(.*?)}}/g, (match, key) => {
+        const value = data[key.trim()];
+        if (options.escapeString) {
+            return value ? value.toString().replace(/"/g, '\\"') : '';
+        }
+        return value || '';
+    });
+}
+
+function parseKey(str: string = '', teamId: string): string {
+    return str.replace(/{{KEY\((.*?)\)}}/g, (match, key) => {
+        return key === 'teamid' ? teamId : '';
+    });
+}
+
+export default class APIEndpoint extends Component {
+    protected configSchema = Joi.object({
+        endpoint: Joi.string()
+            .pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/)
+            .max(50)
+            .required(),
+        method: Joi.string().valid('POST', 'GET').allow(''), //we're accepting empty value because we consider it POST by default.
+        description: Joi.string().max(5000).allow(''),
+        summary: Joi.string().max(1000).allow(''),
+        doc: Joi.string().max(1000).allow(''),
+        ai_exposed: Joi.boolean().default(true),
+    });
+    constructor() {
+        super();
+    }
+    init() {}
+    async process(input, config, agent: Agent) {
+        await super.process(input, config, agent);
+
+        const req: AgentRequest = agent.agentRequest;
+        const logger = this.createComponentLogger(agent, config.name);
+
+        const headers = req ? req.headers : {};
+        let body = req ? req.body : input; //handle debugger injection
+        const params = req ? req.params : {};
+        let query = req ? req.query : {};
+        const _authInfo = req ? req._agent_authinfo : undefined;
+
+        // parse template variables
+        for (const [key, value] of Object.entries(body)) {
+            if (isKeyTemplateVar(value as string)) {
+                body[key] = await parseKey(value as string, agent?.teamId);
+            } else if (isTemplateVar(value as string)) {
+                body[key] = parseTemplate(value as string, input, { escapeString: false });
+            }
+        }
+
+        for (const [key, value] of Object.entries(query)) {
+            if (isKeyTemplateVar(value as string)) {
+                query[key] = await parseKey(value as string, agent?.teamId);
+            } else if (isTemplateVar(value as string)) {
+                query[key] = parseTemplate(value as string, input, { escapeString: false });
+            }
+        }
+
+        // set default value and agent variables
+        const inputsWithDefaultValue = config.inputs.filter(
+            (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null
+        );
+
+        const bodyInputNames: string[] = [];
+        const queryInputNames: string[] = [];
+
+        for (const output of config.outputs) {
+            const outputName = output?.expression || output?.name;
+            const inputName = outputName?.split('.')[1];
+
+            if (inputName) {
+                if (outputName?.includes('body')) {
+                    bodyInputNames.push(inputName);
+                }
+
+                if (outputName?.includes('query')) {
+                    queryInputNames.push(inputName);
+                }
+            }
+        }
+
+        for (const _inputWithDefaultValue of inputsWithDefaultValue) {
+            const inputName = _inputWithDefaultValue?.name;
+
+            let inputValue = input[inputName];
+
+            // We provide a default value for the OpenAPI Schema, which can detected by Claude. So we need to check if the default value is an Agent Variable. This is necessary for interactions with the Chatbot.
+
+            if (bodyInputNames.includes(inputName) && isEmpty(body[inputName])) {
+                body[inputName] = inputValue;
+            }
+
+            if (queryInputNames.includes(inputName) && isEmpty(query[inputName])) {
+                query[inputName] = inputValue;
+            }
+        }
+
+        //override debugger injection
+        // if (agent.agentRuntime.debug && body?.[0]?.dbg) { // ! 'dbg' is DEPRECATED
+        const isDbgInjection = req.header('X-Debug-Inj') !== undefined;
+        if (isDbgInjection && agent.agentRuntime.debug && Object.values(input).length > 0) {
+            switch (config.data.method) {
+                case 'GET':
+                    for (const [key, value] of Object.entries(input)) {
+                        if (value instanceof SmythFile) {
+                            logger.debug('[WARNING] Binary files are not supported for GET requests. Key:', key);
+                        } else {
+                            query[key] = value as string;
+                        }
+                    }
+                    break;
+                case 'POST':
+                default:
+                    body = input;
+                    break;
+            }
+            //body = input;
+        }
+
+        // ensure strong data type
+        body = await ensureStrongDataType(body, config.inputs);
+        query = await ensureStrongDataType(query, config.inputs);
+
+        logger.debug('Parsing inputs');
+        logger.debug(' Headers', headers);
+        logger.debug(' Body', body);
+        logger.debug(' Params', params);
+        logger.debug(' Query', query);
+
+        //Handle JSON Data
+        //FIXME : this is a workaround that parses any json string in the body, we should only parse the json string in the body if the data type is explicitely set to JSON
+        //TODO : Add data types to APIEndpoint inputs
+        logger.debug('Parsing body json input');
+        for (let key in body) {
+            const value = body[key];
+            if (typeof value === 'string' && value.trim().startsWith('{') && value.trim().endsWith('}')) {
+                try {
+                    const obj = JSON.parse(jsonrepair(body[key]));
+                    body[key] = obj;
+                } catch {
+                    //skip it if it's not a valid json
+                }
+            }
+        }
+        logger.debug('Parsed body json input', body);
+
+        logger.debug('Parsing query json input');
+        for (let key in query) {
+            const value = query[key];
+            if (typeof value === 'string' && value.trim().startsWith('{') && value.trim().endsWith('}')) {
+                try {
+                    const obj = JSON.parse(jsonrepair(query[key] as string));
+                    query[key] = obj;
+                } catch {
+                    //skip it if it's not a valid json
+                }
+            }
+        }
+        logger.debug('Parsed query json input', query);
+
+        //Handle binary data
+
+        for (let input of config.inputs) {
+            if (!input.isFile && input?.type?.toLowerCase() !== 'binary') continue;
+
+            const fieldname = input.name;
+
+            logger.debug('Parsing file input ', fieldname);
+
+            let smythFile = body[fieldname];
+
+            if (!(smythFile instanceof SmythFile)) {
+                // * when data sent with 'multipart/form-data' content type, we expect the files to be in req.files
+                if (req.files?.length > 0) {
+                    const file = req.files.find((file) => file.fieldname === fieldname);
+                    if (!file) continue;
+                    smythFile = new SmythFile(file.buffer, file.mimetype);
+                } else if (body[fieldname]) {
+                    smythFile = new SmythFile(body[fieldname]);
+                }
+            }
+
+            if (smythFile instanceof SmythFile) {
+                body[fieldname] = await smythFile.toSmythFileObject({
+                    metadata: {
+                        teamid: agent?.teamId,
+                        agentid: agent?.id,
+                    },
+                    baseUrl: agent?.baseUrl,
+                });
+            }
+            //console.log('file', fieldname, body[fieldname]);
+        }
+
+        return { headers, body, query, params, _authInfo, _debug: logger.output };
+    }
+}

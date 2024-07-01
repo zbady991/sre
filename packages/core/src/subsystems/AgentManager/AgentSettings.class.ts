@@ -1,0 +1,49 @@
+import EmbodimentSettings from './EmbodimentSettings.class';
+
+import { createLogger } from '@sre/Core/Logger';
+import SmythRuntime from '@sre/Core/SmythRuntime.class';
+const console = createLogger('AgentSettings');
+
+export default class AgentSettings {
+    private _settings: any;
+    public embodiments?: EmbodimentSettings;
+    private _ready = false;
+
+    constructor(agentId?) {
+        if (agentId) {
+            this.init(agentId);
+        }
+    }
+
+    async init(agentId) {
+        this._settings = (await SmythRuntime.Instance?.AgentData?.getAgentSettings(agentId)) || {};
+        this.embodiments = new EmbodimentSettings(this._settings.embodiments);
+        this._ready = true;
+    }
+
+    public ready(maxWait = 10000) {
+        return new Promise((resolve, reject) => {
+            const interval = setInterval(() => {
+                if (this._ready) {
+                    clearInterval(interval);
+                    resolve(true);
+                }
+                maxWait -= 100;
+            }, 100);
+
+            setTimeout(() => {
+                clearInterval(interval);
+                reject(false);
+            }, maxWait);
+        });
+    }
+    public get(key: string) {
+        return this._settings?.find((s) => s.key === key)?.value;
+    }
+    public set(key: string, value: any) {
+        this._settings[key] = value;
+    }
+    public has(key: string) {
+        return this._settings[key];
+    }
+}
