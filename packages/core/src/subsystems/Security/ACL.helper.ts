@@ -1,41 +1,55 @@
+import { xxh3 } from '@node-rs/xxhash';
 import {
+    IAccessCandidate,
+    IAccessRequest,
     LevelMap,
     ReverseLevelMap,
     ReverseRoleMap,
     RoleMap,
-    TACL,
+    IACL,
     TACLEntry,
-    TAccessCandidate,
     TAccessLevel,
-    TAccessRequest,
     TAccessRole,
 } from '@sre/types/ACL.types';
-import { xxh3 } from '@node-rs/xxhash';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData/IAgentDataConnector';
 import { uid } from '@sre/utils/general.utils';
-import { T } from 'vitest/dist/reporters-yx5ZTtEV';
-export class ACLHelper {
-    private acl: TACL;
-    public get ACL(): TACL {
-        return this.acl;
+
+const ACLHashAlgo = {
+    none: (source) => source,
+    xxh3: (source) => xxh3.xxh64(source).toString(16),
+};
+
+export class ACL implements IACL {
+    public hashAlgorithm?: string | undefined;
+    public entries?: {
+        [key in TAccessRole]?: TACLEntry | undefined;
+    };
+    public migrated?: boolean | undefined;
+    //private acl: TACL;
+    public get ACL(): IACL {
+        return {
+            hashAlgorithm: this.hashAlgorithm,
+            entries: JSON.parse(JSON.stringify(this.entries)),
+            migrated: this.migrated,
+        };
     }
     public get serializedACL(): string {
-        return this.serializeACL(this.acl);
+        return this.serializeACL(this);
     }
 
-    constructor(acl?: TACL | string) {
+    constructor(acl?: IACL | string) {
         if (typeof acl === 'string') {
-            this.acl = this.deserializeACL(acl);
+            this.deserializeACL(acl);
         } else {
-            this.acl = acl || {};
+            this.hashAlgorithm = acl?.hashAlgorithm;
+            this.entries = acl?.entries ? JSON.parse(JSON.stringify(acl?.entries)) : {};
+            this.migrated = acl?.migrated;
         }
-        if (!this.acl.hashAlgorithm) this.acl.hashAlgorithm = 'xxh3';
-        if (!this.acl.entries) this.acl.entries = {};
+        if (!this.hashAlgorithm) this.hashAlgorithm = 'xxh3';
+        if (!this.entries) this.entries = {};
     }
 
-    static load(acl?: TACL | string): ACLHelper {
-        return new ACLHelper(acl);
+    static from(acl?: IACL | string): ACL {
+        return new ACL(acl);
     }
 
     /**
@@ -44,81 +58,64 @@ export class ACLHelper {
      * Examples :
      * - if the candidate has read access, it will return true only if the requested level is read
      * - if the current ACL has team access but the candidate is an agent, it will not match the team access
-     * @param request
+     * @param acRequest
      * @returns
      */
-    public checkExactAccess(request: TAccessRequest | AccessRequest): boolean {
-        const req = request instanceof AccessRequest ? request.request : request;
-        if (!this.acl?.entries) return false; // cannot determine the access rights, prefer to deny access
+    public checkExactAccess(acRequest: AccessRequest): boolean {
+        if (!this?.entries) return false; // cannot determine the access rights, prefer to deny access
 
-        const role = this.acl?.entries[req.candidate.role];
+        const role = this?.entries[acRequest.candidate.role];
         if (!role) return false;
-        let entryId = req.candidate.id;
-        switch (this.acl.hashAlgorithm) {
-            case '':
-            case 'none':
-            case 'raw':
-                entryId = req.candidate.id;
-                break;
-            case 'xxh3':
-                entryId = xxh3.xxh64(req.candidate.id).toString(16);
-                break;
-            default:
-                throw new Error(`Hash algorithm ${this.acl.hashAlgorithm} not supported`);
-                break;
+        let entryId = acRequest.candidate.id;
+
+        if (!ACLHashAlgo[this.hashAlgorithm]) {
+            throw new Error(`Hash algorithm ${this.hashAlgorithm} not supported`);
         }
+
+        entryId = ACLHashAlgo[this.hashAlgorithm](entryId);
 
         const access = role[entryId];
         if (!access) return false;
 
-        const levels = Array.isArray(req.level) ? req.level : [req.level];
+        const levels = Array.isArray(acRequest.level) ? acRequest.level : [acRequest.level];
 
         return levels.every((level) => access.includes(level));
         //return access.includes(req.level);
     }
 
-    public addAccess(role: TAccessRole, ownerId: string, level: TAccessLevel | TAccessLevel[]): ACLHelper {
+    public addAccess(role: TAccessRole, ownerId: string, level: TAccessLevel | TAccessLevel[]): ACL {
         const _level = Array.isArray(level) ? level : [level];
-        this.acl = this.addAccessRight(role, ownerId, _level, this.acl);
-        return this;
-    }
+        if (!this?.entries[role]) this.entries[role] = {};
+        if (!ACLHashAlgo[this.hashAlgorithm]) {
+            throw new Error(`Hash algorithm ${this.hashAlgorithm} not supported`);
+        }
+        const hashedOwner = ACLHashAlgo[this.hashAlgorithm](ownerId);
 
-    public removeAccess(role: TAccessRole, ownerId: string, level: TAccessLevel | TAccessLevel[]): ACLHelper {
-        const _level = Array.isArray(level) ? level : [level];
-        this.acl = this.removeAccessRight(role, ownerId, _level, this.acl);
-        return this;
-    }
-
-    public get(): TACL {
-        return this.acl;
-    }
-
-    private addAccessRight(role: TAccessRole, ownerId: string, level: TAccessLevel[], acl?: TACL): TACL {
-        if (!acl?.entries) return {};
-        if (!acl?.entries[role]) acl.entries[role] = {};
-        const hashedOwner = xxh3.xxh64(ownerId).toString(16);
-        if (!acl?.entries[role]![hashedOwner]) acl.entries[role]![hashedOwner] = [];
+        if (!this?.entries[role]![hashedOwner]) this.entries[role]![hashedOwner] = [];
         //acl[role]![ownerId]!.push(level);
         //concatenate the levels
-        const curLevel = acl.entries[role]![hashedOwner]!;
-        acl.entries[role]![hashedOwner] = [...curLevel, ...level];
+        const curLevel = this.entries[role]![hashedOwner]!;
+        this.entries[role]![hashedOwner] = [...curLevel, ..._level];
 
-        return acl;
+        return this;
+    }
+    public static addAccess(role: TAccessRole, ownerId: string, level: TAccessLevel | TAccessLevel[]): ACL {
+        return ACL.from().addAccess(role, ownerId, level);
     }
 
-    private removeAccessRight(role: TAccessRole, ownerId: string, level: TAccessLevel[], acl?: TACL): TACL {
-        if (!acl) return {};
-        if (!acl[role]) return acl;
-        if (!acl[role]![ownerId]) return acl;
+    public removeAccess(role: TAccessRole, ownerId: string, level: TAccessLevel | TAccessLevel[]): ACL {
+        const _level = Array.isArray(level) ? level : [level];
+        if (!this[role]) return this;
+        if (!this[role]![ownerId]) return this;
         //acl[role]![ownerId] = acl[role]![ownerId]!.filter((l) => l !== level);
         //remove the levels
-        const curLevel = acl[role]![ownerId]!;
-        acl[role]![ownerId] = curLevel.filter((l) => !level.includes(l));
+        const curLevel = this[role]![ownerId]!;
+        this[role]![ownerId] = curLevel.filter((l) => !_level.includes(l));
 
-        return acl;
+        return this;
     }
 
-    private serializeACL(tacl: TACL): string {
+    private serializeACL(tacl: IACL): string {
         let compressed = '';
 
         if (tacl.hashAlgorithm) {
@@ -151,16 +148,14 @@ export class ACLHelper {
         return compressed;
     }
 
-    private deserializeACL(compressed: string): TACL {
+    private deserializeACL(compressed: string) {
         const parts = compressed.split('|');
-        const tacl = {
-            hashAlgorithm: '',
-            entries: {},
-        };
+        this.hashAlgorithm = '';
+        this.entries = {};
 
         for (const part of parts) {
             if (part.startsWith('h:')) {
-                tacl.hashAlgorithm = part.substring(2);
+                this.hashAlgorithm = part.substring(2);
             } else {
                 const [roleShort, entries] = part.split(':');
                 const role = ReverseRoleMap[roleShort]; // Use the reverse mapping for role
@@ -176,79 +171,150 @@ export class ACLHelper {
                         entriesObj[hashedOwnerKey] = accessLevels;
                     }
 
-                    tacl.entries[role] = entriesObj;
+                    this.entries[role] = entriesObj;
                 }
             }
         }
 
-        return tacl;
+        //return tacl;
     }
 }
 
-export class AccessCandidate {
-    static team(teamId: string): TAccessCandidate {
-        return {
-            role: TAccessRole.Team,
-            id: teamId,
-        };
-    }
-    static agent(agentId: string): TAccessCandidate {
-        return {
-            role: TAccessRole.Agent,
-            id: agentId,
-        };
-    }
-    static user(userId: string): TAccessCandidate {
-        return {
-            role: TAccessRole.User,
-            id: userId,
-        };
+export class AccessCandidate implements IAccessCandidate {
+    public role: TAccessRole;
+    public id: string;
+    //public _candidate: TAccessCandidate;
+    constructor(candidate?: IAccessCandidate) {
+        //this._candidate = candidate || { role: TAccessRole.Public, id: '' };
+
+        this.role = candidate ? candidate.role : TAccessRole.Public;
+        this.id = candidate ? candidate.id : '';
     }
 
-    static public(): TAccessCandidate {
-        return {
-            role: TAccessRole.Public,
-            id: 'public',
-        };
+    public static from(candidate: IAccessCandidate): AccessCandidate {
+        return new AccessCandidate(candidate);
+    }
+
+    public team(teamId: string): AccessCandidate {
+        this.role = TAccessRole.Team;
+        this.id = teamId;
+
+        return this;
+    }
+    static team(teamId: string): AccessCandidate {
+        return new AccessCandidate({ role: TAccessRole.Team, id: teamId });
+    }
+
+    public agent(agentId: string): AccessCandidate {
+        this.role = TAccessRole.Agent;
+        this.id = agentId;
+        return this;
+    }
+    static agent(agentId: string): AccessCandidate {
+        return new AccessCandidate({ role: TAccessRole.Agent, id: agentId });
+    }
+
+    public user(userId: string): AccessCandidate {
+        this.role = TAccessRole.User;
+        this.id = userId;
+        return this;
+    }
+    static user(userId: string): AccessCandidate {
+        return new AccessCandidate({ role: TAccessRole.User, id: userId });
+    }
+
+    public public(): AccessCandidate {
+        this.role = TAccessRole.Public;
+        this.id = '';
+
+        return this;
+    }
+    static public(): AccessCandidate {
+        return new AccessCandidate({ role: TAccessRole.Public, id: '' });
+    }
+
+    public makeRequest(): AccessRequest {
+        return new AccessRequest(this);
     }
 }
 
-export class AccessRequest {
-    private _request: TAccessRequest;
+export class AccessRequest implements IAccessRequest {
+    public id: string;
+    public resourceId: string;
+    public resourceTeamId?: string;
+    public level: TAccessLevel[] = [];
+    public candidate: AccessCandidate;
 
-    constructor(object: TAccessRequest | TAccessCandidate) {
+    constructor(object: AccessRequest | AccessCandidate) {
         if (['role', 'id'].every((k) => k in object)) {
             //this is a candidate
-            this._request = {
-                id: 'aclR:' + uid(),
-                resourceId: '',
-                level: TAccessLevel.None,
-                candidate: object as TAccessCandidate,
-            };
+            this.id = 'aclR:' + uid();
+            this.candidate = object as AccessCandidate;
         } else {
-            this._request = object as TAccessRequest;
+            const acReq: AccessRequest = object as AccessRequest;
+            this.id = acReq.id;
+            this.resourceId = acReq.resourceId;
+            this.level = acReq.level;
+            this.candidate = acReq.candidate;
+            this.resourceTeamId = acReq.resourceTeamId;
         }
     }
 
-    public get request(): TAccessRequest {
-        return this._request;
+    public static from(request: AccessRequest): AccessRequest {
+        return new AccessRequest(request);
     }
 
-    public read(resourceId: string) {
-        this._request.resourceId = resourceId;
-        this._request.level = TAccessLevel.Read;
+    public read(resourceId?: string): AccessRequest {
+        if (resourceId) this.resourceId = resourceId;
+        this.level = [TAccessLevel.Read];
         return this;
     }
 
-    public write(resourceId: string) {
-        this._request.resourceId = resourceId;
-        this._request.level = TAccessLevel.Write;
+    public write(resourceId?: string): AccessRequest {
+        if (resourceId) this.resourceId = resourceId;
+        this.level = [TAccessLevel.Write];
+        return this;
+    }
+
+    public owner(resourceId?: string): AccessRequest {
+        if (resourceId) this.resourceId = resourceId;
+        this.level = [TAccessLevel.Owner];
+        return this;
+    }
+
+    public setCandidate(candidate: AccessCandidate): AccessRequest {
+        this.candidate = candidate;
 
         return this;
     }
 
-    public resTeam(resourceTeamId: string) {
-        this._request.resourceTeamId = resourceTeamId;
+    public addRead(resourceId?: string): AccessRequest {
+        if (resourceId) this.resourceId = resourceId;
+        (this.level as TAccessLevel[]).push(TAccessLevel.Read);
+        //deduplicate
+        this.level = [...new Set(this.level)] as TAccessLevel[];
+
+        return this;
+    }
+
+    public addWrite(resourceId?: string): AccessRequest {
+        if (resourceId) this.resourceId = resourceId;
+        (this.level as TAccessLevel[]).push(TAccessLevel.Write);
+        //deduplicate
+        this.level = [...new Set(this.level)] as TAccessLevel[];
+        return this;
+    }
+
+    public addOwner(resourceId?: string): AccessRequest {
+        if (resourceId) this.resourceId = resourceId;
+        (this.level as TAccessLevel[]).push(TAccessLevel.Owner);
+        //deduplicate
+        this.level = [...new Set(this.level)] as TAccessLevel[];
+        return this;
+    }
+
+    public resTeam(resourceTeamId: string): AccessRequest {
+        this.resourceTeamId = resourceTeamId;
         return this;
     }
 }

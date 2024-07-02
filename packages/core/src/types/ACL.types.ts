@@ -14,6 +14,25 @@ export enum TAccessRole {
     Public = 'public',
 }
 
+// role and level mappings are used for ACL serialization / deserialization
+export const RoleMap = {
+    user: 'u',
+    agent: 'a',
+    team: 't',
+    public: 'p',
+};
+
+export const LevelMap = {
+    none: 'n',
+    owner: 'o',
+    read: 'r',
+    write: 'w',
+};
+
+// Reverse mappings
+export const ReverseRoleMap = Object.fromEntries(Object.entries(RoleMap).map(([k, v]) => [v, k]));
+export const ReverseLevelMap = Object.fromEntries(Object.entries(LevelMap).map(([k, v]) => [v, k]));
+
 /**
  * an ACLEntry is a list of access levels for a given owner.
  * an owner can be an agent, a user, a team or the public.
@@ -39,29 +58,30 @@ export type TACLEntry = {
  * }
  */
 // prettier-ignore
-export type TACL = {    
+export interface IACL {    
     hashAlgorithm?: string | undefined;
     entries?: {
         [key in TAccessRole]?: TACLEntry | undefined;
     };
-};
+    migrated?: boolean | undefined;
+}
 
 // export type TACLMetadata = {
 //     acl?: TACL | undefined;
 // };
 
-export type TAccessCandidate = {
+export interface IAccessCandidate {
     role: TAccessRole;
     id: string;
-};
+}
 
-export type TAccessRequest = {
+export interface IAccessRequest {
     id: string;
     resourceId: string;
     resourceTeamId?: string;
-    candidate: TAccessCandidate;
+    candidate: IAccessCandidate;
     level: TAccessLevel | TAccessLevel[];
-};
+}
 
 export enum TAccessResult {
     Granted = 'granted',
@@ -69,30 +89,6 @@ export enum TAccessResult {
 }
 
 export type TAccessTicket = {
-    request: TAccessRequest;
+    request: IAccessRequest;
     access: TAccessResult;
 };
-
-export type TConnectorAccessToken = {
-    request: TAccessRequest;
-    tokenId: string;
-    expires: number;
-};
-// role and level mappings are used for ACL serialization / deserialization
-export const RoleMap = {
-    user: 'u',
-    agent: 'a',
-    team: 't',
-    public: 'p',
-};
-
-export const LevelMap = {
-    none: 'n',
-    owner: 'o',
-    read: 'r',
-    write: 'w',
-};
-
-// Reverse mappings
-export const ReverseRoleMap = Object.fromEntries(Object.entries(RoleMap).map(([k, v]) => [v, k]));
-export const ReverseLevelMap = Object.fromEntries(Object.entries(LevelMap).map(([k, v]) => [v, k]));

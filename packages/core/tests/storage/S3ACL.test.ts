@@ -6,7 +6,7 @@ import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 //import SRE, { AgentRequest } from '../../dist';
 import { StorageConnector } from '@sre/IO/Storage/StorageConnector';
 import SREInstance from '../001_Base/SREInstance';
-import { AccessCandidate, ACLHelper, AccessRequest } from '@sre/Security/ACL.helper';
+import { AccessCandidate, ACL, AccessRequest } from '@sre/Security/ACL.helper';
 
 const testFile = 'unit-tests/acl-test.txt';
 
@@ -38,10 +38,9 @@ describe('S3 Storage Advanced Access Rights', () => {
         try {
             const s3Storage: StorageConnector = SREInstance.Storage;
 
-            //const acRequest = AccessRequest.forTeamResource('default', testFile, TAccessLevel.Write, AccessCandidate.agent('agent-123456'));
             const acRequest = new AccessRequest(AccessCandidate.agent('agent-123456')).write(testFile).resTeam('myTeam');
 
-            const acl = ACLHelper.load().addAccess(TAccessRole.Team, 'myTeam', TAccessLevel.Read).ACL;
+            const acl = ACL.addAccess(TAccessRole.Team, 'myTeam', TAccessLevel.Read);
 
             //const accessToken = await s3Storage.getAccess(acRequest);
 
@@ -55,12 +54,13 @@ describe('S3 Storage Advanced Access Rights', () => {
     });
 
     it('Read files from using wrong access => should fail', async () => {
+        //this fails because the agent does not have access to the resource, and is not from the same team as the owner (default team name is "default")
         let error;
 
         try {
             const s3Storage: StorageConnector = SREInstance.Storage;
-            //const acRequest = AccessRequest.forResource(testFile, TAccessLevel.Read, AccessCandidate.agent('agent-1234'));
-            const acRequest = new AccessRequest(AccessCandidate.agent('agent-1234')).read(testFile);
+
+            const acRequest = new AccessRequest(AccessCandidate.agent('agent-no-access')).read(testFile);
 
             //const accessToken = await s3Storage.getAccess(acRequest);
             const result = await s3Storage.read(testFile, acRequest);
@@ -87,8 +87,6 @@ describe('S3 Storage Advanced Access Rights', () => {
             const result = await s3Storage.read(testFile, acRequest);
 
             expect(result.toString()).toBe('Hello World!');
-
-            //const acTeamRequest = AccessRequest.forResource(testFile, TAccessLevel.Read, AccessCandidate.team('default'));
 
             const acTeamRequest = new AccessRequest(AccessCandidate.team('myTeam')).read(testFile);
 

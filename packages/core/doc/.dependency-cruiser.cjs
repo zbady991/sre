@@ -246,23 +246,7 @@ module.exports = {
        defaults to './tsconfig.json'.
      */
         tsConfig: {
-            //fileName: 'tsconfig.json'
-            compilerOptions: {
-                target: 'esnext',
-                module: 'ESNext',
-                outDir: './dist',
-                rootDir: './src',
-                strict: true,
-                moduleResolution: 'node',
-                esModuleInterop: true,
-                skipLibCheck: true,
-                forceConsistentCasingInFileNames: true,
-                sourceMap: true,
-                noImplicitAny: false,
-                resolveJsonModule: true,
-            },
-            include: ['src/**/*.ts'],
-            exclude: ['node_modules'],
+            fileName: 'tsconfig.json',
         },
 
         /* Webpack configuration to use to get resolve options from.

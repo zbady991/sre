@@ -1,10 +1,10 @@
 import IORedis from 'ioredis';
 import { createLogger } from '@sre/Core/Logger';
-import { TAccessRequest, TACL } from '@sre/types/ACL.types';
+import { IAccessRequest, IACL } from '@sre/types/ACL.types';
 import { CacheMetadata } from '@sre/types/Cache.types';
 import { ICacheConnector } from '../ICacheConnector';
 
-import { ACLHelper } from '@sre/Security/ACL.helper';
+import { ACL } from '@sre/Security/ACL.helper';
 import { RedisConfig } from '@sre/types/Redis.types';
 
 import { Connector } from '@sre/Core/Connector.class';
@@ -39,7 +39,7 @@ export class RedisCache extends Connector implements ICacheConnector {
         return this.redis.get(`${this.prefix}:${key}`);
     }
 
-    public async set(key: string, data: any, acl?: TACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean> {
+    public async set(key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean> {
         const promises: any[] = [];
 
         promises.push(this.redis.set(`${this.prefix}:${key}`, data));
@@ -91,11 +91,11 @@ export class RedisCache extends Connector implements ICacheConnector {
         return this.redis.ttl(`${this.prefix}:${key}`);
     }
 
-    async hasAccess(request: TAccessRequest): Promise<boolean> {
+    async hasAccess(request: IAccessRequest): Promise<boolean> {
         try {
             const metadata = await this.getMetadata(request.resourceId);
-            const acl: TACL = metadata?.acl as TACL;
-            return ACLHelper.load(acl).checkExactAccess(request);
+            const acl: IACL = metadata?.acl as IACL;
+            return ACL.from(acl).checkExactAccess(request);
         } catch (error) {
             if (error.name === 'NotFound') {
                 return false;
@@ -105,17 +105,17 @@ export class RedisCache extends Connector implements ICacheConnector {
         }
     }
 
-    async getACL(resourceId: string): Promise<TACL> {
+    async getACL(resourceId: string): Promise<IACL> {
         try {
             const metadata = await this.getMetadata(resourceId);
-            return (metadata?.acl as TACL) || {};
+            return (metadata?.acl as IACL) || {};
         } catch (error) {
             console.error(`Error getting access rights in S3`, error.name, error.message);
             throw error;
         }
     }
 
-    async setACL(resourceId: string, acl: TACL) {
+    async setACL(resourceId: string, acl: IACL) {
         try {
             let metadata = await this.getMetadata(resourceId);
             if (!metadata) metadata = {};
@@ -130,9 +130,9 @@ export class RedisCache extends Connector implements ICacheConnector {
     private serializeRedisMetadata(redisMetadata: Record<string, any> | undefined): string {
         if (!redisMetadata) return '';
         if (redisMetadata.acl) {
-            const acl: TACL = redisMetadata.acl;
+            const acl: IACL = redisMetadata.acl;
             if (acl) {
-                redisMetadata.acl = ACLHelper.load(acl).serializedACL;
+                redisMetadata.acl = ACL.from(acl).serializedACL;
             }
         }
 
@@ -143,7 +143,7 @@ export class RedisCache extends Connector implements ICacheConnector {
         try {
             const redisMetadata = JSON.parse(strMetadata);
             if (redisMetadata.acl) {
-                const acl: TACL = ACLHelper.load(redisMetadata.acl).ACL;
+                const acl: IACL = ACL.from(redisMetadata.acl).ACL;
                 redisMetadata.acl = acl;
             }
 

@@ -33,7 +33,7 @@ async function main() {
         const request = new AgentRequest(process.argv);
         const result = await sre.runAgent('test', { data, agentVersion: '1.0' }, request);
 
-        console.log('>>> result = ', result);
+        console.log('>>>>>>>>>>>>>>>>> Result \n', JSON.stringify(result, null, 2));
     } catch (error) {
         console.error(error);
     } finally {

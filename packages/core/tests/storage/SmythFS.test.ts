@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SmythFS } from '@sre/IO/Storage/SmythFS.class';
 
-import { TAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
+import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import SREInstance from '../001_Base/SREInstance';
 
 if (!SREInstance.ready()) {
@@ -19,7 +19,7 @@ describe('Smyth FileSystem Tests', () => {
         try {
             const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
 
-            const candidate: TAccessCandidate = {
+            const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
                 id: 'agent-123456',
             };
@@ -38,7 +38,7 @@ describe('Smyth FileSystem Tests', () => {
         try {
             const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
 
-            const candidate: TAccessCandidate = {
+            const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
                 id: 'agent-123456',
             };
@@ -58,7 +58,7 @@ describe('Smyth FileSystem Tests', () => {
         try {
             const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
 
-            const candidate: TAccessCandidate = {
+            const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
                 id: 'agent-000000',
             };
@@ -76,7 +76,7 @@ describe('Smyth FileSystem Tests', () => {
         try {
             const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
 
-            const candidate: TAccessCandidate = {
+            const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
                 id: 'agent-123456',
             };

@@ -1,6 +1,6 @@
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { AccessCandidate, ACLHelper, AccessRequest } from '@sre/Security/ACL.helper';
-import { TAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { AccessCandidate, ACL, AccessRequest } from '@sre/Security/ACL.helper';
+import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { StorageMetadata } from '@sre/types/Storage.types';
 import { StorageConnector } from './StorageConnector';
 import * as FileType from 'file-type';
@@ -48,7 +48,7 @@ export class SmythFS {
         if (!smythURI) throw new Error('Invalid Resource URI');
         return `teams/${smythURI.team}${smythURI.path}`;
     }
-    public async read(uri: string, candidate: TAccessCandidate) {
+    public async read(uri: string, candidate: IAccessCandidate) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
 
@@ -61,7 +61,7 @@ export class SmythFS {
         return await this.storage.read(resourceId, acRequest);
     }
 
-    public async write(uri: string, data: any, candidate: TAccessCandidate, metadata?: StorageMetadata) {
+    public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
@@ -70,7 +70,7 @@ export class SmythFS {
 
         //const accessToken = await this.storage.getAccess(acRequest);
 
-        const acl = new ACLHelper()
+        const acl = new ACL()
             //.addAccess(candidate.role, candidate.id, TAccessLevel.Owner) // creator is owner
             .addAccess(TAccessRole.Team, smythURI.team, TAccessLevel.Read).ACL; // team has read access
 
@@ -103,7 +103,7 @@ export class SmythFS {
         }
     }
 
-    public async delete(uri: string, candidate: TAccessCandidate) {
+    public async delete(uri: string, candidate: IAccessCandidate) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
@@ -116,7 +116,7 @@ export class SmythFS {
     }
 
     //TODO: should we require access token here ?
-    public async exists(uri: string, candidate: TAccessCandidate) {
+    public async exists(uri: string, candidate: IAccessCandidate) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;

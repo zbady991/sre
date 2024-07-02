@@ -51,4 +51,11 @@ describe('SRE Basic Tests', () => {
 
         expect(output).toBeDefined();
     });
+
+    it('LLMPrompt Test', () => {
+        const args = `--agent ./tests/data/sre-openai-LLMPrompt.smyth --endpoint say --post message="Write a poem about flowers"`;
+        const output = runCLICommand(args);
+
+        expect(JSON.stringify(output)).toContain('flowers');
+    });
 });

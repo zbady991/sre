@@ -8,7 +8,7 @@
         "test": "cross-env TEST_ENV=true vitest --reporter verbose",
         "cli-test": "vitest --reporter verbose run cli.test.ts",
         "build": "rollup -c",
-        "doc:graphgen": "npx depcruise src --config .dependency-cruiser.cjs --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
+        "doc:graphgen": "npx depcruise src --config ./doc/.dependency-cruiser.cjs --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "knip": "knip"
     },
     "author": "Alaa-eddine KADDOURI",
