@@ -1,7 +1,7 @@
 import { Connector } from '@sre/Core/Connector.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { IAgentDataConnector } from '../IAgentDataConnector';
-import { AccessCandidate } from '@sre/Security/ACL.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export abstract class AbstractAgentDataConnector extends Connector implements IAgentDataConnector {
     public abstract getAgentData(agentId: string, version?: string): Promise<any>;

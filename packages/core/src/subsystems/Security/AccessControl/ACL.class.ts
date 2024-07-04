@@ -1,17 +1,6 @@
 import { xxh3 } from '@node-rs/xxhash';
-import {
-    IAccessCandidate,
-    IAccessRequest,
-    LevelMap,
-    ReverseLevelMap,
-    ReverseRoleMap,
-    RoleMap,
-    IACL,
-    TACLEntry,
-    TAccessLevel,
-    TAccessRole,
-} from '@sre/types/ACL.types';
-import { uid } from '@sre/utils/general.utils';
+import { IACL, IAccessRequest, LevelMap, ReverseLevelMap, ReverseRoleMap, RoleMap, TACLEntry, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { AccessRequest } from './AccessRequest.class';
 
 const ACLHashAlgo = {
     none: (source) => source,
@@ -61,7 +50,7 @@ export class ACL implements IACL {
      * @param acRequest
      * @returns
      */
-    public checkExactAccess(acRequest: AccessRequest): boolean {
+    public checkExactAccess(acRequest: IAccessRequest): boolean {
         if (!this?.entries) return false; // cannot determine the access rights, prefer to deny access
 
         const role = this?.entries[acRequest.candidate.role];
@@ -178,147 +167,4 @@ export class ACL implements IACL {
 
         //return tacl;
     }
-}
-
-export class AccessCandidate implements IAccessCandidate {
-    public role: TAccessRole;
-    public id: string;
-    //public _candidate: TAccessCandidate;
-    constructor(candidate?: IAccessCandidate) {
-        //this._candidate = candidate || { role: TAccessRole.Public, id: '' };
-
-        this.role = candidate ? candidate.role : TAccessRole.Public;
-        this.id = candidate ? candidate.id : '';
-    }
-
-    public static from(candidate: IAccessCandidate): AccessCandidate {
-        return new AccessCandidate(candidate);
-    }
-
-    public team(teamId: string): AccessCandidate {
-        this.role = TAccessRole.Team;
-        this.id = teamId;
-
-        return this;
-    }
-    static team(teamId: string): AccessCandidate {
-        return new AccessCandidate({ role: TAccessRole.Team, id: teamId });
-    }
-
-    public agent(agentId: string): AccessCandidate {
-        this.role = TAccessRole.Agent;
-        this.id = agentId;
-        return this;
-    }
-    static agent(agentId: string): AccessCandidate {
-        return new AccessCandidate({ role: TAccessRole.Agent, id: agentId });
-    }
-
-    public user(userId: string): AccessCandidate {
-        this.role = TAccessRole.User;
-        this.id = userId;
-        return this;
-    }
-    static user(userId: string): AccessCandidate {
-        return new AccessCandidate({ role: TAccessRole.User, id: userId });
-    }
-
-    public public(): AccessCandidate {
-        this.role = TAccessRole.Public;
-        this.id = '';
-
-        return this;
-    }
-    static public(): AccessCandidate {
-        return new AccessCandidate({ role: TAccessRole.Public, id: '' });
-    }
-
-    public makeRequest(): AccessRequest {
-        return new AccessRequest(this);
-    }
-}
-
-export class AccessRequest implements IAccessRequest {
-    public id: string;
-    public resourceId: string;
-    public resourceTeamId?: string;
-    public level: TAccessLevel[] = [];
-    public candidate: AccessCandidate;
-
-    constructor(object: AccessRequest | AccessCandidate) {
-        if (['role', 'id'].every((k) => k in object)) {
-            //this is a candidate
-            this.id = 'aclR:' + uid();
-            this.candidate = object as AccessCandidate;
-        } else {
-            const acReq: AccessRequest = object as AccessRequest;
-            this.id = acReq.id;
-            this.resourceId = acReq.resourceId;
-            this.level = acReq.level;
-            this.candidate = acReq.candidate;
-            this.resourceTeamId = acReq.resourceTeamId;
-        }
-    }
-
-    public static from(request: AccessRequest): AccessRequest {
-        return new AccessRequest(request);
-    }
-
-    public read(resourceId?: string): AccessRequest {
-        if (resourceId) this.resourceId = resourceId;
-        this.level = [TAccessLevel.Read];
-        return this;
-    }
-
-    public write(resourceId?: string): AccessRequest {
-        if (resourceId) this.resourceId = resourceId;
-        this.level = [TAccessLevel.Write];
-        return this;
-    }
-
-    public owner(resourceId?: string): AccessRequest {
-        if (resourceId) this.resourceId = resourceId;
-        this.level = [TAccessLevel.Owner];
-        return this;
-    }
-
-    public setCandidate(candidate: AccessCandidate): AccessRequest {
-        this.candidate = candidate;
-
-        return this;
-    }
-
-    public addRead(resourceId?: string): AccessRequest {
-        if (resourceId) this.resourceId = resourceId;
-        (this.level as TAccessLevel[]).push(TAccessLevel.Read);
-        //deduplicate
-        this.level = [...new Set(this.level)] as TAccessLevel[];
-
-        return this;
-    }
-
-    public addWrite(resourceId?: string): AccessRequest {
-        if (resourceId) this.resourceId = resourceId;
-        (this.level as TAccessLevel[]).push(TAccessLevel.Write);
-        //deduplicate
-        this.level = [...new Set(this.level)] as TAccessLevel[];
-        return this;
-    }
-
-    public addOwner(resourceId?: string): AccessRequest {
-        if (resourceId) this.resourceId = resourceId;
-        (this.level as TAccessLevel[]).push(TAccessLevel.Owner);
-        //deduplicate
-        this.level = [...new Set(this.level)] as TAccessLevel[];
-        return this;
-    }
-
-    public resTeam(resourceTeamId: string): AccessRequest {
-        this.resourceTeamId = resourceTeamId;
-        return this;
-    }
-}
-
-export function genACLTokenId() {
-    return 'aclT:' + uid();
 }

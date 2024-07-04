@@ -1,9 +1,10 @@
-import SREInstance from '../001_Base/SREInstance';
-import { describe, expect, it } from 'vitest';
 import { xxh3 } from '@node-rs/xxhash';
-import { ICacheConnector } from '@sre/MemoryManager/Cache';
-import { RedisCache } from '@sre/MemoryManager/Cache/connectors/RedisCache.class';
+import { ICacheConnector } from '@sre/MemoryManager/Cache.service';
+import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { describe, expect, it } from 'vitest';
+import SREInstance from '../001_Base/SREInstance';
 
 //import SRE, { AgentRequest } from '../../dist';
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -91,14 +92,8 @@ describe('RedisCache Tests', () => {
 
     it('Check Access Rights => Grant', async () => {
         try {
-            const accessCheck = await redisCache.hasAccess({
-                resourceId: testFile,
-                candidate: {
-                    role: TAccessRole.Team,
-                    id: 'team1',
-                },
-                level: TAccessLevel.Write,
-            });
+            const req = AccessCandidate.team('team1').readRequest.resource(testFile);
+            const accessCheck = await redisCache.hasAccess(req);
 
             expect(accessCheck).toBeTruthy();
         } catch (e) {
@@ -108,44 +103,30 @@ describe('RedisCache Tests', () => {
 
     it('Check Access Rights => Refuse', async () => {
         try {
-            const wrongRole = await redisCache.hasAccess({
-                resourceId: testFile,
-                candidate: {
-                    role: TAccessRole.Agent, //wrong role
-                    id: 'team1',
-                },
-                level: TAccessLevel.Write,
-            });
-            const wrongTeam = await redisCache.hasAccess({
-                resourceId: testFile,
-                candidate: {
-                    role: TAccessRole.Team,
-                    id: 'team2', //wrong team
-                },
-                level: TAccessLevel.Write,
-            });
-
-            const wrongResource = await redisCache.hasAccess({
-                resourceId: testFileWithMeta, // file exists but does not belong to the team1
-                candidate: {
-                    role: TAccessRole.Team,
-                    id: 'team1',
-                },
-                level: TAccessLevel.Write,
-            });
-
-            const nonExistingResource = await redisCache.hasAccess({
-                resourceId: 'does-not-exist', // non existing resource
-                candidate: {
-                    role: TAccessRole.Team,
-                    id: 'team1',
-                },
-                level: TAccessLevel.Write,
-            });
-
+            const wrongRole = await redisCache.hasAccess(
+                //request Write access to testFile for agent "team1" (teamid used as agentId which is wrong)
+                AccessCandidate.agent('team1').writeRequest.resource(testFile)
+                //
+            );
             expect(wrongRole).toBeFalsy();
+
+            const wrongTeam = await redisCache.hasAccess(
+                //request Write access to testFile for team "team2" (wrong team)
+                AccessCandidate.team('team2').writeRequest.resource(testFile)
+                //
+            );
             expect(wrongTeam).toBeFalsy();
+
+            const wrongResource = await redisCache.hasAccess(
+                //request Write access to testFileWithMeta for team "team1" (file exists but does not belong to the team1)
+                AccessCandidate.team('team1').writeRequest.resource(testFileWithMeta)
+            );
             expect(wrongResource).toBeFalsy();
+
+            const nonExistingResource = await redisCache.hasAccess(
+                //request Write access to non existing resource
+                AccessCandidate.team('team1').writeRequest.resource('does-not-exist')
+            );
             expect(nonExistingResource).toBeFalsy();
         } catch (e) {
             expect(e).toBeUndefined();

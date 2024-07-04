@@ -6,7 +6,9 @@ import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 //import SRE, { AgentRequest } from '../../dist';
 import { StorageConnector } from '@sre/IO/Storage/StorageConnector';
 import SREInstance from '../001_Base/SREInstance';
-import { ACL, AccessCandidate, AccessRequest } from '@sre/Security/ACL.helper';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 const s3Storage: StorageConnector = SREInstance.Storage;
 
@@ -35,7 +37,7 @@ const testOriginalACLMetadata = {
     },
 };
 
-const defaultAcRequest = AccessCandidate.agent('agent-123456').makeRequest().resTeam('default');
+const agentCandidate = AccessCandidate.agent('agent-123456');
 
 const testOriginalMetadata = {
     'Content-Type': 'text/plain',
@@ -49,20 +51,21 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Read Legacy Metadata', async () => {
+        const s3Storage: StorageConnector = SREInstance.Storage;
         const legacyFile = 'teams/9/logs/closz0vak00009tsctm7e8xzs/2024-05-12/LLW3FLB08WIE';
-        const req = AccessRequest.from(defaultAcRequest).read(legacyFile).resTeam('9');
-        const resACL = await s3Storage.getResourceACL(req);
 
-        //const metadata = await s3Storage.getMetadata(legacyFile, req);
+        const metadata = await s3Storage.request(agentCandidate.readRequest).getMetadata(legacyFile);
 
-        expect(resACL.migrated).toBe(true);
+        //Expected to not work, will only work if we associate the candidate "agent-123456" with the team "9"
+        //TODO: once custom data provider is implemented, hardcode the team association in this test
+        expect(metadata).toBe(true);
     });
 
     it('Write a file in S3Storage', async () => {
         let error;
 
         try {
-            await s3Storage.write(testFile, 'Hello World!', AccessRequest.from(defaultAcRequest).write(testFile));
+            await s3Storage.request(agentCandidate.writeRequest).write(testFile, 'Hello World!');
         } catch (e) {
             console.error(e);
             error = e;
@@ -75,13 +78,12 @@ describe('S3 Storage Tests', () => {
         let error;
 
         try {
-            await s3Storage.write(
-                testFileWithMeta,
-                'I have metadata',
-                AccessRequest.from(defaultAcRequest).write(testFileWithMeta),
-                testOriginalACLMetadata,
-                testOriginalMetadata
-            );
+            await s3Storage
+                .request(agentCandidate.writeRequest)
+                .write(testFileWithMeta, 'I have metadata', testOriginalACLMetadata, testOriginalMetadata);
+
+            const storageReq = await s3Storage.request(agentCandidate.writeRequest);
+            storageReq.write(testFileWithMeta, 'I have metadata');
         } catch (e) {
             console.error(e);
             error = e;
@@ -93,7 +95,10 @@ describe('S3 Storage Tests', () => {
     it('Does the files exist ?', async () => {
         const files = [testFile, testFileWithMeta];
 
-        const promises = files.map((file) => s3Storage.exists(file, AccessRequest.from(defaultAcRequest).read(file)));
+        const promises = files.map((file) => {
+            //const req = AccessRequest.clone(defaultAcRequest).setLevel(TAccessLevel.Read);
+            return s3Storage.request(agentCandidate.readRequest).exists(file);
+        });
 
         const results = await Promise.all(promises);
 
@@ -101,7 +106,8 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Is Metadata present', async () => {
-        const metadata = await s3Storage.getMetadata(testFileWithMeta, AccessRequest.from(defaultAcRequest).read(testFileWithMeta));
+        //const req = AccessRequest.clone(defaultAcRequest).setLevel(TAccessLevel.Read);
+        const metadata = await s3Storage.request(agentCandidate.readRequest).getMetadata(testFileWithMeta);
 
         expect(metadata).toBeDefined();
     });
@@ -110,7 +116,9 @@ describe('S3 Storage Tests', () => {
         let error;
         try {
             //we set the metadata for the file created in the previous test
-            await s3Storage.setACL(testFile, testAdditionalACLMetadata, AccessRequest.from(defaultAcRequest).write(testFile));
+
+            //const req = AccessRequest.clone(defaultAcRequest).setLevel(TAccessLevel.Write);
+            await s3Storage.request(agentCandidate.writeRequest).setACL(testFile, testAdditionalACLMetadata);
         } catch (e) {
             console.error(e);
             error = e;
@@ -121,26 +129,28 @@ describe('S3 Storage Tests', () => {
 
     it('Does ACL metadata exist ?', async () => {
         //here we need to build an access request for the agent1 because we changed the ACL metadata to have agent1 as owner
-        const req = AccessCandidate.agent('agent1').makeRequest().resTeam('team1').read(testFile);
-        let metadata: any = await s3Storage.getACL(testFile, req);
+        const req = AccessCandidate.agent('agent1').readRequest;
+        let metadata: any = await s3Storage.request(req).getACL(testFile);
 
         expect(metadata).toEqual(testAdditionalACLMetadata);
     });
 
     it('Are Metadata ACL valid', async () => {
-        const req = AccessCandidate.agent('agent1').makeRequest().resTeam('team1').read(testFile);
-        const accessRights = await s3Storage.getACL(testFile, req);
+        const req = AccessCandidate.agent('agent1').readRequest;
+        const accessRights = await s3Storage.request(req).getACL(testFile);
 
         expect(accessRights).toEqual(testAdditionalACLMetadata);
     });
 
     it('Read files from S3Storage', async () => {
-        const req = AccessCandidate.agent('agent1').makeRequest().resTeam('team1').read(testFile);
-        const data = await s3Storage.read(testFile, req);
+        const req = AccessCandidate.agent('agent1').readRequest;
+
+        const data = await s3Storage.request(req).read(testFile);
         const strData = data.toString();
         expect(strData).toEqual('Hello World!');
 
-        const dataWithMeta = await s3Storage.read(testFileWithMeta, AccessRequest.from(defaultAcRequest).read(testFileWithMeta));
+        //const req2 = AccessRequest.clone(defaultAcRequest).setLevel(TAccessLevel.Read);
+        const dataWithMeta = await s3Storage.request(agentCandidate.readRequest).read(testFileWithMeta);
         const strDataWithMeta = dataWithMeta.toString();
         expect(strDataWithMeta).toEqual('I have metadata');
     });
@@ -149,11 +159,9 @@ describe('S3 Storage Tests', () => {
         let error;
 
         try {
-            await Promise.all([
-                s3Storage.delete(testFile, AccessCandidate.agent('agent1').makeRequest().resTeam('team1').write(testFile)),
-                ,
-                s3Storage.delete(testFileWithMeta, AccessRequest.from(defaultAcRequest).write(testFileWithMeta)),
-            ]);
+            const req1 = AccessCandidate.agent('agent1').writeRequest;
+            //const req2 = AccessRequest.clone(defaultAcRequest).setLevel(TAccessLevel.Write);
+            await Promise.all([s3Storage.request(req1).delete(testFile), , s3Storage.request(agentCandidate.writeRequest).delete(testFileWithMeta)]);
         } catch (e) {
             console.error(e);
             error = e;
@@ -165,7 +173,10 @@ describe('S3 Storage Tests', () => {
     it('The file should be deleted', async () => {
         const files = [testFile, testFileWithMeta];
 
-        const promises = files.map((file) => s3Storage.exists(file, AccessRequest.from(defaultAcRequest).read(file)));
+        const promises = files.map((file) => {
+            //const req = AccessRequest.clone(defaultAcRequest).setLevel(TAccessLevel.Read);
+            return s3Storage.request(agentCandidate.readRequest).exists(file);
+        });
 
         const results = await Promise.all(promises);
 

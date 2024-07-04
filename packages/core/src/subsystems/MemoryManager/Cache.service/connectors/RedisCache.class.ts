@@ -4,7 +4,7 @@ import { IAccessRequest, IACL } from '@sre/types/ACL.types';
 import { CacheMetadata } from '@sre/types/Cache.types';
 import { ICacheConnector } from '../ICacheConnector';
 
-import { ACL } from '@sre/Security/ACL.helper';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { RedisConfig } from '@sre/types/Redis.types';
 
 import { Connector } from '@sre/Core/Connector.class';

@@ -1,8 +1,10 @@
 import { IAgentDataConnector } from '@sre/AgentManager/AgentData/IAgentDataConnector';
 import { Connector } from '@sre/Core/Connector.class';
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { IACL, TAccessLevel, IAccessRequest, TAccessResult, TAccessTicket } from '@sre/types/ACL.types';
-import { ACL, AccessCandidate, AccessRequest } from './ACL.helper';
+import { TAccessLevel, TAccessResult, TAccessTicket } from '@sre/types/ACL.types';
+import { ACL } from './AccessControl/ACL.class';
+import { AccessRequest, SystemAccessRequest } from './AccessControl/AccessRequest.class';
+import { AccessCandidate } from './AccessControl/AccessCandidate.class';
 
 //const _ConnectorAccessTokens = {};
 
@@ -23,7 +25,7 @@ export abstract class SecureConnector extends Connector {
         console.info(`Stopping ${this.name} connector ...`);
     }
 
-    private async hasAccess(acRequest: AccessRequest) {
+    private async hasAccess(acRequest: SystemAccessRequest) {
         const aclHelper = await this.getResourceACL(acRequest);
 
         //const aclHelper = ACLHelper.from(acl);
@@ -32,28 +34,29 @@ export abstract class SecureConnector extends Connector {
         if (exactAccess) return true;
 
         // if the exact access is denied, we check if the candidate has a higher access
-        const ownerRequest = AccessRequest.from(acRequest).owner();
+        const ownerRequest = SystemAccessRequest.clone(acRequest).setLevel(TAccessLevel.Owner);
         const ownerAccess = aclHelper.checkExactAccess(ownerRequest);
         if (ownerAccess) return true;
 
         // if the exact access is denied, we check if the requested resource has a public access
-        const publicRequest = AccessRequest.from(acRequest).setCandidate(AccessCandidate.public());
+        const publicRequest = SystemAccessRequest.clone(acRequest).setCandidate(AccessCandidate.public());
         const publicAccess = aclHelper.checkExactAccess(publicRequest);
         if (publicAccess) return true;
 
         // if the public access is denied, we check if the candidate's team has access
         const agentDataConnector = SmythRuntime.Instance.AgentData as IAgentDataConnector;
         const teamId = await agentDataConnector.getCandidateTeam(acRequest.candidate);
-        const teamRequest = AccessRequest.from(acRequest).setCandidate(AccessCandidate.team(teamId));
+        const teamRequest = SystemAccessRequest.clone(acRequest).setCandidate(AccessCandidate.team(teamId));
         const teamAccess = aclHelper.checkExactAccess(teamRequest);
         if (teamAccess) return true;
 
         return false;
     }
-    public async getAccessTicket(request: AccessRequest): Promise<TAccessTicket> {
+    public async getAccessTicket(resourceId: string, request: AccessRequest): Promise<TAccessTicket> {
+        const sysAcRequest = SystemAccessRequest.clone(request).resource(resourceId);
         const accessTicket = {
             request,
-            access: (await this.hasAccess(request)) ? TAccessResult.Granted : TAccessResult.Denied,
+            access: (await this.hasAccess(sysAcRequest)) ? TAccessResult.Granted : TAccessResult.Denied,
         };
 
         return accessTicket as TAccessTicket;

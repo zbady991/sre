@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ACL } from '@sre/Security/ACL.helper';
-import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
+import { IAccessRequest, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 //import SRE, { AgentRequest } from '../../dist';
 describe('SRE ACL Tests', () => {
     it('Create an ACL', async () => {
@@ -49,7 +49,7 @@ describe('SRE ACL Tests', () => {
                 id: 'agent1',
             },
             level: TAccessLevel.Write,
-        });
+        } as IAccessRequest);
 
         expect(hasAccess).toBeTruthy();
     });
@@ -68,7 +68,7 @@ describe('SRE ACL Tests', () => {
                 id: 'agent2',
             },
             level: TAccessLevel.Write,
-        });
+        } as IAccessRequest);
 
         expect(hasAccess).toBeFalsy();
     });

@@ -1,11 +1,13 @@
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { AccessCandidate, ACL, AccessRequest } from '@sre/Security/ACL.helper';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { StorageMetadata } from '@sre/types/Storage.types';
 import { StorageConnector } from './StorageConnector';
 import * as FileType from 'file-type';
 import { isBuffer } from '@sre/utils';
 import mime from 'mime';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 export type TSmythFSURI = {
     hash: string;
     team: string;
@@ -54,21 +56,22 @@ export class SmythFS {
 
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
 
-        const acRequest = new AccessRequest(candidate).read(resourceId);
+        const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        //const accessToken = await this.storage.getAccess(acRequest);
-
-        return await this.storage.read(resourceId, acRequest);
+        return await this.storage.request(_candidate.readRequest).read(resourceId);
     }
 
     public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+        const agentDataProvider = SmythRuntime.Instance.AgentData;
+        const isMember = await agentDataProvider.isTeamMember(smythURI.team, candidate);
+        if (!isMember) throw new Error('Access Denied');
+
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
         //when we write a file, it does not exist we need to explicitly provide a resource team in order to have access rights set properly
-        const acRequest = new AccessRequest(candidate).write(resourceId).resTeam(smythURI.team);
 
-        //const accessToken = await this.storage.getAccess(acRequest);
+        const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
         const acl = new ACL()
             //.addAccess(candidate.role, candidate.id, TAccessLevel.Owner) // creator is owner
@@ -84,7 +87,7 @@ export class SmythFS {
                 }
             }
         }
-        await this.storage.write(resourceId, data, acRequest, acl, metadata);
+        await this.storage.request(_candidate.writeRequest).write(resourceId, data, acl, metadata);
     }
     private async getMimeType(data: any) {
         let size = 0;
@@ -106,26 +109,24 @@ export class SmythFS {
     public async delete(uri: string, candidate: IAccessCandidate) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
 
-        const acRequest = new AccessRequest(candidate).write(resourceId);
+        const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        //const accessToken = await this.storage.getAccess(acRequest);
-
-        await this.storage.delete(resourceId, acRequest);
+        await this.storage.request(_candidate.writeRequest).delete(resourceId);
     }
 
     //TODO: should we require access token here ?
     public async exists(uri: string, candidate: IAccessCandidate) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
 
         //in order to get a consistent access check in case of inexisting resource, we need to explicitly set a default resource team
-        const acRequest = new AccessRequest(candidate).read(resourceId).resTeam(smythURI.team);
+        const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        //const accessToken = await this.storage.getAccess(acRequest);
-
-        return await this.storage.exists(resourceId, acRequest);
+        return await this.storage.request(_candidate.readRequest).exists(resourceId);
     }
 }
