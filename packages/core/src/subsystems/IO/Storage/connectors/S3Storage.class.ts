@@ -6,12 +6,14 @@ import { IStorageRequest, StorageConnector } from '@sre/IO/Storage/StorageConnec
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 import { S3Config } from '@sre/types/AWS.types';
-import { StorageMetadata } from '@sre/types/Storage.types';
+import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { streamToBuffer } from '@sre/utils';
 import type { Readable } from 'stream';
 
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { AccessRequest, AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { SecureConnector } from '@sre/Security/SecureConnector.class';
 
 const console = createLogger('S3Storage');
 
@@ -33,31 +35,31 @@ export class S3Storage extends StorageConnector {
         });
     }
 
-    public request(acRequest: AccessRequest): IStorageRequest {
+    public user(candidate: AccessCandidate): IStorageRequest {
         return {
-            write: async (resourceId: string, value: any, acl?: IACL, metadata?: StorageMetadata) => {
-                return await this.write(resourceId, value, acRequest, acl, metadata);
+            write: async (resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata) => {
+                return await this.write(resourceId, candidate.writeRequest, value, acl, metadata);
             },
             read: async (resourceId: string) => {
-                return await this.read(resourceId, acRequest);
+                return await this.read(resourceId, candidate.readRequest);
             },
             delete: async (resourceId: string) => {
-                await this.delete(resourceId, acRequest);
+                await this.delete(resourceId, candidate.writeRequest);
             },
             exists: async (resourceId: string) => {
-                return await this.exists(resourceId, acRequest);
+                return await this.exists(resourceId, candidate.readRequest);
             },
             getMetadata: async (resourceId: string) => {
-                return await this.getMetadata(resourceId, acRequest);
+                return await this.getMetadata(resourceId, candidate.readRequest);
             },
             setMetadata: async (resourceId: string, metadata: StorageMetadata) => {
-                await this.setMetadata(resourceId, metadata, acRequest);
+                await this.setMetadata(resourceId, candidate.writeRequest, metadata);
             },
             getACL: async (resourceId: string) => {
-                return await this.getACL(resourceId, acRequest);
+                return await this.getACL(resourceId, candidate.readRequest);
             },
             setACL: async (resourceId: string, acl: IACL) => {
-                return await this.setACL(resourceId, acl, acRequest);
+                return await this.setACL(resourceId, candidate.writeRequest, acl);
             },
         } as IStorageRequest;
     }
@@ -67,9 +69,11 @@ export class S3Storage extends StorageConnector {
      * @param {string} resourceId - The key of the object to be read.
      * @returns {Promise<any>} - A promise that resolves with the object data.
      */
+
+    @SecureConnector.AccessControl
     public async read(resourceId: string, acRequest: AccessRequest) {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
         const command = new GetObjectCommand({
             Bucket: this.bucket,
@@ -89,9 +93,10 @@ export class S3Storage extends StorageConnector {
         }
     }
 
+    @SecureConnector.AccessControl
     async getMetadata(resourceId: string, acRequest: AccessRequest): Promise<StorageMetadata | undefined> {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
         try {
             const s3Metadata = await this.getS3Metadata(resourceId);
@@ -102,9 +107,10 @@ export class S3Storage extends StorageConnector {
         }
     }
 
-    async setMetadata(resourceId: string, metadata: StorageMetadata, acRequest: AccessRequest) {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+    @SecureConnector.AccessControl
+    async setMetadata(resourceId: string, acRequest: AccessRequest, metadata: StorageMetadata) {
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
         try {
             let s3Metadata = await this.getS3Metadata(resourceId);
@@ -125,12 +131,12 @@ export class S3Storage extends StorageConnector {
      * @param {Metadata} metadata - Optional metadata to be associated with the object.
      * @returns {Promise<void>} - A promise that resolves when the object has been written.
      */
+    @SecureConnector.AccessControl
+    async write(resourceId: string, acRequest: AccessRequest, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
-    async write(resourceId: string, value: any, acRequest: AccessRequest, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
-
-        const accessCandidate = accessTicket.request.candidate;
+        const accessCandidate = acRequest.candidate;
 
         let amzACL = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
         let s3Metadata = {
@@ -161,9 +167,10 @@ export class S3Storage extends StorageConnector {
      * @param {string} resourceId - The key of the object to be deleted.
      * @returns {Promise<void>} - A promise that resolves when the object has been deleted.
      */
+    @SecureConnector.AccessControl
     async delete(resourceId: string, acRequest: AccessRequest): Promise<void> {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
         const command = new DeleteObjectCommand({
             Bucket: this.bucket,
@@ -178,9 +185,10 @@ export class S3Storage extends StorageConnector {
         }
     }
 
+    @SecureConnector.AccessControl
     async exists(resourceId: string, acRequest: AccessRequest): Promise<boolean> {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
         const command = new HeadObjectCommand({
             Bucket: this.bucket,
             Key: resourceId,
@@ -212,24 +220,16 @@ export class S3Storage extends StorageConnector {
         //let acl: ACL = ACL.from(s3Metadata?.['x-amz-meta-acl'] as IACL);
 
         if (!exists) {
-            //the resource does not exist yet, we grant write access to the candidate
-            return ACL.from().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
-            /*
-            //resource not found
-            const agentDataProvider = SmythRuntime.Instance.AgentData;
-            const isMember = await agentDataProvider.isTeamMember(acRequest.resourceTeamId, candidate);
-
-            if (isMember) {
-                acl = ACL.from().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
-            }
-                */
+            //the resource does not exist yet, we grant write access to the candidate in order to allow the resource creation
+            return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
         }
         return ACL.from(s3Metadata?.['x-amz-meta-acl'] as IACL);
     }
 
+    @SecureConnector.AccessControl
     async getACL(resourceId: string, acRequest: AccessRequest): Promise<ACL | undefined> {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
         try {
             const s3Metadata = await this.getS3Metadata(resourceId);
@@ -240,9 +240,10 @@ export class S3Storage extends StorageConnector {
         }
     }
 
-    async setACL(resourceId: string, acl: IACL, acRequest: AccessRequest) {
-        const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-        if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+    @SecureConnector.AccessControl
+    async setACL(resourceId: string, acRequest: AccessRequest, acl: IACL) {
+        // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+        // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
         try {
             let s3Metadata = await this.getS3Metadata(resourceId);

@@ -60,7 +60,9 @@ export class AccessCandidate implements IAccessCandidate {
 
     public public(): AccessCandidate {
         this.role = TAccessRole.Public;
-        this.id = '';
+
+        //public is a special case we use the role as the owner id because public access does not have specific candidate IDs
+        this.id = TAccessRole.Public;
 
         return this;
     }

@@ -78,7 +78,6 @@ export interface IAccessCandidate {
 export interface IAccessRequest {
     id: string;
     resourceId: string;
-    resourceTeamId?: string;
     candidate: IAccessCandidate;
     level: TAccessLevel | TAccessLevel[];
 }

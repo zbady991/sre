@@ -72,7 +72,37 @@ export class ACL implements IACL {
         //return access.includes(req.level);
     }
 
+    public addPublicAccess(level: TAccessLevel | TAccessLevel[]): ACL {
+        if (!this?.entries[TAccessRole.Public]) this.entries[TAccessRole.Public] = {};
+        if (!ACLHashAlgo[this.hashAlgorithm]) {
+            throw new Error(`Hash algorithm ${this.hashAlgorithm} not supported`);
+        }
+        const ownerId = TAccessRole.Public; //public is a special case we use the role as the owner id because public access does not have specific candidate IDs
+        const hashedOwner = ACLHashAlgo[this.hashAlgorithm](ownerId);
+
+        if (!this?.entries[TAccessRole.Public]![hashedOwner]) this.entries[TAccessRole.Public]![hashedOwner] = [];
+        //acl[TAccessRole.Public]![hashedOwner]!.push(level);
+        //concatenate the levels
+        const curLevel: any = this.entries[TAccessRole.Public]![hashedOwner]!;
+        this.entries[TAccessRole.Public]![hashedOwner] = [...curLevel, ...level];
+
+        return this;
+    }
+    public removePublicAccess(level: TAccessLevel | TAccessLevel[]): ACL {
+        if (!this?.entries[TAccessRole.Public]) return this;
+        const ownerId = TAccessRole.Public; //public is a special case we use the role as the owner id because public access does not have specific candidate IDs
+        const hashedOwner = ACLHashAlgo[this.hashAlgorithm](ownerId);
+
+        //remove the levels
+        const curLevel = this[TAccessRole.Public]![hashedOwner]!;
+        this[TAccessRole.Public]![hashedOwner] = curLevel.filter((l) => !level.includes(l));
+
+        return this;
+    }
     public addAccess(role: TAccessRole, ownerId: string, level: TAccessLevel | TAccessLevel[]): ACL {
+        if (role === TAccessRole.Public) {
+            throw new Error('Adding public access using addAccess method is not allowed. Use addPublicAccess method instead.');
+        }
         const _level = Array.isArray(level) ? level : [level];
         if (!this?.entries[role]) this.entries[role] = {};
         if (!ACLHashAlgo[this.hashAlgorithm]) {

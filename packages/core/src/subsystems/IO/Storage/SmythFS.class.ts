@@ -58,7 +58,7 @@ export class SmythFS {
 
         const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        return await this.storage.request(_candidate.readRequest).read(resourceId);
+        return await this.storage.user(_candidate).read(resourceId);
     }
 
     public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata) {
@@ -87,7 +87,7 @@ export class SmythFS {
                 }
             }
         }
-        await this.storage.request(_candidate.writeRequest).write(resourceId, data, acl, metadata);
+        await this.storage.user(_candidate).write(resourceId, data, acl, metadata);
     }
     private async getMimeType(data: any) {
         let size = 0;
@@ -114,7 +114,7 @@ export class SmythFS {
 
         const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        await this.storage.request(_candidate.writeRequest).delete(resourceId);
+        await this.storage.user(_candidate).delete(resourceId);
     }
 
     //TODO: should we require access token here ?
@@ -127,6 +127,6 @@ export class SmythFS {
         //in order to get a consistent access check in case of inexisting resource, we need to explicitly set a default resource team
         const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        return await this.storage.request(_candidate.readRequest).exists(resourceId);
+        return await this.storage.user(_candidate).exists(resourceId);
     }
 }

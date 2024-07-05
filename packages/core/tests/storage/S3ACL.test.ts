@@ -24,14 +24,11 @@ describe('S3 Storage Advanced Access Rights', () => {
         try {
             const s3Storage: StorageConnector = SREInstance.Storage;
 
-            //const acRequest = new AccessRequest(AccessCandidate.agent('agent-123456')).setWrite(testFile).setResourceTeam('myTeam');
-            const acRequest = AccessCandidate.agent('agent-123456').writeRequest;
+            const agent = AccessCandidate.agent('agent-123456');
 
             const acl = ACL.addAccess(TAccessRole.Team, 'myTeam', TAccessLevel.Read);
 
-            //const accessToken = await s3Storage.getAccess(acRequest);
-
-            await s3Storage.request(acRequest).write(testFile, 'Hello World!', acl);
+            await s3Storage.user(agent).write(testFile, 'Hello World!', acl);
         } catch (e) {
             //console.error(e);
             error = e;
@@ -44,10 +41,9 @@ describe('S3 Storage Advanced Access Rights', () => {
 
         try {
             const s3Storage: StorageConnector = SREInstance.Storage;
-            //const acRequest = new AccessRequest(AccessCandidate.agent('agent-123456')).setWrite(testFile);
-            const acRequest = AccessCandidate.agent('agent-stranger').writeRequest;
+            const strangerAgent = AccessCandidate.agent('agent-stranger');
 
-            await s3Storage.request(acRequest).write(testFile, 'Hello World!');
+            await s3Storage.user(strangerAgent).write(testFile, 'Hello World!');
         } catch (e) {
             //console.error(e);
             error = e;
@@ -62,11 +58,9 @@ describe('S3 Storage Advanced Access Rights', () => {
         try {
             const s3Storage: StorageConnector = SREInstance.Storage;
 
-            //const acRequest = new AccessRequest(AccessCandidate.agent('agent-no-access')).setRead(testFile);
-            const acRequest = AccessCandidate.agent('agent-no-access').readRequest;
+            const agentNoAccess = AccessCandidate.agent('agent-no-access');
 
-            //const accessToken = await s3Storage.getAccess(acRequest);
-            const result = await s3Storage.request(acRequest).read(testFile);
+            const result = await s3Storage.user(agentNoAccess).read(testFile);
 
             expect(result.toString()).toBe('Hello World!');
         } catch (e) {
@@ -82,21 +76,16 @@ describe('S3 Storage Advanced Access Rights', () => {
 
         try {
             const s3Storage: StorageConnector = SREInstance.Storage;
-            //const acRequest = AccessRequest.forResource(testFile, TAccessLevel.Read, AccessCandidate.agent('agent-123456'));
+            const agent = AccessCandidate.agent('agent-123456');
 
-            //const acRequest = new AccessRequest(AccessCandidate.agent('agent-123456')).setRead(testFile);
-            const acRequest = AccessCandidate.agent('agent-123456').readRequest;
-
-            //const accessToken = await s3Storage.getAccess(acRequest);
-            const result = await s3Storage.request(acRequest).read(testFile);
+            const result = await s3Storage.user(agent).read(testFile);
 
             expect(result.toString()).toBe('Hello World!');
 
-            //const acTeamRequest = new AccessRequest(AccessCandidate.team('myTeam')).setRead(testFile);
-            const acTeamRequest = AccessCandidate.team('myTeam').readRequest;
+            const team = AccessCandidate.team('myTeam');
 
             //const teamAccessToken = await s3Storage.getAccess(acTeamRequest);
-            const teamResult = await s3Storage.request(acTeamRequest).read(testFile);
+            const teamResult = await s3Storage.user(team).read(testFile);
 
             expect(teamResult.toString()).toBe('Hello World!');
         } catch (e) {
@@ -112,13 +101,8 @@ describe('S3 Storage Advanced Access Rights', () => {
 
         try {
             const s3Storage: StorageConnector = SREInstance.Storage;
-            //const acRequest = AccessRequest.forResource(testFile, TAccessLevel.Write, AccessCandidate.agent('agent-123456'));
-
-            //const acRequest = new AccessRequest(AccessCandidate.agent('agent-123456')).setWrite(testFile);
-            const acRequest = AccessCandidate.agent('agent-123456').writeRequest;
-
-            //const accessToken = await s3Storage.getAccess(acRequest);
-            await s3Storage.request(acRequest).delete(testFile);
+            const agent = AccessCandidate.agent('agent-123456');
+            await s3Storage.user(agent).delete(testFile);
         } catch (e) {
             //console.error(e);
             error = e;

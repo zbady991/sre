@@ -4,7 +4,7 @@ import { uid } from '@sre/utils/index';
 export class AccessRequest implements IAccessRequest {
     public id: string;
     public resourceId: string;
-    public resourceTeamId?: string;
+
     public level: TAccessLevel[] = [];
     public candidate: IAccessCandidate;
 
@@ -22,7 +22,6 @@ export class AccessRequest implements IAccessRequest {
             //this.resourceId = acReq.resourceId;
             this.level = acReq.level;
             this.candidate = acReq.candidate;
-            this.resourceTeamId = acReq.resourceTeamId;
         }
 
         this.resourceId = undefined;
@@ -40,37 +39,14 @@ export class AccessRequest implements IAccessRequest {
         this.level = [...this.level, ...(Array.isArray(level) ? level : [level])];
         return this;
     }
+    public resource(resourceId: string): AccessRequest {
+        this.resourceId = resourceId;
 
+        return this;
+    }
     public setCandidate(candidate: IAccessCandidate): AccessRequest {
         this.candidate = candidate;
 
         return this;
-    }
-}
-
-export class SystemAccessRequest extends AccessRequest {
-    constructor(object?: IAccessRequest | IAccessCandidate) {
-        super(object);
-        const acReq: AccessRequest = object as AccessRequest;
-        if (acReq.resourceId) {
-            this.resourceId = acReq.resourceId;
-        }
-    }
-    public resource(resourceId: string, resourceTeamId?: string): SystemAccessRequest {
-        this.resourceId = resourceId;
-        if (resourceTeamId) this.resourceTeamId = resourceTeamId;
-        return this;
-    }
-    public static clone(request: IAccessRequest): SystemAccessRequest {
-        return new SystemAccessRequest(request);
-    }
-    public setLevel(level: TAccessLevel | TAccessLevel[]): SystemAccessRequest {
-        return super.setLevel(level) as SystemAccessRequest;
-    }
-    public addLevel(level: TAccessLevel | TAccessLevel[]): SystemAccessRequest {
-        return super.addLevel(level) as SystemAccessRequest;
-    }
-    public setCandidate(candidate: IAccessCandidate): SystemAccessRequest {
-        return super.setCandidate(candidate) as SystemAccessRequest;
     }
 }
