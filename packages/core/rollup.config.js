@@ -10,6 +10,9 @@ import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from 'rollup-plugin-typescript2';
 import typescriptPaths from 'rollup-plugin-typescript-paths';
 import { createResolver } from 'tsconfig-paths';
+
+import javascriptObfuscator from 'rollup-plugin-javascript-obfuscator';
+
 import fs from 'fs';
 const projectRootDir = __dirname;
 export default {
@@ -20,15 +23,15 @@ export default {
         sourcemap: true,
     },
     plugins: [
+        json(),
         typescriptPaths({
             tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
             preserveExtensions: true,
             nonRelative: false,
         }),
-        json(),
         esbuild({
             sourceMap: true,
-            minify: true,
+            minify: false,
             treeShaking: true,
         }),
         // typescript({

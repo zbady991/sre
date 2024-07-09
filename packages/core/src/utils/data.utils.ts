@@ -1,5 +1,6 @@
 import { Readable } from 'stream';
 import { isBase64 } from './base64.utils';
+import { isBinaryFileSync } from 'isbinaryfile';
 
 // Helper function to convert stream to buffer
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -14,11 +15,11 @@ export async function streamToBuffer(stream: Readable): Promise<Buffer> {
 // == Helpers from Legacy Smyth implementation ==============================================
 // FIXME : below functions should probably be converted to a validator
 
-export declare function isBinaryFile(file: string | Buffer, size?: number): Promise<boolean>;
-export declare function isBinaryFileSync(file: string | Buffer, size?: number): boolean;
+//export declare function isBinaryFile(file: string | Buffer, size?: number): Promise<boolean>;
+//export declare function isBinaryFileSync(file: string | Buffer, size?: number): boolean;
 const binaryMimeTypes = ['image/', 'audio/', 'video/', 'application/pdf', 'application/zip', 'application/octet-stream'];
 
-const _getBufferDataFromBinary = (data: any): Buffer | null => {
+export function dataToBuffer(data: any): Buffer | null {
     let bufferData;
     switch (true) {
         case data instanceof ArrayBuffer:
@@ -41,10 +42,10 @@ const _getBufferDataFromBinary = (data: any): Buffer | null => {
     }
 
     return bufferData;
-};
+}
 
 export const getSizeFromBinary = (data: any) => {
-    const buffer = _getBufferDataFromBinary(data);
+    const buffer = dataToBuffer(data);
     if (!buffer) return 0;
     return buffer.byteLength;
 };
@@ -84,7 +85,7 @@ export const isBinaryData = (data): boolean => {
     if (typeof data === 'string') return false;
 
     try {
-        const buffer = _getBufferDataFromBinary(data);
+        const buffer = dataToBuffer(data);
         if (!buffer) return false;
         return isBinaryFileSync(buffer, buffer.byteLength);
     } catch (error) {

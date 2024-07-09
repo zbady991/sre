@@ -14,11 +14,11 @@ export async function componentLLMRequest(prompt, model, config: any = {}) {
     const LLM: LLMConnector = ConnectorService.Instance.getInstance(TConnectorService.LLM, models[model]?.llm);
     if (!LLM) return { error: 'LLM request failed', details: `Model ${model} not supported` };
 
-    const params = await LLM.extractParams(config);
-    const alias = models[model]?.alias || model;
+    const params: any = await LLM.extractParams(config);
+    params.model = models[model]?.alias || model;
 
     try {
-        let response = await LLM.chatRequest(prompt, alias, params);
+        let response = await LLM.chatRequest(prompt, params);
         response = LLM.postProcess(response);
         return response;
     } catch (error: any) {

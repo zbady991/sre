@@ -26,21 +26,12 @@ export default class PromptGenerator extends Component {
     init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        const componentId = config.id;
 
         //let debugLog = agent.agentRuntime?.debug ? [] : undefined;
         const logger = this.createComponentLogger(agent, config.name);
 
         try {
             logger.debug(`=== LLM Prompt Log ===`);
-
-            const component = agent.components[componentId];
-
-            // const outputs = {};
-            // for (let con of config.outputs) {
-            //     if (con.default) continue;
-            //     outputs[con.name] = con?.description ? `<${con?.description}>` : '';
-            // }
 
             const model: string = config.data.model || 'echo';
             const llmConnector: LLMConnector = getLLMConnector(model);
@@ -59,34 +50,8 @@ export default class PromptGenerator extends Component {
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
-            // if (model.toLowerCase() == 'echo') {
-            //     prompt = parseJson(prompt);
-            //     if (prompt.error) prompt = prompt.result;
-
-            //     logger.debug(` Generated result\n${typeof prompt == 'object' ? JSON.stringify(prompt, null, 2) : prompt}`);
-
-            //     let result = {};
-            //     result['Reply'] = prompt;
-            //     result['_debug'] = logger.output;
-            //     return result;
-            // }
-
-            // const excludedKeys = ['_debug', '_error'];
-            // const outputKeys = Object.keys(outputs).filter((key) => !excludedKeys.includes(key));
-
-            // if (outputKeys.length > 0) {
-            //     const outputFormat = {};
-            //     outputKeys.forEach((key) => (outputFormat[key] = '<value>'));
-
-            //     prompt +=
-            //         '\n##\nExpected output format = ' +
-            //         JSON.stringify(outputFormat) +
-            //         '\nThe output JSON should only use the entries from the output format.';
-
-            //     logger.debug(` Enhanced prompt \n`, prompt, '\n');
-            // }
-
             prompt = llmConnector.enhancePrompt(prompt, config);
+
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
 
             // request to LLM
@@ -102,16 +67,6 @@ export default class PromptGenerator extends Component {
 
                 return { Reply: response?.data, _error: response?.error?.error + ' ' + response?.error?.details, _debug: logger.output };
             }
-
-            // logger.debug(` Generated result \n`, response);
-
-            // let Reply = parseJson(response);
-            // if (Reply.error) {
-            //     logger.warn(` Post process error=`, Reply.error);
-
-            //     if (Reply.result) Reply = Reply.result;
-            //     else return { _error: Reply.error, Reply: Reply.result, _debug: logger.output };
-            // }
 
             const parsed = { Reply: response };
 

@@ -2,6 +2,7 @@ import Component from './Component.class';
 import APIEndpoint from './APIEndpoint.class';
 import APIOutput from './APIOutput.class';
 import PromptGenerator from './PromptGenerator.class';
+import APICall from './APICall.class';
 
 const components = {
     Component: new Component(),
@@ -10,6 +11,7 @@ const components = {
     APIOutput: new APIOutput(),
     PromptGenerator: new PromptGenerator(),
     LLMPrompt: new PromptGenerator(),
+    APICall: new APICall(),
 };
 
 export default components;

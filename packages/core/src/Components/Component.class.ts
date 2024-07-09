@@ -1,6 +1,7 @@
 import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import { createLogger } from '@sre/Core/Logger';
+import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 
 export default class Component {
     public hasReadOutput = false;
@@ -16,6 +17,7 @@ export default class Component {
 
         return logger;
     }
+
     async validateConfig(config) {
         if (!this.configSchema) return {};
         if (config.data._templateVars) {
@@ -37,7 +39,7 @@ export default class Component {
         return {};
     }
 
-    async process(input, config, agent: Agent, req?: any): Promise<any> {
+    async process(input, config, agent: Agent): Promise<any> {
         // console.log(
         //     `Called component ${this.constructor.name}\n ID=${config.id} \ninput ${JSON.stringify(input, null, 2)} \nand config ${JSON.stringify(
         //         config,
@@ -45,14 +47,14 @@ export default class Component {
         //         2,
         //     )}`,
         // );
-        const _input = input;
+        const _input = await performTypeInference(input, config?.inputs, agent);
 
         // modify the input object for component's process method
         for (const [key, value] of Object.entries(_input)) {
             input[key] = value;
         }
     }
-    async postProcess(output, config, agent: Agent, req?: any): Promise<any> {
+    async postProcess(output, config, agent: Agent): Promise<any> {
         if (output?.result) {
             delete output?.result?._debug;
             if (!output?.result?._error) delete output?.result?._error;
@@ -66,8 +68,5 @@ export default class Component {
     }
     hasOutput(id, config, agent: Agent): any {
         return false;
-    }
-    public getRouter() {
-        return null;
     }
 }

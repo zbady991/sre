@@ -2,6 +2,27 @@ import { fileTypeFromBuffer } from 'file-type';
 import { MAX_FILE_SIZE } from '@sre/constants';
 
 /**
+ * This function converts a text string to a base64 URL.
+ * @param text
+ * @returns
+ */
+export function textToBase64Url(text) {
+    // Create a Buffer from the string
+    const buffer = Buffer.from(text, 'utf-8');
+
+    // Convert the Buffer to a base64 string
+    const base64String = buffer.toString('base64');
+
+    // Construct the data URL
+    const base64Url = `data:text/plain;base64,${base64String}`;
+
+    return base64Url;
+}
+
+//=== Legacy code below ===
+//@Forhad the functions below need to be reviewed and refactored
+
+/**
  ** It's common practice to split base64 data into multiple lines for better readability and to avoid issues with systems that can't handle very long lines.
  ** So we need to clean up newline characters from the base64 data before processing it.
  * @param {string} str - The input string.
@@ -28,7 +49,7 @@ export const isBase64 = (str: string): boolean => {
 
         const buffer = Buffer.from(str, 'base64');
 
-        return buffer.toString('base64') === str;
+        return buffer.toString('base64').replace(/=+$/, '') === str.replace(/=+$/, '');
     } catch {
         return false;
     }

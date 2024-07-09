@@ -11,7 +11,7 @@ import { streamToBuffer } from '@sre/utils';
 import type { Readable } from 'stream';
 
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { AccessRequest, AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 

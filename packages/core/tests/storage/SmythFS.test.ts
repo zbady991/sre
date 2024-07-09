@@ -17,7 +17,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
@@ -36,7 +36,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
@@ -56,7 +56,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
@@ -74,7 +74,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,

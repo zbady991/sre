@@ -5,10 +5,10 @@ import { LLMConnector } from './LLMConnector.class';
 
 export class OpenAIConnector extends LLMConnector implements ILLMConnector {
     public name = 'LLM:OpenAI';
-    async chatRequest(prompt, model, params) {
-        if (!model) model = 'gpt-3.5-turbo';
+    async chatRequest(prompt, params) {
+        // if (!model) model = 'gpt-3.5-turbo';
 
-        params.model = model;
+        if (!params.model) params.model = 'gpt-4-turbo';
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!params.messages) params.messages = [];
@@ -18,7 +18,7 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
 
-            if (model.startsWith('gpt-4-turbo') || model.startsWith('gpt-3.5-turbo')) {
+            if (params.model.startsWith('gpt-4-turbo') || params.model.startsWith('gpt-3.5-turbo')) {
                 params.response_format = { type: 'json_object' };
             }
         }
@@ -40,7 +40,7 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
         const promptTokens = encodeChat(params.messages, 'gpt-4')?.length;
 
         const tokensLimit = this.checkTokensLimit({
-            model,
+            model: params.model,
             promptTokens,
             completionTokens: params?.max_tokens,
             hasTeamAPIKey: !!apiKey,
@@ -58,10 +58,10 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
 
         return data;
     }
-    async visionRequest(prompt, model, params) {
+    async visionRequest(prompt, params) {
         return 'OpenAI :' + prompt;
     }
-    async toolRequest(prompt, model, params) {
+    async toolRequest(prompt, params) {
         return 'OpenAI :' + prompt;
     }
 }

@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
+process.env.LOG_LEVEL = 'none';
+
 import { AgentRequest, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../dist/index.js';
 
 const sre = SmythRuntime.Instance.init({

@@ -1,6 +1,5 @@
 import { xxh3 } from '@node-rs/xxhash';
 import { IACL, IAccessRequest, LevelMap, ReverseLevelMap, ReverseRoleMap, RoleMap, TACLEntry, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { AccessRequest } from './AccessRequest.class';
 
 const ACLHashAlgo = {
     none: (source) => source,

@@ -5,8 +5,10 @@ import Component from './Component.class';
 
 import { jsonrepair } from 'jsonrepair';
 import AgentRequest from '@sre/AgentManager/AgentRequest.class';
-import { ensureStrongDataType } from '@sre/helpers/DataType.helper';
-import { SmythFile } from '@sre/IO/Storage/SmythFile.class';
+import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { uid } from '../utils';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 // Utility function to check for empty values
 function isEmpty(value: any): boolean {
@@ -134,7 +136,7 @@ export default class APIEndpoint extends Component {
             switch (config.data.method) {
                 case 'GET':
                     for (const [key, value] of Object.entries(input)) {
-                        if (value instanceof SmythFile) {
+                        if (value instanceof BinaryInput) {
                             logger.debug('[WARNING] Binary files are not supported for GET requests. Key:', key);
                         } else {
                             query[key] = value as string;
@@ -150,8 +152,8 @@ export default class APIEndpoint extends Component {
         }
 
         // ensure strong data type
-        body = await ensureStrongDataType(body, config.inputs);
-        query = await ensureStrongDataType(query, config.inputs);
+        body = await performTypeInference(body, config.inputs, agent);
+        query = await performTypeInference(query, config.inputs, agent);
 
         logger.debug('Parsing inputs');
         logger.debug(' Headers', headers);
@@ -191,7 +193,6 @@ export default class APIEndpoint extends Component {
         logger.debug('Parsed query json input', query);
 
         //Handle binary data
-
         for (let input of config.inputs) {
             if (!input.isFile && input?.type?.toLowerCase() !== 'binary') continue;
 
@@ -199,27 +200,19 @@ export default class APIEndpoint extends Component {
 
             logger.debug('Parsing file input ', fieldname);
 
-            let smythFile = body[fieldname];
+            let binaryInput = body[fieldname];
 
-            if (!(smythFile instanceof SmythFile)) {
+            if (!(binaryInput instanceof BinaryInput)) {
                 // * when data sent with 'multipart/form-data' content type, we expect the files to be in req.files
                 if (req.files?.length > 0) {
                     const file = req.files.find((file) => file.fieldname === fieldname);
                     if (!file) continue;
-                    smythFile = new SmythFile(file.buffer, file.mimetype);
-                } else if (body[fieldname]) {
-                    smythFile = new SmythFile(body[fieldname]);
+                    binaryInput = new BinaryInput(file.buffer, uid() + '-' + file.originalname, file.mimetype);
                 }
             }
 
-            if (smythFile instanceof SmythFile) {
-                body[fieldname] = await smythFile.toSmythFileObject({
-                    metadata: {
-                        teamid: agent?.teamId,
-                        agentid: agent?.id,
-                    },
-                    baseUrl: agent?.baseUrl,
-                });
+            if (binaryInput instanceof BinaryInput) {
+                body[fieldname] = await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
             }
             //console.log('file', fieldname, body[fieldname]);
         }

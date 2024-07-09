@@ -51,11 +51,7 @@ export class Logger {
     public get elapsedTime() {
         return Date.now() - this.startTime;
     }
-    constructor(
-        private _logger,
-        public data,
-        private labels: { [key: string]: any },
-    ) {}
+    constructor(private _logger, public data, private labels: { [key: string]: any }) {}
 
     public log(...args) {
         this._logger.log('info', formatLogMessage(...args), this.labels);
@@ -96,7 +92,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 stack: true,
             }),
             winston.format.splat(),
-            winston.format.json(),
+            winston.format.json()
         ),
 
         transports: [
@@ -108,7 +104,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         let message = info.message;
                         message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
                         return `${info.level}:${info.module || ''} ${message} ${info.stack || ''}`;
-                    }),
+                    })
                 ),
                 stderrLevels: ['error'], // Define levels that should be logged to stderr
             }),
@@ -124,7 +120,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
 
                         return `${ns} - ${message}`;
-                    }),
+                    })
                 ),
 
                 //handleExceptions: true,
@@ -137,7 +133,7 @@ function createBaseLogger(memoryStore?: any[]) {
             new ArrayTransport({
                 level: 'debug',
                 logs: memoryStore,
-            }),
+            })
         );
     }
 

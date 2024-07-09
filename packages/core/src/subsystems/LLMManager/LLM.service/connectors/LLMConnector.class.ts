@@ -10,9 +10,9 @@ const console = createLogger('LLMConnector');
 
 export abstract class LLMConnector extends Connector implements ILLMConnector {
     public abstract name: string;
-    abstract chatRequest(prompt, model, params: any): Promise<any>;
-    abstract visionRequest(prompt, model, params: any): Promise<any>;
-    abstract toolRequest(prompt, model, params: any): Promise<any>;
+    abstract chatRequest(prompt, params: any): Promise<any>;
+    abstract visionRequest(prompt, params: any): Promise<any>;
+    abstract toolRequest(prompt, params: any): Promise<any>;
 
     private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
         const alias = models[model]?.alias || model;

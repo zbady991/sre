@@ -1,9 +1,9 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import AgentRequest from '@sre/AgentManager/AgentRequest.class';
 import AgentSettings from '@sre/AgentManager/AgentSettings.class';
-import { StorageConnector } from '@sre/IO/Storage/IStorageConnector';
+import { StorageConnector } from '@sre/IO/Storage/StorageConnector';
 import { IAgentDataConnector } from '@sre/AgentManager/AgentData/IAgentDataConnector';
-import { ICacheConnector } from '@sre/MemoryManager/Cache/ICacheConnector';
+import { ICacheConnector } from '@sre/MemoryManager/Cache.service/ICacheConnector';
 import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';

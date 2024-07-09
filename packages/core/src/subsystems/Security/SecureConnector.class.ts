@@ -3,10 +3,11 @@ import { Connector } from '@sre/Core/Connector.class';
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
 import { TAccessLevel, TAccessResult, TAccessTicket } from '@sre/types/ACL.types';
 import { ACL } from './AccessControl/ACL.class';
-import { AccessRequest, AccessRequest } from './AccessControl/AccessRequest.class';
+import { AccessRequest } from './AccessControl/AccessRequest.class';
 import { AccessCandidate } from './AccessControl/AccessCandidate.class';
+import { createLogger } from '@sre/Core/Logger';
 
-//const _ConnectorAccessTokens = {};
+const console = createLogger('SecureConnector');
 
 export abstract class SecureConnector extends Connector {
     public abstract name: string;

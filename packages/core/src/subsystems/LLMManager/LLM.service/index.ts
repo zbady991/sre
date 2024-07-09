@@ -26,7 +26,7 @@ export class LLMService extends ConnectorServiceProvider {
             const alias = models[model]?.alias || model;
 
             try {
-                LLM.chatRequest(prompt, alias, params)
+                LLM.chatRequest(prompt, alias /*, params*/)
                     .then((response) => {
                         resolve(response);
                     })

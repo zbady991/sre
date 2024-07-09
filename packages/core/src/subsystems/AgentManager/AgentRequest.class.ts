@@ -4,7 +4,6 @@ import path from 'path';
 import fs from 'fs';
 import * as FileType from 'file-type';
 import mime from 'mime';
-import { SmythFile } from '@sre/IO/Storage/SmythFile.class';
 
 export default class AgentRequest {
     public headers: any;
@@ -70,6 +69,11 @@ export default class AgentRequest {
         this.params = cli.endpoint?.split('/');
 
         this.headers = cli.headers || {};
+        //convert all keys to lowercase
+        for (let key in this.headers) {
+            this.headers[key.toLowerCase()] = this.headers[key];
+            delete this.headers[key];
+        }
 
         this.sessionID = cli.session || uid();
 
@@ -78,6 +82,7 @@ export default class AgentRequest {
             for (let entry in this.body) {
                 let value = this.body[entry];
                 const filePath = path.join(process.cwd(), value);
+                const fileName = path.basename(filePath);
                 if (!fs.existsSync(filePath)) continue;
 
                 //read the file and create a file object
@@ -85,14 +90,16 @@ export default class AgentRequest {
                 try {
                     // Read the file content
                     const fileBuffer = fs.readFileSync(filePath);
-                    const ext: any = filePath.split('.').pop();
+                    const ext: any = fileName.split('.').pop();
 
                     const fileObj = {
                         fieldname: entry,
+                        originalname: fileName,
                         buffer: fileBuffer,
                         mimetype: mime.getType(ext) || 'application/octet-stream',
                     };
-                    this.body[entry] = new SmythFile(fileObj.buffer, fileObj.mimetype);
+                    //this.body[entry] = new SmythFile(fileObj.buffer, fileObj.mimetype);
+                    delete this.body[entry];
                     this.files.push(fileObj);
 
                     // Try to determine the MIME type from the file content

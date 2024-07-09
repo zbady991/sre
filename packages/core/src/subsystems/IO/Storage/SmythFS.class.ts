@@ -7,7 +7,7 @@ import * as FileType from 'file-type';
 import { isBuffer } from '@sre/utils';
 import mime from 'mime';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+
 export type TSmythFSURI = {
     hash: string;
     team: string;
@@ -38,10 +38,14 @@ export class SmythFS {
         if (parts.length !== 2) return undefined;
         if (parts[0].toLowerCase() !== 'smythfs') return undefined;
         const parsed = new URL(`http://${parts[1]}`);
+        const tld = parsed.hostname.split('.').pop();
+        if (tld !== 'team') throw new Error('Invalid Resource URI');
+        const team = parsed.hostname.replace(`.${tld}`, '');
+        //TODO: check if team exists
 
         return {
             hash: parsed.hash,
-            team: parsed.hostname,
+            team,
             path: parsed.pathname,
         };
     }

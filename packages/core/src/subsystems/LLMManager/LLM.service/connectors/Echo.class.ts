@@ -4,13 +4,13 @@ import { LLMConnector } from './LLMConnector.class';
 
 export class EchoConnector extends LLMConnector implements ILLMConnector {
     public name = 'LLM:Echo';
-    async chatRequest(prompt, model, params) {
+    async chatRequest(prompt, params) {
         return prompt;
     }
-    async visionRequest(prompt, model, params) {
+    async visionRequest(prompt, params) {
         return prompt;
     }
-    async toolRequest(prompt, model, params) {
+    async toolRequest(prompt, params) {
         return prompt;
     }
 
