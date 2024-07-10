@@ -1,41 +1,34 @@
-import Agent from '@sre/AgentManager/Agent.class';
-import { componentLLMRequest, getLLMConnector } from '@sre/LLMManager/LLM.helper';
+import Joi from 'joi';
+
+import { getLLMConnector, visionLLMRequest } from '@sre/LLMManager/LLM.helper';
 import { LLMConnector } from '@sre/LLMManager/LLM.service/connectors/LLMConnector.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import Joi from 'joi';
-import { parseJson } from '../services/utils';
+
 import Component from './Component.class';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-//TODO : better handling of context window exceeding max length
-
-export default class PromptGenerator extends Component {
+export default class VisionLLM extends Component {
     protected configSchema = Joi.object({
-        model: Joi.string().max(200).required(),
         prompt: Joi.string().required().label('Prompt'),
-        temperature: Joi.number().min(0).max(5).label('Temperature'), // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
-        stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),
-        topP: Joi.number().min(0).max(1).label('Top P'),
-        topK: Joi.number().min(0).max(500).label('Top K'), // max top_k is 100 for togetherAI but 500 for cohere
-        frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
-        presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
+        model: Joi.string().max(200).required(),
     });
+
     constructor() {
         super();
     }
+
     init() {}
-    async process(input, config, agent: Agent) {
+
+    async process(input, config, agent) {
         await super.process(input, config, agent);
 
-        //let debugLog = agent.agentRuntime?.debug ? [] : undefined;
         const logger = this.createComponentLogger(agent, config.name);
-
         try {
-            logger.debug(`=== LLM Prompt Log ===`);
-
-            const model: string = config.data.model || 'echo';
+            logger.debug(`=== Vision LLM Log ===`);
+            const model: string = config.data.model || 'gpt-4-vision-preview';
             const llmConnector: LLMConnector = getLLMConnector(model);
-
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmConnector) {
                 return {
@@ -43,9 +36,6 @@ export default class PromptGenerator extends Component {
                     _debug: logger.output,
                 };
             }
-
-            logger.debug(` Model : ${model}`);
-
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
@@ -54,8 +44,18 @@ export default class PromptGenerator extends Component {
 
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
 
-            // request to LLM
-            const response: any = await componentLLMRequest(prompt, model, config, agent).catch((error) => ({ error: error }));
+            const sources = [];
+            const images = Array.isArray(input.Images) ? input.Images : [input.Images];
+            const promises = [];
+            for (let image of images) {
+                const binaryInput = BinaryInput.from(image);
+                sources.push(binaryInput);
+                promises.push(binaryInput.upload(AccessCandidate.agent(agent.id)));
+            }
+
+            await Promise.all(promises);
+
+            const response = await visionLLMRequest(prompt, sources, model, config, agent);
 
             // in case we have the response but it's empty string, undefined or null
             if (!response) {
@@ -73,7 +73,7 @@ export default class PromptGenerator extends Component {
             result['_debug'] = logger.output;
 
             return result;
-        } catch (error) {
+        } catch (error: any) {
             return { _error: error.message, _debug: logger.output };
         }
     }

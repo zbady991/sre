@@ -1,12 +1,13 @@
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { StorageMetadata } from '@sre/types/Storage.types';
+import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { StorageConnector } from './StorageConnector';
 import * as FileType from 'file-type';
 import { isBuffer } from '@sre/utils';
 import mime from 'mime';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { Readable } from 'stream';
 
 export type TSmythFSURI = {
     hash: string;
@@ -54,7 +55,7 @@ export class SmythFS {
         if (!smythURI) throw new Error('Invalid Resource URI');
         return `teams/${smythURI.team}${smythURI.path}`;
     }
-    public async read(uri: string, candidate: IAccessCandidate) {
+    public async read(uri: string, candidate: IAccessCandidate): Promise<Buffer> {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
 
@@ -62,7 +63,34 @@ export class SmythFS {
 
         const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        return await this.storage.user(_candidate).read(resourceId);
+        const data = await this.storage.user(_candidate).read(resourceId);
+
+        return this.toBuffer(data);
+    }
+
+    private async toBuffer(data: StorageData): Promise<Buffer> {
+        if (Buffer.isBuffer(data)) {
+            return data;
+        } else if (typeof data === 'string') {
+            return Buffer.from(data, 'utf-8');
+        } else if (data instanceof Uint8Array) {
+            return Buffer.from(data);
+        } else if (data instanceof Readable) {
+            return new Promise<Buffer>((resolve, reject) => {
+                const chunks: Buffer[] = [];
+                data.on('data', (chunk) => {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                });
+                data.on('end', () => {
+                    resolve(Buffer.concat(chunks));
+                });
+                data.on('error', (err) => {
+                    reject(err);
+                });
+            });
+        } else {
+            throw new Error('Unsupported data type');
+        }
     }
 
     public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata) {

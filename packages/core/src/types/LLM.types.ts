@@ -1,3 +1,5 @@
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+
 export type LLMParams = {
     apiKey?: string; // for all
     temperature?: number; // for all
@@ -14,4 +16,5 @@ export type LLMParams = {
     frequency_penalty?: number; // for OpenAI, cohere
     repetition_penalty?: number; // Frequency Penalty for together.ai
     presence_penalty?: number; // for OpenAI, cohere
+    sources?: BinaryInput[];
 };

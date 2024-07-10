@@ -11,8 +11,9 @@ export class BinaryInput {
     private _ready;
     private _readyPromise;
     private _source: Buffer;
+    private _uploading: boolean = false;
 
-    constructor(data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>, private _name?: string, private mimetype?: string) {
+    constructor(data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>, private _name?: string, public mimetype?: string) {
         if (!_name) _name = uid();
         //this._source = data;
 
@@ -159,19 +160,41 @@ export class BinaryInput {
         return new BinaryInput(data, name, mimetype);
     }
 
-    public async getJsonData(candidate: IAccessCandidate) {
+    public async upload(candidate: IAccessCandidate) {
         await this.ready();
-        if (!this.url) {
-            const agentDataProvider = SmythRuntime.Instance.AgentData;
-            const teamId = await agentDataProvider.getCandidateTeam(candidate);
+        if (this._uploading) return;
 
-            this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
-            await SmythFS.Instance.write(this.url, this._source, candidate);
+        try {
+            this._uploading = true;
+            if (!this.url) {
+                const agentDataProvider = SmythRuntime.Instance.AgentData;
+                const teamId = await agentDataProvider.getCandidateTeam(candidate);
+
+                this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
+                await SmythFS.Instance.write(this.url, this._source, candidate);
+                this._uploading = false;
+            }
+        } catch (error) {
+            console.error('Error uploading binary data:', error);
+            this._uploading = false;
         }
+    }
+
+    public async getJsonData(candidate: IAccessCandidate) {
+        await this.upload(candidate);
         return {
             mimetype: this.mimetype,
             size: this.size,
             url: this.url,
         };
+    }
+
+    public async readData(candidate: IAccessCandidate) {
+        await this.ready();
+        if (!this.url) {
+            throw new Error('Binary data not ready');
+        }
+        const data = await SmythFS.Instance.read(this.url, candidate);
+        return data;
     }
 }

@@ -5,14 +5,18 @@ import models from '@sre/LLMManager/models';
 import paramMappings from '@sre/LLMManager/paramMappings';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { LLMParams } from '@sre/types/LLM.types';
-import { parseRepairJson } from '@sre/utils';
+import { isBase64FileUrl, isUrl, parseRepairJson } from '@sre/utils';
+import imageSize from 'image-size';
+import { encode } from 'gpt-tokenizer';
+import axios from 'axios';
+import Agent from '@sre/AgentManager/Agent.class';
 const console = createLogger('LLMConnector');
 
 export abstract class LLMConnector extends Connector implements ILLMConnector {
     public abstract name: string;
-    abstract chatRequest(prompt, params: any): Promise<any>;
-    abstract visionRequest(prompt, params: any): Promise<any>;
-    abstract toolRequest(prompt, params: any): Promise<any>;
+    abstract chatRequest(prompt, params: any, agent: Agent): Promise<any>;
+    abstract visionRequest(prompt, params: any, agent: Agent): Promise<any>;
+    abstract toolRequest(prompt, params: any, agent: Agent): Promise<any>;
 
     private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
         const alias = models[model]?.alias || model;
@@ -32,6 +36,35 @@ export abstract class LLMConnector extends Connector implements ILLMConnector {
         let maxTokens = givenMaxTokens > allowedTokens ? allowedTokens : givenMaxTokens;
 
         return +maxTokens;
+    }
+
+    protected async countVisionPromptTokens(prompt: any) {
+        let tokens = 0;
+
+        const textObj = prompt?.filter((item) => item.type === 'text');
+
+        /**
+         * encodeChat does not support object like {type: 'text', text: 'some text'}
+         * so count tokens of the text separately
+         * TODO: try to improve this later
+         */
+        const textTokens = encode(textObj?.[0]?.text).length;
+
+        const images = prompt?.filter((item) => item.type === 'image_url');
+        let imageTokens = 0;
+
+        for (const image of images) {
+            const image_url = image?.image_url?.url;
+            const { width, height } = await _getImageDimensions(image_url);
+
+            const tokens = _countImageTokens(width, height);
+
+            imageTokens += tokens;
+        }
+
+        tokens = textTokens + imageTokens;
+
+        return tokens;
     }
 
     public resolveModelName(model: string) {
@@ -97,7 +130,7 @@ export abstract class LLMConnector extends Connector implements ILLMConnector {
 
         return newPrompt;
     }
-    public async extractParams(config: any) {
+    public async extractLLMComponentParams(config: any) {
         const params: LLMParams = {};
         const model: string = config.data.model;
         // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
@@ -158,6 +191,26 @@ export abstract class LLMConnector extends Connector implements ILLMConnector {
         return params;
     }
 
+    public async extractVisionLLMParams(config: any) {
+        const params: LLMParams = {};
+        const model: string = config.data.model;
+        // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
+
+        const apiKey = '';
+        //TODO: implement apiKey extraction from team vault
+        //const apiKey = await getLLMApiKey(model, agent?.teamId);
+        //if (apiKey) params.apiKey = apiKey;
+
+        const maxTokens = (await this.getSafeMaxTokens(+config.data.maxTokens, model, !!apiKey)) || 300;
+
+        const alias = models[model]?.alias || model;
+        const llm = models[alias]?.llm;
+
+        // as max output token prop name differs based on LLM provider, we need to get the actual prop from paramMappings
+        params[paramMappings[llm]?.maxTokens] = maxTokens;
+
+        return params;
+    }
     public postProcess(response: any) {
         try {
             return parseRepairJson(response);
@@ -168,5 +221,60 @@ export abstract class LLMConnector extends Connector implements ILLMConnector {
                 details: 'The response from the model is not a valid JSON object. Please check the model output and try again.',
             };
         }
+    }
+}
+
+// Function to calculate tokens from image
+function _countImageTokens(width: number, height: number, detailMode: string = 'auto') {
+    if (detailMode === 'low') return 85;
+
+    const maxDimension = Math.max(width, height);
+    const minDimension = Math.min(width, height);
+    let scaledMinDimension = minDimension;
+
+    if (maxDimension > 2048) {
+        scaledMinDimension = (2048 / maxDimension) * minDimension;
+    }
+
+    scaledMinDimension = Math.floor((768 / 1024) * scaledMinDimension);
+
+    let tileSize = 512;
+    let tiles = Math.ceil(scaledMinDimension / tileSize);
+    if (minDimension !== scaledMinDimension) {
+        tiles *= Math.ceil((scaledMinDimension * (maxDimension / minDimension)) / tileSize);
+    }
+
+    return tiles * 170 + 85;
+}
+
+async function _getImageDimensions(url: string): Promise<{ width: number; height: number }> {
+    try {
+        let buffer: Buffer;
+
+        if (isBase64FileUrl(url)) {
+            const base64Data = url.replace(/^data:image\/\w+;base64,/, '');
+
+            // Create a buffer from the base64-encoded string
+            buffer = Buffer.from(base64Data, 'base64');
+        } else if (isUrl(url)) {
+            const response = await axios.get(url, { responseType: 'arraybuffer' });
+
+            // Convert the response to a buffer
+            buffer = Buffer.from(response.data);
+        } else {
+            throw new Error('Please provide a valid image url!');
+        }
+
+        // Use the imageSize module to get the dimensions
+        const dimensions = imageSize(buffer);
+
+        return {
+            width: dimensions?.width || 0,
+            height: dimensions?.height || 0,
+        };
+    } catch (error) {
+        console.error('Error getting image dimensions', error);
+
+        throw new Error('Please provide a valid image url!');
     }
 }

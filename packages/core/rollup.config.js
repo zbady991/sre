@@ -31,7 +31,7 @@ export default {
         }),
         esbuild({
             sourceMap: true,
-            minify: false,
+            minify: false, //do not enable minify here, it will break the sourcemap (minification is done by terser plugin below)
             treeShaking: true,
         }),
         // typescript({
@@ -42,10 +42,7 @@ export default {
         sourcemaps(),
         terser(),
         copy({
-            targets: [
-                { src: 'src/data/*', dest: 'dist/data' },
-                /*{ src: 'src/static/*', dest: 'dist/static' },*/
-            ],
+            targets: [{ src: 'src/data/*', dest: 'dist/data' }],
         }),
     ],
 };

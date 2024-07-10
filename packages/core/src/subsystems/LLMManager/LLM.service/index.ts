@@ -18,24 +18,24 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.Instance.init(TConnectorService.LLM, 'OpenAI');
     }
 
-    chatRequest(prompt, model, params: any = {}) {
-        return new Promise((resolve, reject) => {
-            const LLM: ILLMConnector = ConnectorService.Instance.getInstance(TConnectorService.LLM, models[model]?.llm);
-            if (!LLM) return reject({ error: 'LLM request failed', details: `Model ${model} not supported` });
+    // chatRequest(prompt, model, params: any = {}) {
+    //     return new Promise((resolve, reject) => {
+    //         const LLM: ILLMConnector = ConnectorService.Instance.getInstance(TConnectorService.LLM, models[model]?.llm);
+    //         if (!LLM) return reject({ error: 'LLM request failed', details: `Model ${model} not supported` });
 
-            const alias = models[model]?.alias || model;
+    //         //const alias = models[model]?.alias || model;
 
-            try {
-                LLM.chatRequest(prompt, alias /*, params*/)
-                    .then((response) => {
-                        resolve(response);
-                    })
-                    .catch((error) => {
-                        reject({ error: 'LLM request failed', details: error?.message || error?.toString() });
-                    });
-            } catch (error: any) {
-                reject({ error: 'LLM request failed', details: error?.message || error?.toString() });
-            }
-        });
-    }
+    //         try {
+    //             LLM.chatRequest(prompt, params)
+    //                 .then((response) => {
+    //                     resolve(response);
+    //                 })
+    //                 .catch((error) => {
+    //                     reject({ error: 'LLM request failed', details: error?.message || error?.toString() });
+    //                 });
+    //         } catch (error: any) {
+    //             reject({ error: 'LLM request failed', details: error?.message || error?.toString() });
+    //         }
+    //     });
+    // }
 }

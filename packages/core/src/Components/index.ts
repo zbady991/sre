@@ -3,6 +3,7 @@ import APIEndpoint from './APIEndpoint.class';
 import APIOutput from './APIOutput.class';
 import PromptGenerator from './PromptGenerator.class';
 import APICall from './APICall.class';
+import VisionLLM from './VisionLLM.class';
 
 const components = {
     Component: new Component(),
@@ -12,6 +13,7 @@ const components = {
     PromptGenerator: new PromptGenerator(),
     LLMPrompt: new PromptGenerator(),
     APICall: new APICall(),
+    VisionLLM: new VisionLLM(),
 };
 
 export default components;
