@@ -1,4 +1,4 @@
-import { AbstractAgentDataConnector } from '@sre/AgentManager/AgentData/connectors/AbstractAgentDataConnector.class';
+import { AbstractAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/AbstractAgentDataConnector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';

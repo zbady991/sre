@@ -2,7 +2,7 @@
 
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { createLogger } from '@sre/Core/Logger';
-import { IStorageRequest, StorageConnector } from '@sre/IO/Storage/StorageConnector';
+import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 import { S3Config } from '@sre/types/AWS.types';

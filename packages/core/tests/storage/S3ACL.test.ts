@@ -1,10 +1,10 @@
 import { xxh3 } from '@node-rs/xxhash';
 import { describe, expect, it } from 'vitest';
 
-import { S3Storage } from '@sre/IO/Storage/connectors/S3Storage.class';
+import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 //import SRE, { AgentRequest } from '../../dist';
-import { StorageConnector } from '@sre/IO/Storage/StorageConnector';
+import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import SREInstance from '../001_Base/SREInstance';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';

@@ -1,5 +1,10 @@
 export default {
     echo: {
+        llm: 'Echo',
+        alias: 'Echo',
+    },
+    Echo: {
+        llm: 'Echo',
         tokens: 128000,
         completionTokens: 128000,
         enabled: true,

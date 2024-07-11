@@ -1,3 +1,7 @@
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
+import { FunctionCallingMode } from '@google/generative-ai';
+
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 
 export type LLMParams = {
@@ -18,3 +22,59 @@ export type LLMParams = {
     presence_penalty?: number; // for OpenAI, cohere
     sources?: BinaryInput[];
 };
+
+export type TLLMModelEntry = {
+    llm: string;
+    tokens?: number;
+    completionTokens?: number;
+    enabled?: boolean;
+    components?: string[];
+    alias?: string;
+    tags?: string[];
+    keyOptions?: {
+        tokens: number;
+        completionTokens: number;
+    };
+};
+
+export type TLLMModel = {
+    llmName: string;
+    modelId: string;
+    tokens: number;
+    completionTokens: number;
+    components: string[];
+    tags: string[];
+};
+
+//#region === LLM Tools ===========================
+export interface ToolInfo {
+    index: number;
+    id: string;
+    type: 'function';
+    name: string;
+    arguments: string;
+    role: 'user' | 'tool';
+}
+
+export interface ToolData extends ToolInfo {
+    result: string;
+}
+
+export interface AnthropicToolDefinition {
+    name: string;
+    description: string;
+    input_schema: {
+        type: 'object';
+        properties: Record<string, unknown>;
+        required: string[];
+    };
+}
+export type ToolDefinition = OpenAI.ChatCompletionTool | AnthropicToolDefinition;
+export type ToolChoice = OpenAI.ChatCompletionToolChoiceOption | FunctionCallingMode;
+
+export interface ToolsConfig {
+    tools?: ToolDefinition[];
+    tool_choice?: ToolChoice;
+}
+
+//#endregion

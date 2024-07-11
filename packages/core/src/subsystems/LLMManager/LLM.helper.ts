@@ -5,43 +5,55 @@ import models from './models';
 import Agent from '@sre/AgentManager/Agent.class';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 
-export function getLLMConnector(model): LLMConnector {
-    return ConnectorService.Instance.getInstance(TConnectorService.LLM, models[model]?.llm);
-}
+export class LLMHelper {
+    private _llmConnector: LLMConnector;
+    private _modelId: string;
 
-export async function componentLLMRequest(prompt, model, config: any = {}, agent: Agent) {
-    const llmName = models[model]?.llm;
-    const modelId = models[model]?.alias || model;
-    const llmConnector: LLMConnector = ConnectorService.Instance.getInstance(TConnectorService.LLM, llmName);
-    if (!llmConnector) return { error: 'LLM request failed', details: `Model ${model} not supported` };
-
-    const params: any = await llmConnector.extractLLMComponentParams(config);
-    params.model = modelId;
-
-    try {
-        let response = await llmConnector.chatRequest(prompt, params, agent);
-        response = llmConnector.postProcess(response);
-        return response;
-    } catch (error: any) {
-        return { error: 'LLM request failed', details: error?.message || error?.toString() };
+    constructor(private model: string) {
+        const llmName = models[model]?.llm;
+        this._modelId = models[model]?.alias || model;
+        this._llmConnector = ConnectorService.Instance.getInstance(TConnectorService.LLM, llmName);
     }
-}
 
-export async function visionLLMRequest(prompt, sources: BinaryInput[], model, config: any = {}, agent: Agent) {
-    const llmName = models[model]?.llm;
-    const modelId = models[model]?.alias || model;
-    const llmConnector: LLMConnector = ConnectorService.Instance.getInstance(TConnectorService.LLM, llmName);
-    if (!llmConnector) return { error: 'LLM request failed', details: `Model ${model} not supported` };
+    static load(model: string) {
+        return new LLMHelper(model);
+    }
+    public get connector(): LLMConnector {
+        return this._llmConnector;
+    }
 
-    const params: any = await llmConnector.extractVisionLLMParams(config);
-    params.model = modelId;
-    params.sources = sources;
+    public async promptRequest(prompt, config: any = {}) {
+        if (!this._llmConnector) return { error: 'LLM request failed', details: `Model ${this.model} not supported` };
 
-    try {
-        let response = await llmConnector.visionRequest(prompt, params, agent);
-        response = llmConnector.postProcess(response);
-        return response;
-    } catch (error: any) {
-        return { error: 'LLM request failed', details: error?.message || error?.toString() };
+        const params: any = await this._llmConnector.extractLLMComponentParams(config);
+        params.model = this._modelId;
+
+        try {
+            prompt = this._llmConnector.enhancePrompt(prompt, config);
+            let response = await this._llmConnector.chatRequest(prompt, params);
+            response = this._llmConnector.postProcess(response);
+            return response.result;
+        } catch (error: any) {
+            return { error: 'LLM request failed', details: error?.message || error?.toString() };
+        }
+    }
+
+    public async visionRequest(prompt, sources: BinaryInput[], config: any = {}, agent: Agent) {
+        const params: any = await this._llmConnector.extractVisionLLMParams(config);
+        params.model = this._modelId;
+        params.sources = sources;
+
+        try {
+            prompt = this._llmConnector.enhancePrompt(prompt, config);
+            let response = await this._llmConnector.visionRequest(prompt, params, agent);
+            response = this._llmConnector.postProcess(response);
+            return response.result;
+        } catch (error: any) {
+            return { error: 'LLM request failed', details: error?.message || error?.toString() };
+        }
+    }
+
+    public async toolRequest(params: any) {
+        return this._llmConnector.toolRequest(params);
     }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SmythFS } from '@sre/IO/Storage/SmythFS.class';
+import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import SREInstance from '../001_Base/SREInstance';

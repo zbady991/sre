@@ -5,15 +5,8 @@ import copy from 'rollup-plugin-copy';
 import esbuild from 'rollup-plugin-esbuild';
 import sourcemaps from 'rollup-plugin-sourcemaps';
 import { terser } from 'rollup-plugin-terser';
-import alias from '@rollup/plugin-alias';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
-import typescript from 'rollup-plugin-typescript2';
 import typescriptPaths from 'rollup-plugin-typescript-paths';
-import { createResolver } from 'tsconfig-paths';
-
-import javascriptObfuscator from 'rollup-plugin-javascript-obfuscator';
-
-import fs from 'fs';
+import typescript from 'rollup-plugin-typescript2';
 const projectRootDir = __dirname;
 export default {
     input: 'src/index.ts',

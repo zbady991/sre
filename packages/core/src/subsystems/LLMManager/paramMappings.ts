@@ -1,4 +1,12 @@
 export default {
+    Echo: {
+        maxTokens: 'max_tokens',
+        temperature: 'temperature',
+        stopSequences: 'stop',
+        topP: 'top_p',
+        frequencyPenalty: 'frequency_penalty',
+        presencePenalty: 'presence_penalty',
+    },
     OpenAI: {
         maxTokens: 'max_tokens',
         temperature: 'temperature',

@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import { describe, expect, it } from 'vitest';
-import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData/connectors/CLIAgentDataConnector.class';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';

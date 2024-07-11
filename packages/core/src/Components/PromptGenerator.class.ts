@@ -1,9 +1,7 @@
 import Agent from '@sre/AgentManager/Agent.class';
-import { componentLLMRequest, getLLMConnector } from '@sre/LLMManager/LLM.helper';
-import { LLMConnector } from '@sre/LLMManager/LLM.service/connectors/LLMConnector.class';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import Joi from 'joi';
-import { parseJson } from '../services/utils';
 import Component from './Component.class';
 
 //TODO : better handling of context window exceeding max length
@@ -34,10 +32,10 @@ export default class PromptGenerator extends Component {
             logger.debug(`=== LLM Prompt Log ===`);
 
             const model: string = config.data.model || 'echo';
-            const llmConnector: LLMConnector = getLLMConnector(model);
+            const llmHelper: LLMHelper = LLMHelper.load(model);
 
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmConnector) {
+            if (!llmHelper.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
@@ -50,13 +48,11 @@ export default class PromptGenerator extends Component {
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
-            prompt = llmConnector.enhancePrompt(prompt, config);
+            // request to LLM
+            //const response: any = await componentLLMRequest(prompt, model, config).catch((error) => ({ error: error }));
+            const response: any = await llmHelper.promptRequest(prompt, config).catch((error) => ({ error: error }));
 
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
-
-            // request to LLM
-            const response: any = await componentLLMRequest(prompt, model, config, agent).catch((error) => ({ error: error }));
-
             // in case we have the response but it's empty string, undefined or null
             if (!response) {
                 return { _error: ' LLM Error = Empty Response!', _debug: logger.output };

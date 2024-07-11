@@ -6,6 +6,8 @@ import { EchoConnector } from './connectors/Echo.class';
 import { OpenAIConnector } from './connectors/OpenAI.class';
 import { ILLMConnector } from './ILLMConnector';
 import models from '@sre/LLMManager/models';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import Agent from '@sre/AgentManager/Agent.class';
 
 export class LLMService extends ConnectorServiceProvider {
     public register() {
@@ -14,6 +16,7 @@ export class LLMService extends ConnectorServiceProvider {
     }
 
     public init() {
+        //auto initialize builting models
         ConnectorService.Instance.init(TConnectorService.LLM, 'Echo');
         ConnectorService.Instance.init(TConnectorService.LLM, 'OpenAI');
     }

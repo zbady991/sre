@@ -3,13 +3,14 @@ import OpenAI from 'openai';
 import { ILLMConnector } from '../ILLMConnector';
 import { LLMConnector } from './LLMConnector.class';
 import Agent from '@sre/AgentManager/Agent.class';
-import { LLMParams } from '@sre/types/LLM.types';
+import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 
 export class OpenAIConnector extends LLMConnector implements ILLMConnector {
     public name = 'LLM:OpenAI';
-    async chatRequest(prompt, params, agent?: Agent) {
+    async chatRequest(prompt, params) {
         // if (!model) model = 'gpt-3.5-turbo';
 
         if (!params.model) params.model = 'gpt-4-turbo';
@@ -129,13 +130,85 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
             throw error;
         }
     }
-    async toolRequest(prompt, params, agent?: Agent) {
-        return 'OpenAI :' + prompt;
+
+    async toolRequest({ model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }): Promise<any> {
+        try {
+            // We provide
+            const openai = new OpenAI({
+                apiKey: apiKey || process.env.OPENAI_API_KEY,
+            });
+
+            // sanity check
+            if (!Array.isArray(messages) || !messages?.length) {
+                return { error: new Error('Invalid messages argument for chat completion.') };
+            }
+
+            let args: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+                model,
+                messages,
+            };
+
+            if (tools && tools.length > 0) args.tools = tools;
+            if (tool_choice) args.tool_choice = tool_choice;
+
+            const result = await openai.chat.completions.create(args);
+            const message = result?.choices?.[0]?.message;
+            const finishReason = result?.choices?.[0]?.finish_reason;
+
+            let toolsInfo: ToolInfo[] = [];
+            let useTool = false;
+
+            if (finishReason === 'tool_calls') {
+                toolsInfo =
+                    message?.tool_calls?.map((tool, index) => ({
+                        index,
+                        id: tool?.id,
+                        type: tool?.type,
+                        name: tool?.function?.name,
+                        arguments: tool?.function?.arguments,
+                        role: 'tool',
+                    })) || [];
+
+                useTool = true;
+            }
+
+            return {
+                data: { useTool, message: message, content: message?.content ?? '', toolsInfo },
+            };
+        } catch (error: any) {
+            console.log('Error on toolUseLLMRequest: ', error);
+            return { error };
+        }
     }
 
     public async extractVisionLLMParams(config: any) {
         const params: LLMParams = await super.extractVisionLLMParams(config);
 
         return params;
+    }
+
+    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
+        let tools: OpenAI.ChatCompletionTool[] = [];
+
+        if (type === 'function') {
+            tools = toolDefinitions.map((tool) => {
+                const { name, description, properties, requiredFields } = tool;
+
+                return {
+                    type: 'function',
+                    function: {
+                        name,
+                        description,
+                        parameters: {
+                            type: 'object',
+                            properties,
+                            required: requiredFields,
+                        },
+                    },
+                };
+            });
+        }
+
+        return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 }

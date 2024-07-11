@@ -1,5 +1,5 @@
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { SmythFS } from '@sre/IO/Storage/SmythFS.class';
+import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import axios from 'axios';
 import * as FileType from 'file-type';

@@ -1,10 +1,10 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import AgentRequest from '@sre/AgentManager/AgentRequest.class';
 import AgentSettings from '@sre/AgentManager/AgentSettings.class';
-import { StorageConnector } from '@sre/IO/Storage/StorageConnector';
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData/IAgentDataConnector';
+import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
+import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
 import { ICacheConnector } from '@sre/MemoryManager/Cache.service/ICacheConnector';
-import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
+import { SREConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
 
@@ -12,6 +12,7 @@ const CInstance = ConnectorService.Instance;
 
 export default class SmythRuntime {
     //protected static _instances: any = {};
+
     public started = false;
     protected static _agentDataProviderInstance: IAgentDataConnector;
 
@@ -119,7 +120,7 @@ export default class SmythRuntime {
         }
     }
 
-    async _stop() {
+    public async _stop() {
         console.info('Shutting Down SmythRuntime ...');
         CInstance._stop();
         SmythRuntime.instance = undefined;

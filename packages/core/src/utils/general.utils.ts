@@ -1,3 +1,4 @@
+import pLimit from 'p-limit';
 export function uid() {
     return (Date.now() + Math.random()).toString(36).replace('.', '').toUpperCase();
 }
@@ -25,4 +26,21 @@ export function isSubclassOf(subClass: any, superClass: any): boolean {
     }
 
     return false;
+}
+
+export async function concurrentAsyncProcess<T, R>(items: T[], callback: (item: T) => Promise<R>, n?: number): Promise<(R | undefined)[]> {
+    if (!Array.isArray(items)) return [];
+
+    // Keep 1 CPU free for other tasks
+    const limitCount = n ? n : 10;
+    const limit = pLimit(limitCount);
+
+    // Process each item with defined limit
+    const promises = items.map((item) => limit(() => callback(item)));
+    const results = await Promise.allSettled(promises);
+
+    // Filter for successfully fulfilled promises and extract their values
+    const validResults = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])).filter((item) => item);
+
+    return validResults;
 }

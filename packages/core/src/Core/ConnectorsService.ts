@@ -1,8 +1,9 @@
-import { SREConnectorConfig, TConnectorService } from '@sre/types/SRE.types';
+import { SREConnectorConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { DummyConnector } from './DummyConnector';
 import { createLogger } from './Logger';
 import { Connector } from './Connector.class';
 import { isSubclassOf } from '@sre/utils';
+import SystemEvents from './SystemEvents';
 const console = createLogger('ConnectorService');
 
 const Connectors = {};
@@ -11,7 +12,13 @@ const ConnectorInstances: any = {};
 
 //TODO : implement chainable methods
 export class ConnectorService {
+    private static _serviceRegistry: TServiceRegistry = {};
     //Singleton
+    private constructor() {
+        SystemEvents.on('SRE:Booted', (services) => {
+            ConnectorService._serviceRegistry = services;
+        });
+    }
     private static instance: ConnectorService;
     public static get Instance(): ConnectorService {
         if (!ConnectorService.instance) {
@@ -20,6 +27,9 @@ export class ConnectorService {
         return ConnectorService.instance;
     }
 
+    public static get service(): TServiceRegistry {
+        return ConnectorService._serviceRegistry;
+    }
     /**
      * Allows SRE services to register their connectors, a registered conector can then be initialized and used by SRE or its services
      * @param connectorType
@@ -101,6 +111,7 @@ export class ConnectorService {
 
 export abstract class ConnectorServiceProvider {
     public abstract register();
+    public init() {}
     public constructor() {
         this.register();
     }

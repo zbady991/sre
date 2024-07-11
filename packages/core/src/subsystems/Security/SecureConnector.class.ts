@@ -1,4 +1,4 @@
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData/IAgentDataConnector';
+import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
 import { Connector } from '@sre/Core/Connector.class';
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
 import { TAccessLevel, TAccessResult, TAccessTicket } from '@sre/types/ACL.types';
