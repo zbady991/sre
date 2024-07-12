@@ -12,7 +12,7 @@ export class LLMHelper {
     constructor(private model: string) {
         const llmName = models[model]?.llm;
         this._modelId = models[model]?.alias || model;
-        this._llmConnector = ConnectorService.Instance.getInstance(TConnectorService.LLM, llmName);
+        this._llmConnector = ConnectorService.getInstance(TConnectorService.LLM, llmName);
     }
 
     static load(model: string) {

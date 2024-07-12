@@ -1,13 +1,15 @@
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { TConnectorService } from '@sre/types/SRE.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
-import { StorageConnector } from './StorageConnector';
-import * as FileType from 'file-type';
 import { isBuffer } from '@sre/utils';
+import * as FileType from 'file-type';
 import mime from 'mime';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { Readable } from 'stream';
+import { StorageConnector } from './StorageConnector';
 
 export type TSmythFSURI = {
     hash: string;
@@ -16,7 +18,7 @@ export type TSmythFSURI = {
 };
 
 export class SmythFS {
-    private storage: StorageConnector = SmythRuntime.Instance.Storage;
+    private storage: StorageConnector;
 
     //singleton
     private static instance: SmythFS;
@@ -29,9 +31,10 @@ export class SmythFS {
 
     private constructor() {
         //SmythFS cannot be used without SRE
-        if (!SmythRuntime.Instance?.ready()) {
+        if (!ConnectorService.ready) {
             throw new Error('SRE not available');
         }
+        this.storage = ConnectorService.getInstance<StorageConnector>(TConnectorService.Storage);
     }
 
     private URIParser(uri: string) {
@@ -96,8 +99,8 @@ export class SmythFS {
     public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
-        const agentDataProvider = SmythRuntime.Instance.AgentData;
-        const isMember = await agentDataProvider.isTeamMember(smythURI.team, candidate);
+        const agentDataConnector = ConnectorService.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
+        const isMember = await agentDataConnector.isTeamMember(smythURI.team, candidate);
         if (!isMember) throw new Error('Access Denied');
 
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;

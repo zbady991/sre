@@ -7,6 +7,6 @@ import { RedisCache } from './connectors/RedisCache.class';
 
 export class CacheService extends ConnectorServiceProvider {
     public register() {
-        ConnectorService.Instance.register(TConnectorService.Cache, 'Redis', RedisCache);
+        ConnectorService.register(TConnectorService.Cache, 'Redis', RedisCache);
     }
 }

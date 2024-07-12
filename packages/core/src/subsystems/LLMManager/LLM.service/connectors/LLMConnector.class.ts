@@ -17,7 +17,6 @@ export abstract class LLMConnector extends Connector implements ILLMConnector {
     abstract chatRequest(prompt, params: any): Promise<any>;
     abstract visionRequest(prompt, params: any, agent: Agent): Promise<any>;
     abstract toolRequest(params: any): Promise<any>;
-    abstract formatToolsConfig({ type, toolDefinitions, toolChoice });
 
     private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
         const alias = models[model]?.alias || model;
@@ -222,6 +221,9 @@ export abstract class LLMConnector extends Connector implements ILLMConnector {
                 details: 'The response from the model is not a valid JSON object. Please check the model output and try again.',
             };
         }
+    }
+    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
+        throw new Error('This model does not support tools');
     }
 }
 

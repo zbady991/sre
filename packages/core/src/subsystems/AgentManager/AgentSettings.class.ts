@@ -1,7 +1,9 @@
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import EmbodimentSettings from './EmbodimentSettings.class';
 
 import { createLogger } from '@sre/Core/Logger';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { TConnectorService } from '@sre/types/SRE.types';
+import { IAgentDataConnector } from './AgentData.service/IAgentDataConnector';
 const console = createLogger('AgentSettings');
 
 export default class AgentSettings {
@@ -16,7 +18,8 @@ export default class AgentSettings {
     }
 
     async init(agentId) {
-        this._settings = (await SmythRuntime.Instance?.AgentData?.getAgentSettings(agentId)) || {};
+        const agentDataConnector = ConnectorService.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
+        this._settings = (await agentDataConnector.getAgentSettings(agentId)) || {};
         this.embodiments = new EmbodimentSettings(this._settings.embodiments);
         this._ready = true;
     }

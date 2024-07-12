@@ -257,7 +257,7 @@ export default class ToolExecutor {
         return declarations;
     }
 
-    private async toolsConfig(model: string): Promise<ToolsConfig> {
+    private async toolsConfig(model: string): Promise<ToolsConfig | void> {
         const functionDeclarations = await this.functionDeclarations();
         const llmHelper: LLMHelper = LLMHelper.load(this.model);
 

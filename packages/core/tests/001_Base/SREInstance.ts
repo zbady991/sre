@@ -26,7 +26,7 @@ const sre = SmythRuntime.Instance.init({
 //const sre = SRE.Instance;
 
 //late register custom security connector
-ConnectorService.Instance.register(TConnectorService.AgentData, 'Abstract', AbstractAgentDataConnector);
-ConnectorService.Instance.init(TConnectorService.AgentData, 'Abstract');
+ConnectorService.register(TConnectorService.AgentData, 'Abstract', AbstractAgentDataConnector);
+ConnectorService.init(TConnectorService.AgentData, 'Abstract');
 
 export default SmythRuntime.Instance;

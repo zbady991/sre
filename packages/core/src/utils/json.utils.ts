@@ -14,10 +14,10 @@ export function extractJsonFromString(str) {
 }
 
 export function parseRepairJson(strInput: string) {
-    if (!strInput) return strInput;
+    if (!strInput) return { result: strInput };
     let str = (extractJsonFromString(strInput) || strInput).trim();
 
-    if ((isNumber(str) && !isValidNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return str;
+    if ((isNumber(str) && !isValidNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return { result: str };
 
     try {
         return { result: JSON.parse(str) };

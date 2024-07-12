@@ -9,26 +9,32 @@ const console = createLogger('ConnectorService');
 const Connectors = {};
 
 const ConnectorInstances: any = {};
-
-//TODO : implement chainable methods
+let ServiceRegistry: TServiceRegistry = {};
+let _ready = false;
+SystemEvents.on('SRE:Booted', (services) => {
+    ServiceRegistry = services;
+    _ready = true;
+});
 export class ConnectorService {
-    private static _serviceRegistry: TServiceRegistry = {};
     //Singleton
-    private constructor() {
-        SystemEvents.on('SRE:Booted', (services) => {
-            ConnectorService._serviceRegistry = services;
-        });
-    }
-    private static instance: ConnectorService;
-    public static get Instance(): ConnectorService {
-        if (!ConnectorService.instance) {
-            ConnectorService.instance = new ConnectorService();
-        }
-        return ConnectorService.instance;
+    // private constructor() {
+    //     SystemEvents.on('SRE:Booted', (services) => {
+    //         ServiceRegistry = services;
+    //     });
+    // }
+    // private static instance: ConnectorService;
+    // public static get Instance(): ConnectorService {
+    //     if (!ConnectorService.instance) {
+    //         ConnectorService.instance = new ConnectorService();
+    //     }
+    //     return ConnectorService.instance;
+    // }
+    public static get ready() {
+        return _ready;
     }
 
     public static get service(): TServiceRegistry {
-        return ConnectorService._serviceRegistry;
+        return ServiceRegistry;
     }
     /**
      * Allows SRE services to register their connectors, a registered conector can then be initialized and used by SRE or its services
@@ -37,7 +43,7 @@ export class ConnectorService {
      * @param connectorConstructor
      * @returns
      */
-    register(connectorType: TConnectorService, connectorName: string, connectorConstructor: any) {
+    static register(connectorType: TConnectorService, connectorName: string, connectorConstructor: any) {
         if (typeof connectorConstructor !== 'function' || !isSubclassOf(connectorConstructor, Connector)) {
             console.error(`Invalid Connector ${connectorType}:${connectorName}`);
             return;
@@ -59,7 +65,7 @@ export class ConnectorService {
      * @param isDefault
      * @returns
      */
-    init(connectorType: TConnectorService, connectorName: string, settings: any = {}, isDefault = false) {
+    static init(connectorType: TConnectorService, connectorName: string, settings: any = {}, isDefault = false) {
         if (ConnectorInstances[connectorType]?.[connectorName]) {
             throw new Error(`Connector ${connectorType}:${connectorName} already initialized`);
         }
@@ -80,7 +86,7 @@ export class ConnectorService {
             }
         }
     }
-    async _stop() {
+    static async _stop() {
         for (let connectorName in ConnectorInstances) {
             let allConnectors: Connector[] = Object.values(ConnectorInstances[connectorName]);
             //deduplicate
@@ -90,7 +96,7 @@ export class ConnectorService {
             }
         }
     }
-    getInstance<T>(connectorType: TConnectorService, connectorName: string = 'default'): T {
+    static getInstance<T>(connectorType: TConnectorService, connectorName: string = 'default'): T {
         const instance = ConnectorInstances[connectorType]?.[connectorName] as T;
         if (!instance) {
             if (ConnectorInstances[connectorType] && Object.keys(ConnectorInstances[connectorType]).length > 0) {
@@ -103,7 +109,7 @@ export class ConnectorService {
         return instance;
     }
 
-    hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
+    static hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
         const instance = ConnectorInstances[connectorType]?.[connectorName];
         return instance && instance !== DummyConnector;
     }

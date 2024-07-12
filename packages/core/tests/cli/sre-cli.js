@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 process.env.LOG_LEVEL = 'none';
 
-import { AgentRequest, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../dist/index.js';
+import { AgentRequest, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../dist/index.dev.js';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -24,8 +24,8 @@ const sre = SmythRuntime.Instance.init({
     },
 });
 
-ConnectorService.Instance.register('AgentData', 'CLI', CLIAgentDataConnector);
-ConnectorService.Instance.init('AgentData', 'CLI', { args: process.argv });
+ConnectorService.register('AgentData', 'CLI', CLIAgentDataConnector);
+ConnectorService.init('AgentData', 'CLI', { args: process.argv });
 
 async function main() {
     try {

@@ -1,6 +1,7 @@
 import { parseRepairJson } from '@sre/utils';
 import { ILLMConnector } from '../ILLMConnector';
 import { LLMConnector } from './LLMConnector.class';
+import Agent from '@sre/AgentManager/Agent.class';
 
 export class EchoConnector extends LLMConnector implements ILLMConnector {
     public name = 'LLM:Echo';
@@ -10,7 +11,7 @@ export class EchoConnector extends LLMConnector implements ILLMConnector {
     async visionRequest(prompt, params) {
         return prompt;
     }
-    async toolRequest(prompt, params) {
+    async toolRequest(params) {
         return prompt;
     }
 

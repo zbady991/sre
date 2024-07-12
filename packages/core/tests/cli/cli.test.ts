@@ -24,15 +24,15 @@ const sre = SmythRuntime.Instance.init({
         },
     },
 });
-ConnectorService.Instance.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
-ConnectorService.Instance.init(TConnectorService.AgentData, 'CLI', { args: process.argv });
+ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
+ConnectorService.init(TConnectorService.AgentData, 'CLI', { args: process.argv });
 
 function runCLICommand(args: string): string {
     const cmd = `node ./tests/cli/sre-cli.js ${args}`;
     return execSync(cmd, { encoding: 'utf-8' });
 }
 
-describe('SRE Basic Tests', () => {
+describe('CLI Tests', () => {
     it('SRE Instance', async () => {
         expect(sre).toBeInstanceOf(SmythRuntime);
     });

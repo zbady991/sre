@@ -6,13 +6,16 @@
     "type": "module",
     "scripts": {
         "test": "cross-env TEST_ENV=true vitest --reporter verbose",
+        "test:coverage": "cross-env TEST_ENV=true nyc --reporter=html --reporter=text --report-dir=./coverage vitest",
         "cli-test": "vitest --reporter verbose run cli.test.ts",
-        "build": "rollup -c",
+        "build:dev": "cross-env BUILD=dev rollup -c",
+        "build:prod": "cross-env BUILD=prod rollup -c",
         "doc:graphgen": "npx depcruise src --config ./doc/.dependency-cruiser.cjs --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "knip": "knip"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
+        "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@rollup/plugin-alias": "^5.1.0",
         "@rollup/plugin-commonjs": "^26.0.1",
         "@rollup/plugin-json": "^6.1.0",
@@ -23,12 +26,15 @@
         "cross-env": "^7.0.3",
         "dependency-cruiser": "^16.3.3",
         "knip": "^5.23.1",
+        "nyc": "^17.0.0",
         "rollup-plugin-copy": "^3.5.0",
         "rollup-plugin-esbuild": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-terser": "^7.0.2",
         "rollup-plugin-typescript-paths": "^1.5.0",
         "rollup-plugin-typescript2": "^0.36.0",
+        "source-map-support": "^0.5.21",
+        "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.4.5",
         "vite-tsconfig-paths": "^4.3.2",
@@ -54,7 +60,6 @@
         "jsonrepair": "^3.8.0",
         "mime": "^4.0.3",
         "openai": "^4.52.2",
-        "source-map-support": "^0.5.21",
         "winston": "^3.13.0",
         "winston-transport": "^4.7.0"
     }

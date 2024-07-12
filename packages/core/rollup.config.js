@@ -7,11 +7,14 @@ import sourcemaps from 'rollup-plugin-sourcemaps';
 import { terser } from 'rollup-plugin-terser';
 import typescriptPaths from 'rollup-plugin-typescript-paths';
 import typescript from 'rollup-plugin-typescript2';
+
+const isProduction = process.env.BUILD === 'prod';
+
 const projectRootDir = __dirname;
-export default {
+const devConfig = {
     input: 'src/index.ts',
     output: {
-        dir: 'dist',
+        file: 'dist/index.dev.js',
         format: 'es',
         sourcemap: true,
     },
@@ -25,6 +28,34 @@ export default {
         esbuild({
             sourceMap: true,
             minify: false, //do not enable minify here, it will break the sourcemap (minification is done by terser plugin below)
+            treeShaking: false,
+        }),
+
+        filenameReplacePlugin(),
+        sourcemaps(),
+        copy({
+            targets: [{ src: 'src/data/*', dest: 'dist/data' }],
+        }),
+    ],
+};
+
+const prodConfig = {
+    input: 'src/index.ts',
+    output: {
+        file: 'dist/index.js',
+        format: 'es',
+        sourcemap: true,
+    },
+    plugins: [
+        json(),
+        typescriptPaths({
+            tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
+            preserveExtensions: true,
+            nonRelative: false,
+        }),
+        esbuild({
+            sourceMap: true,
+            minify: true,
             treeShaking: true,
         }),
         // typescript({
@@ -39,6 +70,10 @@ export default {
         }),
     ],
 };
+
+let config = isProduction ? prodConfig : devConfig;
+
+export default config;
 
 // this is used to replace the ___FILENAME___ placeholder with source filename
 //it's used by the logger to set the appropriate module name

@@ -8,7 +8,8 @@ import { SREConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.t
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
 
-const CInstance = ConnectorService.Instance;
+//const CInstance = ConnectorService.Instance;
+const CInstance = ConnectorService;
 
 export default class SmythRuntime {
     //protected static _instances: any = {};
