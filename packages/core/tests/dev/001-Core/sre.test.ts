@@ -5,6 +5,7 @@ import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCac
 import config from '@sre/config';
 import { AgentRequest, SmythRuntime } from '@sre/index';
 import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
+import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -52,8 +53,11 @@ describe('SRE Basic Tests', () => {
             const sre = SmythRuntime.Instance;
             const agentData = fs.readFileSync('./tests/data/sre-openai-LLMPrompt.smyth', 'utf-8');
             const data = JSON.parse(agentData);
+
             const request = new AgentRequest({ method: 'POST', path: '/api/say', body: { message: 'Write a poem about flowers' } });
             const output = await sre.runAgent('test', { data, agentVersion: '1.0' }, request);
+
+            //const output = await AgentProcess.load(data).run({ method: 'POST', path: '/api/say', body: { message: 'Write a poem about flowers' } });
             expect(JSON.stringify(output)).toContain('flowers');
         } catch (e) {
             error = e;

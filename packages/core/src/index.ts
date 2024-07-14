@@ -7,7 +7,8 @@ import SmythRuntime from './Core/SmythRuntime.class';
 import { boot } from './Core/boot';
 import { ConnectorService } from './Core/ConnectorsService';
 import { CLIAgentDataConnector } from './subsystems/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+import { AgentProcess } from './Core/AgentProcess.helper';
 
 boot();
 
-export { Agent, AgentRequest, AgentSettings, SmythRuntime, ConnectorService, CLIAgentDataConnector };
+export { Agent, AgentRequest, AgentSettings, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector };

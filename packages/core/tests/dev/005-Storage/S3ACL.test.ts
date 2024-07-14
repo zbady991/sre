@@ -5,7 +5,7 @@ import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 //import SRE, { AgentRequest } from '../../dist';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
-import SREInstance from '../001_Base/SREInstance';
+import SREInstance from './SREInstance';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';

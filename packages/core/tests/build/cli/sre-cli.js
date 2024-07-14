@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 process.env.LOG_LEVEL = 'none';
 
-import { AgentRequest, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../dist/index.dev.js';
+import { AgentRequest, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../../dist/index.dev.js';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -32,8 +32,10 @@ async function main() {
         const data = await sre.AgentData.getAgentData('test', '1.0');
         //console.log(data);
         //const request = new AgentRequest({ method: 'POST', path: '/api/say', body: { message: 'Hello World' } });
-        const request = new AgentRequest(process.argv);
-        const result = await sre.runAgent('test', { data, agentVersion: '1.0' }, request);
+        //const request = new AgentRequest(process.argv);
+        //const result = await sre.runAgent('test', data, request);
+
+        const result = await AgentProcess.load(data).run(process.argv);
 
         console.log('>>>>>>>>>>>>>>>>> Result \n', JSON.stringify(result, null, 2));
     } catch (error) {

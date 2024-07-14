@@ -1,3 +1,5 @@
+//FIXME: this file should be removed from services
+
 import { jsonrepair } from 'jsonrepair';
 
 import { createLogger } from '@sre/Core/Logger';

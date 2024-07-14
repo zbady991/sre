@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
-import SREInstance from '../001_Base/SREInstance';
+import SREInstance from './SREInstance';
 
 if (!SREInstance.ready()) {
     process.exit(1);

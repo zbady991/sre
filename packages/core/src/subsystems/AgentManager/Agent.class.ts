@@ -39,11 +39,13 @@ export default class Agent {
     public async = false;
     public jobID = '';
     public planInfo: any = {};
+
+    public agentRequest: AgentRequest;
     constructor(
         public id,
         agentData,
         public agentSettings: AgentSettings,
-        public agentRequest: AgentRequest | any //private req: express.Request,
+        agentRequest?: AgentRequest | any //private req: express.Request,
     ) {
         //this.agentRequest = new AgentRequest(req);
         const json = typeof agentData === 'string' ? JSON.parse(agentData) : agentData;
@@ -106,8 +108,19 @@ export default class Agent {
         }
 
         this.tagAsyncComponents();
-        const dateTime = getCurrentFormattedDate();
 
+        if (agentRequest) {
+            this.setRequest(agentRequest);
+        }
+
+        //this.settings = new AgentSettings(this.id);
+    }
+
+    public setRequest(agentRequest: AgentRequest | any) {
+        if (this.agentRequest) return;
+        this.agentRequest = agentRequest;
+        this.agentRequest = agentRequest;
+        const dateTime = getCurrentFormattedDate();
         this.sessionId = 'rt-' + (this.agentRequest.sessionID || dateTime + '.' + uid());
 
         const sessionTags = this?.agentRequest?.headers['x-session-tag'];
@@ -122,8 +135,6 @@ export default class Agent {
         } else {
             this.agentRuntime = AgentRuntime.dummy;
         }
-
-        //this.settings = new AgentSettings(this.id);
     }
 
     public kill() {
@@ -142,6 +153,7 @@ export default class Agent {
     }
 
     async process(endpointPath, input) {
+        //TODO: replace endpointPath + input params with a single agentRequest object. (This will require intensive regression testing)
         let result: any;
         let dbgSession: any = null;
         let sessionClosed = false;

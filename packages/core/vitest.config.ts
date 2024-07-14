@@ -8,9 +8,7 @@ export default defineConfig({
         environment: 'node',
         include: ['tests/**/*.test.ts'],
         exclude: ['node_modules'],
-
         coverage: {
-            //reporter: ['text', 'json', 'html'],
             reporter: ['text', 'text-summary', 'html'],
             reportsDirectory: './coverage',
             include: ['src/**/*.{ts,tsx}'],

@@ -22,7 +22,7 @@ export class CLIAgentDataConnector extends AbstractAgentDataConnector implements
         if (fs.existsSync(filePath)) {
             const data = fs.readFileSync(filePath, 'utf8');
 
-            return JSON.parse(data);
+            return { data: JSON.parse(data), version: version || '1.0' };
         }
     }
 

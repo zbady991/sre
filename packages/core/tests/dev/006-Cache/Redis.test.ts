@@ -4,7 +4,7 @@ import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCac
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { describe, expect, it } from 'vitest';
-import SREInstance from '../001_Base/SREInstance';
+import SREInstance from './SREInstance';
 
 //import SRE, { AgentRequest } from '../../dist';
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
