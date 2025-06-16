@@ -10,7 +10,7 @@ import {
     DEFAULT_TEAM_ID,
 } from '@smythos/sre';
 import { EventEmitter } from 'events';
-import { Chat } from '../Chat.class';
+import { Chat } from './Chat.class';
 import { SDKObject } from '../SDKObject.class';
 import { adaptModelParams } from './utils';
 import { uid } from '../utils/general.utils';
@@ -106,6 +106,31 @@ export type TLLMInstanceParams = {
     presencePenalty?: number;
 };
 
+/**
+ * Represents a LLM instance. These instances are created by the LLM Factory ({@link LLM}).
+ *
+ *
+ * @example
+ * ```typescript
+ * const llm = LLM.OpenAI({ model: 'gpt-4o' });
+ * //the above is equivalent to:
+ * const llm = new LLMInstance(TLLMProvider.OpenAI, { model: 'gpt-4o' });
+ *
+ * //then you can prompt the LLM to get the response in one shot
+ * const response = await llm.prompt('Hello, world!');
+ *
+ * //or as a stream
+ * const stream = await llm.prompt('Hello, world!').stream();
+ * stream.on('data', (chunk) => console.log(chunk));
+ * stream.on('end', () => console.log('Stream ended'));
+ * stream.on('error', (err) => console.error(err));
+ *
+ * //or as a chat (@see )
+ * const chat = llm.chat();
+ * chat.prompt('Hello, world!');
+ *
+ * ```
+ */
 export class LLMInstance extends SDKObject {
     private _llmRequester: ILLMConnectorRequest;
     public get modelSettings() {

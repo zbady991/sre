@@ -29,8 +29,17 @@ import { jsonrepair } from 'jsonrepair';
 const console = Logger('Pinecone VectorDB');
 
 export type PineconeConfig = {
-    pineconeApiKey: string;
+    /**
+     * The Pinecone API key
+     */
+    apiKey: string;
+    /**
+     * The Pinecone index name
+     */
     indexName: string;
+    /**
+     * The embeddings model to use
+     */
     embeddings: TEmbeddings;
 };
 export class PineconeVectorDB extends VectorDBConnector {
@@ -45,7 +54,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     constructor(protected _settings: PineconeConfig) {
         super(_settings);
-        if (!_settings.pineconeApiKey) {
+        if (!_settings.apiKey) {
             console.warn('Missing Pinecone API key : returning empty Pinecone connector');
             return;
         }
@@ -55,7 +64,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         }
 
         this.client = new Pinecone({
-            apiKey: _settings.pineconeApiKey,
+            apiKey: _settings.apiKey,
         });
         console.info('Pinecone client initialized');
         console.info('Pinecone index name:', _settings.indexName);

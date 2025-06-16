@@ -69,6 +69,10 @@ async function main() {
         console.log(chalk.green('[Tool Result]'), toolResult?.tool?.name);
         console.log(chalk.gray(JSON.stringify(toolResult?.result).substring(0, 100) + '...'));
     });
+
+    // streamResult.on(TLLMEvent.Usage, (usage) => {
+    //     console.log(chalk.blue('[Usage]'), usage);
+    // });
 }
 
 main();

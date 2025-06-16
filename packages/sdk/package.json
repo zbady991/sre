@@ -54,6 +54,7 @@
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:jsbundle": "cross-env BUILD=dev rollup -c",
         "build": "pnpm run gen:all && pnpm run build:jsbundle && pnpm run build:types",
+        "doc:gen": "typedoc",
         "lint": "echo 'Lint script not implemented'"
     },
     "dependencies": {
@@ -76,6 +77,8 @@
         "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-terser": "^7.0.2",
         "rollup-plugin-typescript-paths": "^1.5.0",
+        "typedoc": "^0.28.5",
+        "typedoc-github-theme": "^0.3.0",
         "typescript": "^5.4.5"
     }
 }

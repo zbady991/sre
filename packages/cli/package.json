@@ -1,6 +1,6 @@
 {
     "name": "@smythos/cli",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "description": "SmythOS SRE Command Line Interface",
     "keywords": [
         "smythos",
@@ -45,6 +45,7 @@
     },
     "homepage": "https://github.com/smythos/sre#readme",
     "scripts": {
+        "postinstall": "node dist/scripts/postinstall.js",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:bundle": "cross-env BUILD=dev rollup -c",
         "build": "pnpm run build:bundle && pnpm run build:types",
@@ -75,6 +76,7 @@
         }
     },
     "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.12.1",
         "@oclif/core": "^4.3.3",
         "@smythos/sdk": "workspace:*",
         "@smythos/sre": "workspace:*",

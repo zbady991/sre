@@ -10,6 +10,7 @@ import util from 'util';
 import runChat from './chat.cmd';
 import runSkill from './skill.cmd';
 import runPrompt from './prompt.cmd';
+import { startMcpServer } from './mcp.cmd';
 
 export default class AgentCmd extends Command {
     static override description = 'Run .smyth agent with various execution modes';
@@ -63,26 +64,11 @@ export default class AgentCmd extends Command {
             multiple: true,
         }),
 
-        endpoint: Flags.string({
-            aliases: ['ep'],
-            description: 'Execute Agent endpoint',
-            helpValue: '<endpoint> [options]',
-            helpGroup: 'endpoint',
-        }),
-
-        get: Flags.string({
-            description: 'GET parameters for endpoint execution (key="value" pairs)',
+        mcp: Flags.string({
+            description: 'Start MCP server',
+            helpValue: '[server-type] [port]',
+            helpGroup: 'mcp',
             multiple: true,
-            dependsOn: ['endpoint'],
-            exclusive: ['post'],
-            helpGroup: 'endpoint',
-        }),
-        post: Flags.string({
-            description: 'POST parameters for endpoint execution (key="value" pairs)',
-            multiple: true,
-            dependsOn: ['endpoint'],
-            exclusive: ['get'],
-            helpGroup: 'endpoint',
         }),
     };
 
@@ -105,6 +91,11 @@ export default class AgentCmd extends Command {
 
         if (flags.chat) {
             this.log(chalk.cyan('  • Chat mode selected'));
+        }
+
+        if (flags.mcp) {
+            this.log(chalk.cyan('  • MCP mode selected'));
+            this.log(chalk.gray(`    options: ${flags.mcp}`));
         }
 
         let parsedSkillInputs;
@@ -179,6 +170,7 @@ export default class AgentCmd extends Command {
             input: parsedSkillInputs || null,
             get: flags.get ? parseFlagsarams(flags.get) : null,
             post: flags.post ? parseFlagsarams(flags.post) : null,
+            mcp: flags.mcp ? parseFlagsarams(flags.mcp) : null,
             prompt,
             promptModel,
         };
@@ -194,6 +186,17 @@ export default class AgentCmd extends Command {
         }
         if (flags.prompt) {
             await runPrompt(args, allFlags);
+            return;
+        }
+        if (flags.mcp) {
+            const serverType = flags.mcp[0] || 'stdio';
+            let port = 0;
+            try {
+                port = parseInt(flags.mcp[1]);
+            } catch (e) {
+                port = 3388;
+            }
+            await startMcpServer(args.path, serverType, port);
             return;
         }
     }

@@ -5,7 +5,7 @@ export const SDKLog = {
         console.warn(chalk.gray('[WARN]', ...args));
     },
     error: (...args: any[]) => {
-        console.error('[ERR]', ...args);
+        console.error(chalk.red('[ERR]', ...args));
     },
     info: (...args: any[]) => {
         console.info('[INFO]', ...args);

@@ -1,10 +1,11 @@
 import { DocParser, TDocumentParseSettings, TParsedDocument } from '../DocParser.class';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import * as pdfjsLib from 'pdfjs-dist';
+// Use the legacy build for Node.js environments
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
-// Set up the worker for pdfjs-dist
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.mjs';
+// Set up the worker for pdfjs-dist (legacy build for Node.js)
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 
 export class PDFParser extends DocParser {
     constructor(source: string, params?: TDocumentParseSettings) {

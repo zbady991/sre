@@ -3,7 +3,7 @@ import { SRE } from '@smythos/sre';
 import { LLM, LLMInstance, Agent, Component } from '../src/index';
 import { expect, describe, it } from 'vitest';
 
-import { TLLMProvider } from '../src/types/SDKTypes';
+import { TLLMProvider } from '../src/types/ExportedSRETypes';
 
 declare module '../src/types/SDKTypes' {
     interface ILLMProviders {

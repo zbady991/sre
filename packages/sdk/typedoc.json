@@ -1,0 +1,10 @@
+{
+    "entryPoints": ["./src/index.ts"],
+    "entryPointStrategy": "expand",
+    "out": "./docs",
+    "exclude": ["**/node_modules/**", "**/tests/**"],
+    "customCss": "./assets/custom.css",
+    "theme": "typedoc-github-theme",
+    "plugin": ["typedoc-github-theme", "./scripts/typedoc-header-plugin.cjs"],
+    "lightHighlightTheme": "github-light"
+}

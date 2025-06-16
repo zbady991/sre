@@ -134,7 +134,7 @@ export class SmythRuntime {
      * TODO: Implement auto configuration based on present environment variables and auto-detected configs
      * @param config
      */
-    private autoConf(config: SREConfig) {
+    private autoConf(config: SREConfig = {}) {
         // default config for missing connectors
         const defaultConfig = JSON.parse(JSON.stringify(this.defaultConfig));
 
@@ -258,6 +258,7 @@ function findPackageRoot(startDir = process.cwd()) {
 }
 
 async function shutdown(reason) {
+    if (!SmythRuntime.Instance.started) return;
     if (shuttingDown) return;
     shuttingDown = true;
 

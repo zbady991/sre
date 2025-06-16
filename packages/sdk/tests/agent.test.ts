@@ -3,12 +3,17 @@ import { SRE } from '@smythos/sre';
 import { LLM, LLMInstance, Model, Agent, Component } from '../src/index';
 import { expect, describe, it } from 'vitest';
 
-import { TLLMProvider } from '../src/types/SDKTypes';
-
 declare module '../src/types/SDKTypes' {
     interface ILLMProviders {
         MyCustomProvider: 'MyCustomProvider';
         AnotherProvider: 'AnotherProvider';
+    }
+}
+
+declare module '../src/types/generated/VectorDB.types' {
+    interface IVectorDBProviders {
+        Milvus: 'Milvus';
+        Vectra: 'Vectra';
     }
 }
 
@@ -48,9 +53,9 @@ describe('SDK Agent Tests', () => {
         });
         skill.in({
             question: {
-                type: 'string',
+                type: 'Text',
                 description: 'The question to answer',
-                required: true,
+                optional: false,
             },
         });
 

@@ -7,7 +7,7 @@ import { run } from '@oclif/core';
 import chalk from 'chalk';
 import updateNotifier from 'update-notifier';
 import { version } from '../package.json';
-import { banner } from './ascii';
+import { smyth_banner } from './utils/ascii';
 
 // Check for updates
 const notifier = updateNotifier({

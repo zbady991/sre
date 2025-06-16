@@ -24,7 +24,6 @@ import { Await } from './Await.class';
 import { ForEach } from './ForEach.class';
 import { Code } from './Code.class';
 import { HuggingFace } from './HuggingFace.class';
-import { ZapierAction } from './ZapierAction.class';
 import { GPTPlugin } from './GPTPlugin.class';
 import { Classifier } from './Classifier.class';
 import { FSign } from './FSign.class';
@@ -45,7 +44,6 @@ import { RestyleControlNet } from './Image/RestyleControlNet.class';
 import { RestyleIPAdapter } from './Image/RestyleIPAdapter.class';
 import { Outpainting } from './Image/Outpainting.class';
 import { Inpainting } from './Image/Inpainting.class';
-import { ComputerUse } from './ComputerUse.class';
 import { MCPClient } from './MCPClient.class';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -80,7 +78,6 @@ const components = {
     ForEach: new ForEach(),
     Code: new Code(),
     HuggingFace: new HuggingFace(),
-    ZapierAction: new ZapierAction(),
     GPTPlugin: new GPTPlugin(),
     Classifier: new Classifier(),
     MultimodalLLM: new MultimodalLLM(),
@@ -100,7 +97,6 @@ const components = {
     RestyleIPAdapter: new RestyleIPAdapter(),
     Outpainting: new Outpainting(),
     Inpainting: new Inpainting(),
-    ComputerUse: new ComputerUse(),
     MCPClient: new MCPClient(),
 };
 

@@ -46,4 +46,8 @@ export type ChatOptions = {
     shared?: boolean;
 };
 
+export enum Scope {
+    AGENT = 'agent',
+    TEAM = 'team',
+}
 export type ComponentInput = { source?: any; component?: ComponentWrapper } & InputSettings;

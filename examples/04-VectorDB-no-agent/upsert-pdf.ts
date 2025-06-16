@@ -17,7 +17,7 @@ async function main() {
     const pinecone = VectorDB.Pinecone('test', {
         indexName: 'demo-vec',
 
-        pineconeApiKey: process.env.PINECONE_API_KEY,
+        apiKey: process.env.PINECONE_API_KEY,
         embeddings: Model.OpenAI('text-embedding-3-large'),
     });
 

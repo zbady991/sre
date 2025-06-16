@@ -1,33 +1,42 @@
-import { Agent, Doc, Model } from '@smythos/sdk';
+import { Agent, Doc, Model, Scope } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const pineconeNamespace = 'crypto-ns';
 const pineconeSettings = {
     indexName: 'demo-vec',
-    pineconeApiKey: process.env.PINECONE_API_KEY,
+    apiKey: process.env.PINECONE_API_KEY,
     embeddings: Model.OpenAI('text-embedding-3-large'),
 };
 
 async function createAgent() {
     const agent = new Agent({
+        //Important : When you work with services like VectorDB or storage,
+        // it's important to identify your agent with an ID if you want to benefit from data isolation
+        // this garantees that only your agent has access to the data it inserts or stores
+        // if you don't provide an ID, the data will be associated with the team ID
+        //You can also explicitly share the data with the agent team by adding Scope.TEAM to your vectorDB initialization
+        id: 'crypto-market-assistant',
         name: 'CryptoMarket Assistant',
-        behavior:
-            "You are a helpful assistant who provides information from trusted sources, you can only answer if you find relevant information in our knowledge base, you have to provide the document title, page number and extract of original text after every answer. If you can't find relevant information, tell you user that you cannot answer the question",
+        behavior: `You are a helpful assistant who provides information from trusted sources. 
+You can only answer if you find relevant information in our knowledge base, 
+you have to provide the following information after every answer : Document title, Page number, Extract of original text.
+If you use multiple sources, provide the above information for each source.
+If you can't find relevant information, tell you user that you cannot answer the question`,
         model: 'gpt-4o',
     });
 
     const skill = agent.addSkill({
         name: 'retrieve-info',
-        description: 'Use this skill to retrieve information from our knowledge base. You need to pass the exact user question as a string',
+        description: 'Use this skill to retrieve information from our knowledge base.',
         process: async ({ question }) => {
-            const pinecone = agent.vectorDB.Pinecone(pineconeNamespace, pineconeSettings);
+            //Initialize the vectorDB connector with the agent scope (default)
+            //we can explicitly set the scope to Scope.TEAM to share the data with the agent team
+            const pinecone = agent.vectorDB.Pinecone(pineconeNamespace, pineconeSettings /* ,Scope.TEAM */);
 
             const searchResult = await pinecone.search(question, { topK: 10 });
 
-            return `Below is the retrieved information from our knowledge base, use it to answer the question and provide the document title, page number and extract of original text after every answer: \n\n${JSON.stringify(
-                searchResult
-            )}`;
+            return `Retrieved information : \n\n${JSON.stringify(searchResult)}`;
         },
     });
     skill.in({
@@ -40,10 +49,11 @@ async function createAgent() {
     return agent;
 }
 
+//This function
 async function indexDataForAgent(agent: Agent) {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const filePath = path.join(__dirname, '../files/bitcoin.pdf');
+    const filePath = path.join(__dirname, '../files/bitcoin.md');
 
     //when you initialize a vectorDB connector from agent scope, the inserted data will be restricted to the agent scope by default
     //other agents cannot access it.
@@ -54,7 +64,12 @@ async function indexDataForAgent(agent: Agent) {
 
     await pinecone.purge();
 
-    const parsedDoc = await Doc.pdf(filePath).parse();
+    const parsedDoc = await Doc.md(filePath, {
+        title: 'Bitcoin',
+        author: 'Satoshi Nakamoto',
+        date: '2009-01-03',
+        tags: ['bitcoin', 'crypto', 'blockchain'],
+    }).parse();
 
     await pinecone.insertDoc(parsedDoc.title, parsedDoc, { myEntry: 'My Metadata' });
 }

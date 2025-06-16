@@ -1,12 +1,12 @@
 import { AccessCandidate, AgentProcess, Conversation, DEFAULT_TEAM_ID, TLLMConnectorParams, TLLMEvent, TLLMProvider } from '@smythos/sre';
 import EventEmitter from 'events';
-import { Chat, prepareConversation } from './Chat.class';
+import { Chat, prepareConversation } from './LLM/Chat.class';
 import { Component } from './components/components.index';
 import { ComponentWrapper } from './components/ComponentWrapper.class';
 import { TSkillSettings } from './components/Skill';
 import { DummyAccountHelper } from './DummyAccount.helper';
 
-import { StorageInstance } from './Storage.class';
+import { StorageInstance } from './Storage/StorageInstance.class';
 import { TStorageProvider, TStorageProviderInstances } from './types/generated/Storage.types';
 import { uid } from './utils/general.utils';
 import { SDKObject } from './SDKObject.class';
@@ -15,10 +15,10 @@ import { SDKLog } from './utils/console.utils';
 import { HELP, showHelp } from './help';
 import { Team } from './Team.class';
 import { TVectorDBProvider, TVectorDBProviderInstances } from './types/generated/VectorDB.types';
-import { VectorDBInstance } from './VectorDB.class';
+import { VectorDBInstance } from './VectorDB/VectorDBInstance.class';
 import { TLLMInstanceFactory, TLLMProviderInstances } from './LLM/LLM.class';
 import { LLMInstance, TLLMInstanceParams } from './LLM/LLMInstance.class';
-import { AgentData, ChatOptions } from './types/SDKTypes';
+import { AgentData, ChatOptions, Scope } from './types/SDKTypes';
 
 const console = SDKLog;
 
@@ -166,6 +166,10 @@ export type TAgentSettings = {
  */
 export class Agent extends SDKObject {
     private _hasExplicitId: boolean = false;
+    private _warningDisplayed = {
+        storage: false,
+        vectorDB: false,
+    };
     private _data: AgentData & { version: string } = {
         version: '1.0.0', //schema version
         name: '',
@@ -176,6 +180,11 @@ export class Agent extends SDKObject {
         components: [],
         connections: [],
     };
+
+    /**
+     * The agent internal structure
+     * used for by internal operations to generate the agent data
+     */
     public structure = {
         components: [],
         connections: [],
@@ -189,6 +198,11 @@ export class Agent extends SDKObject {
         return this._team;
     }
 
+    /**
+     * The agent data : this is the equivalent of the .smyth file content.
+     *
+     * Used for by external operations to get the agent data
+     */
     public get data(): AgentData {
         //console.log(this.structure);
         const _dataClone = JSON.parse(JSON.stringify(this._data));
@@ -235,9 +249,9 @@ export class Agent extends SDKObject {
         //when creating a new agent, we make sure to create new unique id
         if (!this._data.id) {
             //console.warn('No id provided for the agent, generating a new one');
-            this._data.id = `${this._data.name ? this._data.name + '_' : ''}${uid()}`;
+            this._data.id = this._normalizeId(`${this._data.name ? this._data.name + '_' : ''}${uid()}`);
         } else {
-            if (!this.validateId(this._data.id)) {
+            if (!this._validateId(this._data.id)) {
                 throw new Error(`Invalid agent id: ${this._data.id}\nOnly alphanumeric, hyphens and underscores are allowed`);
             }
             this._hasExplicitId = true;
@@ -245,7 +259,7 @@ export class Agent extends SDKObject {
 
         //use default team id for the SDK
         if (!this._data.teamId) {
-            if (!this.validateId(this._data.id)) {
+            if (!this._validateId(this._data.id)) {
                 throw new Error(`Invalid agent id: ${this._data.id}\nOnly alphanumeric, hyphens and underscores are allowed`);
             }
             //console.warn('No team id provided for the agent, using default team id');
@@ -258,11 +272,13 @@ export class Agent extends SDKObject {
         DummyAccountHelper.addAgentToTeam(this._data.id, this._data.teamId);
     }
 
-    private validateId(id: string) {
+    private _validateId(id: string) {
         //only accept alphanumeric, hyphens and underscores
         return id.length > 0 && id.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(id);
     }
-
+    private _normalizeId(name: string) {
+        return name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    }
     /**
      * Import an agent from a file or configuration object.
      *
@@ -386,15 +402,21 @@ export class Agent extends SDKObject {
         if (!this._storageProviders) {
             this._storageProviders = {} as TStorageProviderInstances;
             for (const provider of Object.values(TStorageProvider)) {
-                this._storageProviders[provider] = (storageSettings?: any) =>
-                    new StorageInstance(provider as TStorageProvider, storageSettings, AccessCandidate.agent(this._data.id));
+                this._storageProviders[provider] = (storageSettings?: any, scope?: Scope | AccessCandidate) => {
+                    if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.storage) {
+                        this._warningDisplayed.storage = true;
+                        console.warn(
+                            `You are performing storage operations with an unidentified agent.\nThe data will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the data with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_STORAGE_ACCESS}`
+                        );
+                    }
+                    const candidate =
+                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
+
+                    return new StorageInstance(provider as TStorageProvider, storageSettings, candidate);
+                };
             }
         }
-        if (!this._hasExplicitId) {
-            console.warn(
-                `You are performing storage operations with an unidentified agent.\nAn ID is required if you want to persist data accross multiple sessions.\nLearn more about the storage access model here: ${HELP.SDK.AGENT_STORAGE_ACCESS}`
-            );
-        }
+
         return this._storageProviders;
     }
 
@@ -412,10 +434,20 @@ export class Agent extends SDKObject {
         if (!this._vectorDBProviders) {
             this._vectorDBProviders = {} as TVectorDBProviderInstances;
             for (const provider of Object.values(TVectorDBProvider)) {
-                this._vectorDBProviders[provider] = (namespace: string, vectorDBSettings?: any) =>
-                    new VectorDBInstance(provider as TVectorDBProvider, { ...vectorDBSettings, namespace }, AccessCandidate.agent(this._data.id));
+                this._vectorDBProviders[provider] = (namespace: string, vectorDBSettings?: any, scope?: Scope | AccessCandidate) => {
+                    if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.vectorDB) {
+                        this._warningDisplayed.vectorDB = true;
+                        console.warn(
+                            `You are performing vectorDB operations with an unidentified agent.\nThe vectors will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the vectors with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_VECTORDB_ACCESS}`
+                        );
+                    }
+                    const candidate =
+                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
+                    return new VectorDBInstance(provider as TVectorDBProvider, { ...vectorDBSettings, namespace }, candidate);
+                };
             }
         }
+
         return this._vectorDBProviders;
     }
 

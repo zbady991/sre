@@ -1,4 +1,8 @@
 export type TDocumentParseSettings = {
+    title?: string;
+    author?: string;
+    date?: string;
+    tags?: string[];
     [key: string]: any;
 };
 

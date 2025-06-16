@@ -3,7 +3,8 @@
 import { LocalStorageConfig } from '@smythos/sre';
 import { S3Config } from '@smythos/sre';
 import { AccessCandidate } from '@smythos/sre';
-import { StorageInstance } from '../../Storage.class';
+import { StorageInstance } from '../../Storage/StorageInstance.class';
+import { Scope } from '../SDKTypes';
 
 // Define storage provider settings mapping
 export type TStorageProviderSettings = {
@@ -32,5 +33,8 @@ export const TStorageProvider: Record<TBuiltinStorageProvider, TBuiltinStoragePr
 export type TStorageSettingsFor<T extends keyof TStorageProviderSettings> = TStorageProviderSettings[T];
 
 export type TStorageProviderInstances = {
-    [K in TStorageProvider]: (settings?: K extends keyof TStorageProviderSettings ? TStorageSettingsFor<K> : any, candidate?: AccessCandidate) => StorageInstance;
+    [K in TStorageProvider]: (
+        settings?: K extends keyof TStorageProviderSettings ? TStorageSettingsFor<K> : any,
+        scope?: Scope | AccessCandidate
+    ) => StorageInstance;
 };

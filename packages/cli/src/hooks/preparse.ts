@@ -16,6 +16,15 @@ const hook: Hook.Preparse = async function (opts) {
             argv.splice(chatFlagIndex + 1, 0, 'DEFAULT_MODEL');
         }
     }
+
+    const mcpFlagIndex = argv.findIndex((arg) => arg === '--mcp');
+    if (mcpFlagIndex !== -1) {
+        const nextArg = argv[mcpFlagIndex + 1];
+        if (nextArg === undefined || nextArg.startsWith('-')) {
+            argv.splice(mcpFlagIndex + 1, 0, 'stdio');
+        }
+    }
+
     return argv;
 };
 

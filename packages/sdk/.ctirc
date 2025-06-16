@@ -24,7 +24,6 @@
                 "**/*.test.ts",
                 "**/*.spec.ts",
                 "src/components/generated/**/*",
-                "src/types/generated/**/*",
                 "src/utils/console.utils.ts",
                 "src/utils/general.utils.ts",
                 "**/*.deprecated",

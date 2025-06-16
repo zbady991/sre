@@ -8,12 +8,13 @@ export const HELP = {
     },
     SDK: {
         AGENT_STORAGE_ACCESS: '',
+        AGENT_VECTORDB_ACCESS: '',
         CHAT_PERSISTENCE: '',
     },
 };
 
-export function showHelp(url: string) {
+export function showHelp(url: string, message: string = 'Learn more:') {
     if (!url) return;
 
-    console.log('Learn more ', url);
+    console.log(`${message} ${url}\n`);
 }

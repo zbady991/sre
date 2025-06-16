@@ -42,6 +42,16 @@ export type TLLMProviderInstances = {
     [key in TLLMProvider]: TLLMInstanceFactory;
 };
 
+/**
+ * LLM instance factory functions for each LLM provider.
+ *
+ * @example
+ * ```typescript
+ * const llm = LLM.OpenAI({ model: 'gpt-4o' });
+ * const response = await llm.prompt('Hello, world!');
+ * ```
+ * @namespace LLM
+ */
 const LLM: TLLMProviderInstances = {} as TLLMProviderInstances;
 for (const provider of Object.keys(TLLMProvider)) {
     LLM[provider] = ((modelIdOrParams: string | TLLMInstanceParams, modelParams?: TLLMInstanceParams): LLMInstance => {
@@ -54,5 +64,4 @@ for (const provider of Object.keys(TLLMProvider)) {
         }
     }) as TLLMInstanceFactory;
 }
-
 export { LLM };

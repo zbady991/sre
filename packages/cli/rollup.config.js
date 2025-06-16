@@ -19,10 +19,11 @@ const config = {
     input: {
         index: 'src/index.ts',
         'commands/agent': 'src/commands/agent/agent.index.ts',
-        'commands/create': 'src/commands/create.ts',
+        'commands/create': 'src/commands/create/create.index.ts',
         'commands/update': 'src/commands/update.ts',
         'hooks/preparse': 'src/hooks/preparse.ts',
         help: 'src/help.ts',
+        'scripts/postinstall': 'src/scripts/postinstall.ts',
     },
     output: {
         dir: 'dist',

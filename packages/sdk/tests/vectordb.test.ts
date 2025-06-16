@@ -19,7 +19,7 @@ describe('SDK VectorDB Tests', () => {
         const pinecone = VectorDB.Pinecone('test', {
             indexName: 'demo-vec',
             openaiApiKey: '',
-            pineconeApiKey: '',
+            apiKey: '',
             isCustomStorageInstance: false,
             openaiModel: 'text-embedding-3-large',
         });
