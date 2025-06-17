@@ -332,7 +332,7 @@ This project is licensed under the [MIT License](LICENSE).
 ## What's Next?
 
 -   We will release an open source visual agent IDE later this year.
--   Support us at [Smythos](https://smythos.com)
+-   Support us at [SmythOS](https://smythos.com)
 -   Join our [community](https://discord.gg/smythos) to stay updated on new features, connectors, and capabilities.
 
 ---
