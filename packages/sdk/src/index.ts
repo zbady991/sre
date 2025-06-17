@@ -1,5 +1,8 @@
 //!!! This is a generated file, do not edit it directly !!!//
 
+/**
+ * @module API Reference
+ */
 export { version } from '../package.json';
 
 

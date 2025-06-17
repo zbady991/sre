@@ -8,7 +8,6 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
-
 // Note: LLMHelper renamed to LLMInference
 class LLMInference {
     static async getInstance(model: string) {
@@ -77,9 +76,8 @@ export class DataSourceLookup extends Component {
                 // only show user-level metadata
                 results = results.map((result) => ({
                     content: result.content,
-                    metadata: this.parseMetadata(
-                        result.metadata?.user || result.metadata?.metadata, //* legacy user-specific metadata key [result.metadata?.metadata]
-                    ),
+                    //* legacy user-specific metadata key [result.metadata?.metadata]),
+                    metadata: this.parseMetadata(result.metadata || result.metadata?.metadata),
                 }));
             } else {
                 results = results.map((result) => result.content);

@@ -12,7 +12,7 @@ import { smyth_banner } from './utils/ascii';
 // Check for updates
 const notifier = updateNotifier({
     pkg: { name: '@smythos/cli', version },
-    updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily
+    updateCheckInterval: 1000 * 60 * 5, // Check every 5 minutes (for testing)
     shouldNotifyInNpmScript: false,
 });
 

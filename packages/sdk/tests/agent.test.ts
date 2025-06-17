@@ -2,29 +2,14 @@
 import { SRE } from '@smythos/sre';
 import { LLM, LLMInstance, Model, Agent, Component } from '../src/index';
 import { expect, describe, it } from 'vitest';
-
-declare module '../src/types/SDKTypes' {
-    interface ILLMProviders {
-        MyCustomProvider: 'MyCustomProvider';
-        AnotherProvider: 'AnotherProvider';
-    }
-}
-
-declare module '../src/types/generated/VectorDB.types' {
-    interface IVectorDBProviders {
-        Milvus: 'Milvus';
-        Vectra: 'Vectra';
-    }
-}
-
-SRE.init({
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-});
+// SRE.init({
+//     Vault: {
+//         Connector: 'JSONFileVault',
+//         Settings: {
+//             file: './tests/data/vault.json',
+//         },
+//     },
+// });
 
 describe('SDK Agent Tests', () => {
     it('imported agent', async () => {

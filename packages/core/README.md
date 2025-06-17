@@ -1,114 +1,134 @@
-# Smyth Runtime Code Standards & Best Practices
+# Smyth Runtime Environment (SRE) Core
 
-> **!!! IMPORTANT !!! This is a work in progress code, many structure may change or get removed**
+This package contains the **Smyth Runtime Environment (SRE)**, the kernel of the SmythOS agent operating system. It is responsible for low-level agent orchestration, secure resource management, and providing the foundational services upon which all higher-level agent functionalities are built.
 
-## Folder Structure
+This document provides a technical deep-dive into the SRE's architecture. For building applications and agents on top of SmythOS, please refer to the developer-friendly **[@smythos/sdk](../sdk)** package.
 
-- **/IO**: Input/Output services. This folder contains classes that perform input/output operations to external resources such as Storage, Database, VectorDB, network, etc.
-    - **/IO/\*/connector**: This subfolder contains connectors for different I/O services. For example, /IO/Storage/connectors contains classes that implement storage interfaces for specific storage systems like S3, local drive, etc.
-- **/AM**: Agent Management services. This folder contains classes that handle agent data, settings, and runtime.
-- **/MM**: Memory Management services. This folder contains memory management tools and classes (RuntimeContext, LLMContext, Cache).
-- **/Components**: Smyth OS Agents Components.
-- **/utils**: This folder contains utility functions. Functions in this folder should not depend on other packages of the project outside of /utils/\*. These functions are reusable throughout the code.
-- **/helpers**: This folder contains general helper classes/objects/structures. Unlike utils, helpers export an object that exposes a collection of functions specific to a given task.
-- **/types**: This folder contains SmythOS-specific type declarations.
+---
 
-## Naming Standards
+## 🏗️ Core Architecture
 
-### Code Roles
+SRE is designed with a philosophy inspired by operating system kernels, establishing a clear separation between the core runtime and the pluggable **Connectors** that interface with external services and infrastructure.
 
-- **Service**: A service is a top-level subsystem in SmythOS. We have three main service categories: Agent Management, Memory Management, and Input/Output. Files implementing a service should have a `.service.ts` extension.
-- **Connector/Manager**: These are classes that implement a specific service connector or manage a specific resource. They typically take a `.class.ts` extension as they are implemented as classes.
-- **Utility**: A utility file is a collection of reusable general-purpose functions. Files implementing these functions should have a `.utils.ts` extension.
-- **Helper**: A helper is an object that exposes a collection of reusable functions dedicated to a specific task. Helpers can reuse utilities, but utilities should not reuse helpers. Helpers should not be "aware" of SmythOS context (e.g an ACL helper provides functions to check access rights, but it does not "know" that some smyth access right is higher than another, this specificity should be implemented elsewhere)
-- **Handler**: Implements event handlers for a specific task.
+### The SRE Lifecycle & Initialization
 
-### File Naming
+The SRE is a singleton that gets initialized via the `SRE.init()` method. This critical step bootstraps the entire environment based on the provided configuration. The `sre.ready()` method then ensures all configured connectors are initialized and operational.
 
-Use the following extensions:
-
-- `.class.ts` for classes
-- `.service.ts` for services
-- `.utils.ts` for utilities
-- `.helper.ts` for helpers
-- `.handler.ts` for handlers
-- `.mw.ts` for middlewares
-
-### Declaration Naming
-
-This section describes the code declaration naming standards:
-
-- **Constants**: Constants should use uppercase names with underscores (e.g., `MAX_RETRIES`, `API_ENDPOINT`).
-- **Enums and Types**: Should start with `T` (e.g., `TAccessLevel`, `TRole`).
-- **Interfaces**: Should start with `I` (e.g., `IStorageConnector`).
-- **Classes**: Do not have a specific prefix character but should use CamelCase.
-
-All structure names, except constants, should use CamelCase. When a prefix character is used, it should be a capital letter. For example, if `P` is a prefix, the name would be `PCamelCase`.
-
-# Smyth Runtime Environment
-
-## Installation
-
-```bash
-npm install smyth-runtime
-```
-
-## Usage
-
-### Core Runtime
+An SRE initialization looks like this:
 
 ```typescript
-import { SRE } from 'smyth-runtime';
+import { SRE } from '@smythos/sre';
 
+// 1. SRE.init() loads the configuration for each subsystem
 const sre = SRE.init({
-    // your configuration
-});
-```
-
-### SDK Components
-
-To avoid naming conflicts with internal classes, SDK components are available through the `SDK` namespace:
-
-```typescript
-import { SRE, SDK } from 'smyth-runtime';
-
-// Initialize runtime
-const sre = SRE.init({
-    CLI: { Connector: 'CLI' },
     Vault: { Connector: 'JSONFileVault', Settings: { file: 'vault.json' } },
     Cache: { Connector: 'RAM' },
     Storage: { Connector: 'Local' },
-    AgentData: { Connector: 'CLIAgentDataConnector' },
-    Account: { Connector: 'DummyAccount', Settings: {} },
     Log: { Connector: 'ConsoleLog' },
 });
 
+// 2. sre.ready() asynchronously initializes all configured connectors
 await sre.ready();
 
-// Use SDK components
-const llm = new SDK.LLM('OpenAI', { model: 'gpt-4o' });
-const agent = new SDK.Agent({
-    name: 'MyAgent',
-    model: 'gpt-4o',
-    behavior: 'You are a helpful assistant',
-});
-
-// Stream LLM response
-const eventEmitter = await llm.prompt('What is the capital of France?').stream();
-eventEmitter.on('content', (content) => {
-    console.log(content);
-});
-
-// Use Agent
-const response = await agent.prompt('Hello!');
-console.log(response);
+console.log('SRE is operational.');
 ```
 
-### Why the SDK Namespace?
+### 🛡️ Security Model: The Candidate & ACL System
 
-The SDK namespace (`SDK.Agent`, `SDK.LLM`) prevents naming conflicts with internal runtime classes that have the same names. This ensures:
+Security is a foundational, non-negotiable aspect of SRE. Every operation that accesses a resource is governed by the **Candidate/ACL system**. An **Access Candidate** is an object representing the entity (e.g., an agent, a user, an internal process) requesting access.
 
-- ✅ **No conflicts** - Your code works regardless of internal changes
-- ✅ **Clear separation** - SDK vs runtime components are distinct
-- ✅ **Single bundle** - No sourcemap conflicts or module resolution issues
-- ✅ **Better performance** - One optimized bundle instead of multiple
+Connectors use the candidate to scope and isolate resources, preventing data leakage between tenants.
+
+```typescript
+// Internally, when an agent requests a resource, this happens:
+
+// 1. An Access Candidate is created for the specific agent
+const candidate = AccessCandidate.agent(agentId);
+
+// 2. A handle to the underlying storage connector is retrieved
+const storageConnector = ConnectorService.getStorageConnector();
+
+// 3. The connector is scoped to the candidate's context
+// The resulting `storage` object is now a sandboxed view for that agent
+const storage = storageConnector.user(candidate);
+
+// 4. This write operation is now isolated. Another agent writing to 'data.json'
+// will write to a completely different, isolated location.
+await storage.write('data.json', content);
+```
+
+This design ensures that multi-tenancy and security are enforced at the lowest level of the runtime.
+
+### Subsystem Deep Dive
+
+SRE's functionality is partitioned into several discrete subsystems.
+
+#### 🤖 Agent Manager
+
+The heart of agent execution. It manages the entire agent lifecycle (start, stop, pause), monitors performance, and orchestrates the complex workflows defined within an agent's components.
+
+#### 💾 Memory Manager
+
+Provides intelligent state and context management for agents. It includes:
+
+-   **Cache Service**: A multi-tiered caching system (RAM, Redis) for fast data retrieval.
+-   **Runtime Context**: Manages an agent's state during execution.
+-   **LLM Context**: Manages conversation history and context windows for LLMs.
+
+#### 🛡️ Security Manager
+
+Handles all security-related primitives.
+
+-   **Vault Service**: Provides a secure connector-based interface for storing and retrieving secrets (e.g., from HashiCorp Vault, AWS Secrets Manager, or a local JSON file).
+-   **Account Management**: Manages identity and authentication.
+-   **Access Control**: Implements the granular Candidate/ACL permission system.
+
+#### 📥 IO Subsystem
+
+The gateway to the outside world. It provides a set of unified connector interfaces for all input/output operations.
+
+| Service      | Purpose                    | Example Connectors   |
+| ------------ | -------------------------- | -------------------- |
+| **Storage**  | File & data persistence    | `Local`, `S3`        |
+| **VectorDB** | Vector storage & retrieval | `Pinecone`, `Chroma` |
+| **Log**      | Activity & debug logging   | `Console`            |
+| **NKV**      | Key-value storage          | `Redis`, `RAM`       |
+
+#### 🧠 LLM Manager
+
+A powerful abstraction layer for over 8 different LLM providers. It handles API variations between providers and offers features like smart inference, response caching, and unified usage tracking.
+
+---
+
+<details>
+<summary>💻 Code Standards & Best Practices</summary>
+
+### Folder Structure
+
+-   **/subsystems**: Contains the core service definitions and connector interfaces for all major subsystems (IO, AgentManager, MemoryManager, etc.).
+-   **/Components**: SmythOS Agent Components.
+-   **/utils**: Contains utility functions. Functions in this folder should not depend on other packages of the project outside of /utils/\*. These functions are reusable throughout the code.
+-   **/helpers**: Contains general helper classes/objects/structures. Unlike utils, helpers export an object that exposes a collection of functions specific to a given task.
+-   **/types**: This folder contains SmythOS-specific type declarations.
+
+### Naming Standards
+
+#### File Naming
+
+Use the following extensions for specific code roles to maintain consistency across the codebase:
+
+-   `.service.ts` for top-level services
+-   `.class.ts` for classes and connectors
+-   `.utils.ts` for utility collections
+-   `.helper.ts` for task-specific helpers
+-   `.handler.ts` for event handlers
+-   `.mw.ts` for middlewares
+
+#### Declaration Naming
+
+-   **Constants**: Uppercase with underscores (e.g., `MAX_RETRIES`).
+-   **Enums and Types**: Start with `T` (e.g., `TAccessLevel`).
+-   **Interfaces**: Start with `I` (e.g., `IStorageConnector`).
+-   **Classes**: Use PascalCase without a prefix (e.g., `MyAgent`).
+
+</details>

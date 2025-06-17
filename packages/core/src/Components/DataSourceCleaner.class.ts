@@ -8,7 +8,6 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 import { DataSourceIndexer } from './DataSourceIndexer.class';
 
-
 export class DataSourceCleaner extends Component {
     protected configSchema = Joi.object({
         namespaceId: Joi.string().max(50).allow('').label('namespace'),

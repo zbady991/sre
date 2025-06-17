@@ -21,6 +21,7 @@
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:jsbundle": "cross-env rollup -c",
         "build": "pnpm run build:jsbundle && pnpm run build:types",
+        "doc:gen": "typedoc",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "knip": "knip"
     },
@@ -49,6 +50,8 @@
         "rollup-plugin-typescript-paths": "^1.5.0",
         "rollup-plugin-typescript2": "^0.36.0",
         "source-map-support": "^0.5.21",
+        "typedoc": "^0.28.5",
+        "typedoc-github-theme": "^0.3.0",
         "typescript": "^5.4.5"
     },
     "dependencies": {
@@ -66,6 +69,7 @@
         "@pinecone-database/pinecone": "^3.0.0",
         "@runware/sdk-js": "^1.1.36",
         "@smithy/smithy-client": "^4.4.3",
+        "@zilliz/milvus2-sdk-node": "^2.5.11",
         "acorn": "^8.14.1",
         "axios": "^1.7.2",
         "chokidar": "^4.0.3",

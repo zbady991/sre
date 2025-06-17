@@ -3,28 +3,12 @@ import { SRE } from '@smythos/sre';
 import { LLM, LLMInstance, Agent, StorageInstance, Component, Storage } from '../src/index';
 import { expect, describe, it } from 'vitest';
 
-declare module '../src/types/SDKTypes' {
-    interface ILLMProviders {
-        MyCustomProvider: 'MyCustomProvider';
-        AnotherProvider: 'AnotherProvider';
-    }
-}
-
-declare module '../src/types/generated/Storage.types' {
-    interface IStorageProviders {
-        MyCustomProvider: 'MyCustomProvider';
-        AnotherProvider: 'AnotherProvider';
-    }
-}
-
-SRE.init({
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-});
+// declare module '../src/types/generated/Storage.types' {
+//     interface IStorageProviders {
+//         MyCustomProvider: 'MyCustomProvider';
+//         AnotherProvider: 'AnotherProvider';
+//     }
+// }
 
 describe('SDK Storage Tests', () => {
     it('Standalone Write file', async () => {
@@ -35,6 +19,7 @@ describe('SDK Storage Tests', () => {
         const result = await localStorage.write('test.txt', 'Hello, world!');
 
         console.log('done');
+        expect(result).toBeDefined();
     });
 
     it('Agent Writes file', async () => {
@@ -49,5 +34,6 @@ describe('SDK Storage Tests', () => {
         const result = await localStorage.write('test2', 'Test Agent');
 
         console.log('done');
+        expect(result).toBeDefined();
     });
 });

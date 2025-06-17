@@ -1,0 +1,16 @@
+{
+    "out": "../../docs/core/",
+    "exclude": ["**/node_modules/**", "**/tests/**"],
+    "navigationLinks": {
+        "Core": "#",
+        "SDK": "#",
+        "CLI": "#",
+        "GitHub": "https://github.com/smythos/sre"
+    },
+    "plugin": ["./scripts/typedoc-theme-plugin.cjs"],
+    "customCss": "./assets/custom.css",
+
+    "projectDocuments": ["./docs/**/*.md"],
+    "name": "SmythOS Core",
+    "readme": "./README.md"
+}

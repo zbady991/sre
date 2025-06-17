@@ -11,7 +11,7 @@
             "useBanner": false,
             "useTimestamp": false,
             "quote": "'",
-            "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nexport { version } from '../package.json';",
+            "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\n/**\n * @module API Reference\n */\nexport { version } from '../package.json';",
             "fileExt": "none",
             "overwrite": false,
             "backup": true,

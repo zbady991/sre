@@ -1,10 +1,16 @@
 {
     "entryPoints": ["./src/index.ts"],
     "entryPointStrategy": "expand",
-    "out": "./docs",
+    "out": "../../docs/sdk/",
     "exclude": ["**/node_modules/**", "**/tests/**"],
     "customCss": "./assets/custom.css",
-    "theme": "typedoc-github-theme",
-    "plugin": ["typedoc-github-theme", "./scripts/typedoc-header-plugin.cjs"],
-    "lightHighlightTheme": "github-light"
+    "navigationLinks": {
+        "Core": "#",
+        "SDK": "#",
+        "CLI": "#",
+        "GitHub": "https://github.com/smythos/sre"
+    },
+    "plugin": ["./scripts/typedoc-header-plugin.cjs"],
+
+    "projectDocuments": ["./docs/**/*.md"]
 }
