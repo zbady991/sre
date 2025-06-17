@@ -2,13 +2,12 @@
     "out": "../../docs/core/",
     "exclude": ["**/node_modules/**", "**/tests/**"],
     "navigationLinks": {
-        "Core": "#",
-        "SDK": "#",
-        "CLI": "#",
+        "Core": "https://smythos.github.io/sre/core/",
+        "SDK": "https://smythos.github.io/sre/sdk/",
         "GitHub": "https://github.com/smythos/sre"
     },
     "plugin": ["./scripts/typedoc-theme-plugin.cjs"],
-    "customCss": "./assets/custom.css",
+    "customCss": "./docs/assets/custom.css",
 
     "projectDocuments": ["./docs/**/*.md"],
     "name": "SmythOS Core",

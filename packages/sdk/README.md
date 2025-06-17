@@ -1,5 +1,3 @@
-# SmythOS SDK
-
 Welcome to the SmythOS SDK! This powerful toolkit allows you to build, manage, and deploy sophisticated AI agents with ease. Whether you're creating a simple chatbot or a complex multi-agent system, the SmythOS SDK provides the tools you need to bring your ideas to life.
 
 The SDK is a lightweight wrapper around the Smyth Runtime Environment. It lets you create and run agents with minimal setup while still allowing advanced customisation when needed.

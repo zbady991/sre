@@ -1,16 +1,17 @@
 {
-    "entryPoints": ["./src/index.ts"],
-    "entryPointStrategy": "expand",
     "out": "../../docs/sdk/",
     "exclude": ["**/node_modules/**", "**/tests/**"],
-    "customCss": "./assets/custom.css",
     "navigationLinks": {
-        "Core": "#",
-        "SDK": "#",
-        "CLI": "#",
+        "Core": "https://smythos.github.io/sre/core/",
+        "SDK": "https://smythos.github.io/sre/sdk/",
         "GitHub": "https://github.com/smythos/sre"
     },
     "plugin": ["./scripts/typedoc-header-plugin.cjs"],
+    "customCss": "./docs/assets/custom.css",
 
-    "projectDocuments": ["./docs/**/*.md"]
+    "projectDocuments": ["./docs/**/*.md"],
+    "name": "SmythOS SDK",
+
+    "entryPoints": ["./src/index.ts"],
+    "entryPointStrategy": "expand"
 }
