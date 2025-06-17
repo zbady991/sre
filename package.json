@@ -1,6 +1,6 @@
 {
     "name": "sre",
-    "version": "0.0.1",
+    "version": "0.0.3",
     "description": "",
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
@@ -8,7 +8,6 @@
     "type": "module",
     "scripts": {
         "build": "pnpm -r run build && node scripts/success-banner.js",
-        "dev": "pnpm -r run dev",
         "lint": "pnpm -r run lint",
         "test": "vitest",
         "test:run": "vitest run",
