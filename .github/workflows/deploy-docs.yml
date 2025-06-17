@@ -1,0 +1,25 @@
+name: Deploy Docs to GitHub Pages
+run-name: Deploy Docs to GitHub Pages
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags like v1.0, v2.3.4
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push to gh-pages
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          user_name: 'sre-docs'
+          user_email: 'sre-docs@users.noreply.github.com' 
