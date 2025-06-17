@@ -63,7 +63,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         console.info('Milvus client initialized');
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
-        if (!_settings.embeddings.params) _settings.embeddings.params = {};
+        if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
         if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);

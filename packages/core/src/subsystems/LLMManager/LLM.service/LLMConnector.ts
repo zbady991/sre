@@ -296,7 +296,8 @@ export abstract class LLMConnector extends Connector {
         //_params.model = (await modelProviderCandidate.getModelId(model)) || model;
 
         _params.baseURL = modelInfo?.baseURL;
-        if (!isStandardLLM) _params.modelInfo = modelInfo as TCustomLLMModel; //only if custom LLM ?
+        // if (!isStandardLLM) _params.modelInfo = modelInfo as TCustomLLMModel; //only if custom LLM ?
+        _params.modelInfo = modelInfo as TCustomLLMModel; // We need model info for both standard and custom LLMs
 
         if (_params.maxTokens) {
             _params.maxTokens = await modelProviderCandidate.adjustMaxCompletionTokens(model, _params.maxTokens, _params?.isUserKey as boolean);

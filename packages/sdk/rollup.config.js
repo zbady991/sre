@@ -1,12 +1,9 @@
 import json from '@rollup/plugin-json';
-import { createFilter } from '@rollup/pluginutils';
+import { execSync } from 'child_process';
 import path from 'path';
 import esbuild from 'rollup-plugin-esbuild';
 import sourcemaps from 'rollup-plugin-sourcemaps';
-import { terser } from 'rollup-plugin-terser';
 import { typescriptPaths } from 'rollup-plugin-typescript-paths';
-import { execSync } from 'child_process';
-import typescript from 'rollup-plugin-typescript2';
 const isProduction = process.env.BUILD === 'prod';
 
 // Function to automatically mark all non-local imports as external

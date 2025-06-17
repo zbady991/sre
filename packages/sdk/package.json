@@ -55,17 +55,14 @@
         "build:jsbundle": "cross-env BUILD=dev rollup -c",
         "build": "pnpm run gen:all && pnpm run build:jsbundle && pnpm run build:types",
         "doc:gen": "typedoc",
-        "lint": "echo 'Lint script not implemented'"
+        "lint": "echo 'Lint script not implemented'",
+        "knip": "knip"
     },
     "dependencies": {
         "@smythos/sre": "workspace:*",
-        "canvas": "^3.1.0",
         "chalk": "^5.4.1",
-        "events": "^3.3.0",
         "mammoth": "^1.9.1",
-        "pdfjs-dist": "^4.0.379",
-        "source-map-support": "^0.5.21",
-        "yauzl": "^3.2.0"
+        "pdfjs-dist": "^4.0.379"
     },
     "devDependencies": {
         "@rollup/plugin-json": "^6.1.0",
@@ -73,6 +70,7 @@
         "cross-env": "^7.0.3",
         "ctix": "^2.7.1",
         "esbuild": "^0.25.0",
+        "knip": "^5.60.2",
         "rollup-plugin-esbuild": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-terser": "^7.0.2",

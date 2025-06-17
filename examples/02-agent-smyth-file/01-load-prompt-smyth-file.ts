@@ -1,5 +1,4 @@
 import { Agent, Model } from '@smythos/sdk';
-import { SRE } from '@smythos/sre';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
