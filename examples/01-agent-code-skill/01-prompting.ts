@@ -1,12 +1,5 @@
 import { Agent } from '@smythos/sdk';
 
-declare module '@smythos/sdk' {
-    interface IVectorDBProviders {
-        Milvus: 'Milvus';
-        Vectra: 'Vectra';
-    }
-}
-
 async function main() {
     const agent = new Agent({
         name: 'CryptoMarket Assistant',

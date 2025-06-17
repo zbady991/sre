@@ -14,6 +14,8 @@ export type TVectorDBProviderSettings = {
     RAMVec: RAMVectorDBConfig;
 };
 
+export type TAllVectorDBProviderSettings = TVectorDBProviderSettings & IVectorDBProviders;
+
 // #region [ Handle extendable VectorDB Providers ] ================================================
 // Base provider type derived from settings
 export type TBuiltinVectorDBProvider = keyof TVectorDBProviderSettings;
@@ -32,13 +34,10 @@ export const TVectorDBProvider: Record<TBuiltinVectorDBProvider, TBuiltinVectorD
 
 // #endregion
 
+
 // Generic type to get settings for a specific provider
-export type TVectorDBSettingsFor<T extends keyof TVectorDBProviderSettings> = TVectorDBProviderSettings[T];
+export type TVectorDBSettingsFor<T extends TVectorDBProvider> = TAllVectorDBProviderSettings[T];
 
 export type TVectorDBProviderInstances = {
-    [K in TVectorDBProvider]: (
-        namespace: string,
-        settings?: K extends keyof TVectorDBProviderSettings ? TVectorDBSettingsFor<K> : any,
-        scope?: Scope | AccessCandidate
-    ) => VectorDBInstance;
+    [K in TVectorDBProvider]: (namespace: string, settings?: TVectorDBSettingsFor<K>, scope?: Scope | AccessCandidate) => VectorDBInstance;
 };

@@ -2,6 +2,15 @@ import { Agent, Doc, Model, Scope } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// declare module '@smythos/sdk' {
+//     interface IVectorDBProviders {
+//         Vectra: {
+//             indexId: string;
+//             apiSecret: string;
+//         };
+//     }
+// }
+
 const pineconeNamespace = 'crypto-ns';
 const pineconeSettings = {
     indexName: 'demo-vec',
