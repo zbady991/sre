@@ -17,10 +17,8 @@ export default class AgentCmd extends Command {
 
     static override examples = [
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --chat',
-        '<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask --skill-input question="who are you"',
-        '<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask --skill-input question="who are you" context="testing"',
-        '<%= config.bin %> <%= command.id %> ./myagent.smyth --endpoint answer --get question="hello" context="testing"',
-        '<%= config.bin %> <%= command.id %> ./myagent.smyth --endpoint submit --post data="example" mode="test"',
+        '<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask question="who are you"',
+        '<%= config.bin %> <%= command.id %> ./myagent.smyth --mcp sse',
     ];
 
     static override usage = '<path> [options]';

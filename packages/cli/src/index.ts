@@ -9,20 +9,16 @@ import updateNotifier from 'update-notifier';
 import { version } from '../package.json';
 import { smyth_banner } from './utils/ascii';
 
-// Check for updates
-const notifier = updateNotifier({
-    pkg: { name: '@smythos/cli', version },
-    updateCheckInterval: 1000 * 60 * 5, // Check every 5 minutes (for testing)
-    shouldNotifyInNpmScript: false,
-});
-
 // Run the Oclif CLI with better error handling
 (async () => {
     try {
-        const stime = Date.now();
+        // Check for updates before running command (non-blocking)
+        const updateCheckPromise = Promise.resolve().then(() => checkForUpdates());
+
         await run(process.argv.slice(2), import.meta.url);
-        const etime = Date.now();
-        console.log(`Time taken: ${etime - stime}ms`);
+
+        // Ensure update notification is shown
+        await updateCheckPromise;
     } catch (error: any) {
         // Handle different types of errors gracefully
         if (error.oclif?.exit !== undefined) {
@@ -62,14 +58,29 @@ const notifier = updateNotifier({
     }
 })();
 
-// Show update notificationAdd commentMore actions
-notifier.notify({
-    isGlobal: true,
-    boxenOptions: {
-        padding: 1,
-        margin: 1,
-        textAlignment: 'center',
-        borderColor: 'yellow',
-        borderStyle: 'round',
-    },
-});
+function checkForUpdates() {
+    try {
+        // Check for updates (non-blocking notification)
+        const notifier = updateNotifier({
+            pkg: { name: '@smythos/cli', version },
+            updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily (production)
+            shouldNotifyInNpmScript: false,
+        });
+
+        // Only show notification if update is available
+        if (notifier.update) {
+            notifier.notify({
+                isGlobal: true,
+                boxenOptions: {
+                    padding: 1,
+                    margin: 1,
+                    textAlignment: 'center',
+                    borderColor: 'yellow',
+                    borderStyle: 'round',
+                },
+            });
+        }
+    } catch (error) {
+        // Silently fail - update checks shouldn't break CLI
+    }
+}

@@ -48,10 +48,12 @@
         "postinstall": "node dist/scripts/postinstall.js",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:bundle": "cross-env BUILD=dev rollup -c",
-        "build": "pnpm run build:bundle && pnpm run build:types",
+        "build": "pnpm run build:bundle && pnpm run build:types && pnpm run oclif:manifest",
         "dev": "rollup -c -w",
         "lint": "echo 'Lint script not implemented'",
-        "test": "echo 'Test script not implemented'"
+        "test": "echo 'Test script not implemented'",
+        "oclif:manifest": "oclif manifest",
+        "prepack": "pnpm run oclif:manifest"
     },
     "oclif": {
         "bin": "sre",
@@ -90,6 +92,7 @@
         "update-notifier": "^7.0.0"
     },
     "devDependencies": {
+        "@oclif/plugin-help": "^6.2.21",
         "@rollup/plugin-commonjs": "^28.0.3",
         "@rollup/plugin-json": "^6.1.0",
         "@rollup/plugin-node-resolve": "^15.3.1",
@@ -100,6 +103,7 @@
         "cross-env": "^7.0.3",
         "esbuild": "^0.25.0",
         "glob": "^11.0.3",
+        "oclif": "^4.19.0",
         "rollup-plugin-esbuild": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-terser": "^7.0.2",

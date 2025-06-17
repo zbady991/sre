@@ -1,0 +1,188 @@
+{
+  "commands": {
+    "agent": {
+      "aliases": [],
+      "args": {
+        "path": {
+          "description": "Path to the agent file (.smyth)",
+          "name": "path",
+          "required": true
+        }
+      },
+      "description": "Run .smyth agent with various execution modes",
+      "examples": [
+        "<%= config.bin %> <%= command.id %> ./myagent.smyth --chat",
+        "<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask question=\"who are you\"",
+        "<%= config.bin %> <%= command.id %> ./myagent.smyth --mcp sse"
+      ],
+      "flags": {
+        "help": {
+          "char": "h",
+          "description": "Show CLI help.",
+          "name": "help",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "chat": {
+          "char": "c",
+          "description": "Start chat interface",
+          "helpGroup": "chat",
+          "name": "chat",
+          "hasDynamicHelp": false,
+          "helpValue": "[model-name]",
+          "multiple": false,
+          "type": "option"
+        },
+        "models": {
+          "char": "M",
+          "description": "A list of models to use in a json file or directory of json files",
+          "helpGroup": "models",
+          "name": "models",
+          "hasDynamicHelp": false,
+          "helpValue": "<models> [options]",
+          "multiple": false,
+          "type": "option"
+        },
+        "skill": {
+          "char": "s",
+          "description": "Execute an Agent skill, you can pass input parameters as key=\"value\" pairs",
+          "helpGroup": "skill",
+          "name": "skill",
+          "hasDynamicHelp": false,
+          "helpValue": "<skill> [key1=\"value1\" ...]",
+          "multiple": true,
+          "type": "option"
+        },
+        "prompt": {
+          "char": "p",
+          "description": "Query agent with a prompt, by default it will use the agent model or default to gpt-4o, you can force a model by passing it as a second argument after the prompt",
+          "helpGroup": "prompt",
+          "helpLabel": "--prompt",
+          "name": "prompt",
+          "hasDynamicHelp": false,
+          "helpValue": "<prompt> [model]",
+          "multiple": true,
+          "type": "option"
+        },
+        "mcp": {
+          "description": "Start MCP server",
+          "helpGroup": "mcp",
+          "name": "mcp",
+          "hasDynamicHelp": false,
+          "helpValue": "[server-type] [port]",
+          "multiple": true,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "agent",
+      "pluginAlias": "@smythos/cli",
+      "pluginName": "@smythos/cli",
+      "pluginType": "core",
+      "strict": true,
+      "usage": "<path> [options]",
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "agent.js"
+      ]
+    },
+    "create": {
+      "aliases": [],
+      "args": {},
+      "description": "Create a new SRE project",
+      "examples": [
+        "<%= config.bin %> <%= command.id %>",
+        "<%= config.bin %> <%= command.id %> --help"
+      ],
+      "flags": {
+        "help": {
+          "char": "h",
+          "description": "Show CLI help.",
+          "name": "help",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "create",
+      "pluginAlias": "@smythos/cli",
+      "pluginName": "@smythos/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "create.js"
+      ]
+    },
+    "update": {
+      "aliases": [],
+      "args": {},
+      "description": "Check for and install updates",
+      "examples": [
+        "<%= config.bin %> <%= command.id %>",
+        "<%= config.bin %> <%= command.id %> --check",
+        "<%= config.bin %> <%= command.id %> --force"
+      ],
+      "flags": {
+        "help": {
+          "char": "h",
+          "description": "Show CLI help.",
+          "name": "help",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "check": {
+          "char": "c",
+          "description": "Only check for updates without installing",
+          "name": "check",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "force": {
+          "char": "f",
+          "description": "Force update check and installation",
+          "name": "force",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "package": {
+          "char": "p",
+          "description": "Specify package manager (npm, pnpm, yarn)",
+          "name": "package",
+          "default": "pnpm",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "npm",
+            "pnpm",
+            "yarn"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "update",
+      "pluginAlias": "@smythos/cli",
+      "pluginName": "@smythos/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "update.js"
+      ]
+    }
+  },
+  "version": "0.0.1"
+}
