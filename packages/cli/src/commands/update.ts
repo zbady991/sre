@@ -46,23 +46,18 @@ export default class Update extends Command {
         // Create update notifier instance
         const notifier = updateNotifier({
             pkg: { name: '@smythos/cli', version },
-            updateCheckInterval: flags.force ? 0 : 1000 * 60 * 60 * 24, // Force or daily
-            shouldNotifyInNpmScript: false,
+            updateCheckInterval: 0, // Always check for updates
         });
 
         const spinner = ora('Checking for updates...').start();
 
         try {
-            // Force check if requested
-            if (flags.force) {
-                await this.forceUpdateCheck(notifier);
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate check delay
+            // Check for updates
+            const update = await notifier.fetchInfo();
             spinner.stop();
 
-            if (notifier.update) {
-                const { latest, current, type } = notifier.update;
+            if (update.latest !== update.current) {
+                const { latest, current, type } = update;
 
                 this.log(chalk.green('✅ Update Available!'));
                 this.log('');
@@ -96,15 +91,8 @@ export default class Update extends Command {
     }
 
     private async forceUpdateCheck(notifier: any): Promise<void> {
-        // Clear cached update check
-        try {
-            const configstore = notifier.config;
-            if (configstore) {
-                configstore.clear();
-            }
-        } catch (error) {
-            // Ignore cache clear errors
-        }
+        // This method is no longer needed with the new approach
+        // but we'll keep it to avoid breaking changes if it's used elsewhere.
     }
 
     private async performUpdate(packageManager: string, latestVersion: string): Promise<void> {

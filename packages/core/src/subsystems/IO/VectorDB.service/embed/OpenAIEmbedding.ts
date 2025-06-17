@@ -28,7 +28,7 @@ export class OpenAIEmbeds extends BaseEmbedding {
     public canSpecifyDimensions = true;
 
     constructor(private settings?: Partial<TEmbeddings>) {
-        super({ maxConcurrency: 2, model: settings?.model ?? DEFAULT_MODEL, ...settings });
+        super({ model: settings?.model ?? DEFAULT_MODEL, ...settings });
 
         this.clientConfig = {
             //apiKey: fields?.credentials?.apiKey || process.env.OPENAI_API_KEY || '',

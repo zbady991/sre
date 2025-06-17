@@ -72,7 +72,8 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
-        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 1024;
+        if (!_settings.embeddings.params) _settings.embeddings.params = {};
+        if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }

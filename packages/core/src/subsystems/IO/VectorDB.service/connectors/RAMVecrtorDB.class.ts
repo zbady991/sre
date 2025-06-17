@@ -64,9 +64,9 @@ export class RAMVectorDB extends VectorDBConnector {
         this.accountConnector = ConnectorService.getAccountConnector();
 
         if (!_settings.embeddings) {
-            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large' };
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 400 } };
         }
-        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 1024;
+        if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }

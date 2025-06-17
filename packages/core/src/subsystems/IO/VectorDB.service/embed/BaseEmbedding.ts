@@ -6,13 +6,15 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 export type TEmbeddings = {
     provider: SupportedProviders;
     model: SupportedModels[SupportedProviders];
-    dimensions?: number;
-    timeout?: number;
-    chunkSize?: number;
-    stripNewLines?: boolean;
-    maxConcurrency?: number;
+
     credentials?: {
         apiKey: string;
+    };
+    params?: {
+        dimensions?: number;
+        timeout?: number;
+        chunkSize?: number;
+        stripNewLines?: boolean;
     };
 };
 
@@ -25,14 +27,13 @@ export abstract class BaseEmbedding {
     stripNewLines = true;
     dimensions?: number;
     timeout?: number;
-    maxConcurrency?: number;
 
     constructor(fields?: Partial<TEmbeddings>) {
         this.model = fields?.model ?? this.model;
-        this.chunkSize = fields?.chunkSize ?? this.chunkSize;
-        this.stripNewLines = fields?.stripNewLines ?? this.stripNewLines;
-        this.timeout = fields?.timeout;
-        this.dimensions = fields?.dimensions;
+        this.chunkSize = fields?.params?.chunkSize ?? this.chunkSize;
+        this.stripNewLines = fields?.params?.stripNewLines ?? this.stripNewLines;
+        this.timeout = fields?.params?.timeout;
+        this.dimensions = fields?.params?.dimensions;
     }
 
     /**

@@ -51,7 +51,7 @@ const config = {
         //     tsconfig: 'tsconfig.json',
         //     clean: true,
         // }),
-        terser(),
+        //terser(),
     ],
 };
 

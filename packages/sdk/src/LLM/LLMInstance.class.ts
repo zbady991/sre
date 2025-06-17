@@ -104,6 +104,11 @@ export type TLLMInstanceParams = {
     frequencyPenalty?: number;
     /** The presence penalty of the model */
     presencePenalty?: number;
+
+    /** The dimensions parameter for text embeddings models */
+    dimensions?: number;
+
+    [key: string]: any;
 };
 
 /**
