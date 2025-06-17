@@ -45,7 +45,7 @@
     "bugs": {
         "url": "https://github.com/smythos/sre/issues"
     },
-    "homepage": "https://github.com/smythos/sre#readme",
+    "homepage": "https://github.com/SmythOS/sre/tree/main/packages/sdk#readme",
     "scripts": {
         "gen:components": "node scripts/generate-components.js",
         "gen:types": "node scripts/generate-types.js",
