@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sre",
-    "version": "1.5.0",
+    "version": "1.5.2",
     "description": "Smyth Runtime Environment",
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
@@ -13,7 +13,10 @@
         }
     },
     "files": [
-        "dist"
+        "dist",
+        "src",
+        "README.md",
+        "CHANGELOG"
     ],
     "type": "module",
     "scripts": {
@@ -113,5 +116,14 @@
         "winston-transport": "^4.7.0",
         "xxhashjs": "^0.2.2",
         "zip-lib": "^1.0.5"
-    }
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/smythos/sre.git",
+        "directory": "packages/core"
+    },
+    "bugs": {
+        "url": "https://github.com/smythos/sre/issues"
+    },
+    "homepage": "https://github.com/smythos/sre/tree/main/packages/core#readme"
 }
