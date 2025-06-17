@@ -25,13 +25,13 @@ This approach makes your AI platform **easy to scale** and incredibly flexible. 
 
 **Key Benefits:**
 
--   🤖 **Agent-First Design**: Built specifically for AI agent workloads
--   🔧 **Developer-Friendly**: Simple SDK that scales from development to production
--   🧩 **Modular Architecture**: Extensible connector system for any infrastructure
--   ⚡ **Production-Ready**: Scalable, observable, and battle-tested
--   🔒 **Enterprise Security**: Built-in access control and secure credential management
+-   **Agent-First Design**: Built specifically for AI agent workloads
+-   **Developer-Friendly**: Simple SDK that scales from development to production
+-   **Modular Architecture**: Extensible connector system for any infrastructure
+-   **Production-Ready**: Scalable, observable, and battle-tested
+-   **Enterprise Security**: Built-in access control and secure credential management
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Method 1: Using the CLI (Recommended)
 
@@ -66,11 +66,11 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 
 **Features:**
 
--   **🔌 Modular Architecture**: Pluggable connectors for every service (Storage, LLM, VectorDB, Cache, etc.)
--   **🛡️ Security-First**: Built-in Candidate/ACL system for secure resource access
--   **📊 Resource Management**: Intelligent memory, storage, and compute management
--   **🔄 Agent Orchestration**: Complete agent lifecycle management
--   **🧩 40+ Components**: Production-ready components for AI, data processing, and integrations
+-   **Modular Architecture**: Pluggable connectors for every service (Storage, LLM, VectorDB, Cache, etc.)
+-   **Security-First**: Built-in Candidate/ACL system for secure resource access
+-   **Resource Management**: Intelligent memory, storage, and compute management
+-   **Agent Orchestration**: Complete agent lifecycle management
+-   **40+ Components**: Production-ready components for AI, data processing, and integrations
 
 **Supported Connectors:**
 
@@ -86,10 +86,10 @@ The **SDK** provides a clean, developer-friendly abstraction layer over the SRE 
 
 **Why Use the SDK:**
 
--   ✅ **Simple API**: Clean, intuitive interface that's easy to learn
--   🔧 **Type-Safe**: Full TypeScript support with IntelliSense
--   🚀 **Production-Ready**: Same code works in development and production
--   📈 **Configuration-Independent**: Business logic stays unchanged as infrastructure scales
+-   **Simple API**: Clean, intuitive interface that's easy to learn
+-   **Type-Safe**: Full TypeScript support with IntelliSense
+-   **Production-Ready**: Same code works in development and production
+-   **Configuration-Independent**: Business logic stays unchanged as infrastructure scales
 
 ### CLI - `packages/cli`
 
@@ -121,7 +121,7 @@ async function main() {
 Want stream mode ? easy
 
 <details>
-<summary>👆 <strong>Click to expand:</strong> Stream Mode Example - Real-time response streaming with events</summary>
+<summary><strong>Click to expand:</strong> Stream Mode Example - Real-time response streaming with events</summary>
 
 ```typescript
     const events = await agent.prompt('Hello, how are you ?').stream();
@@ -142,7 +142,7 @@ Want stream mode ? easy
 Want chat mode ? easy
 
 <details>
-<summary>👆 <strong>Click to expand:</strong> Chat Mode Example - Conversational agent with memory</summary>
+<summary><strong>Click to expand:</strong> Chat Mode Example - Conversational agent with memory</summary>
 
 ```typescript
     const chat = agent.chat();
@@ -166,7 +166,7 @@ Want chat mode ? easy
 In this example we are coding the agent logic with the help of the SDK elements.
 
 <details>
-<summary>👆 <strong>Click to expand:</strong> Complete Article Writer Agent - Full example using LLM + VectorDB + Storage</summary>
+<summary><strong>Click to expand:</strong> Complete Article Writer Agent - Full example using LLM + VectorDB + Storage</summary>
 
 ```typescript
 import { Agent, Model } from '@smythos/sdk';
@@ -221,9 +221,9 @@ main().catch(console.error);
 
 </details>
 
-## 🏗️ Architecture Highlights
+## Architecture Highlights
 
-### 🔒 Built-in Security
+### Built-in Security
 
 Security is a core tenant of SRE. Every operation requires proper authorization through the **Candidate/ACL system**, ensuring that agents only
 access resources they are permitted to.
@@ -234,13 +234,13 @@ const storage = ConnectorService.getStorageConnector().user(candidate);
 await storage.write('data.json', content);
 ```
 
-### 🔄 Development to Production Evolution
+### Development to Production Evolution
 
 Your business logic stays identical while infrastructure scales:
 When you use the SDK, SmythOS Runtime Environment will be implicitly initialized with general connectors that covers standard agent use cases.
 
 <details>
-<summary>👆 <strong>Click to expand:</strong> Basic SRE Setup - Default development configuration</summary>
+<summary><strong>Click to expand:</strong> Basic SRE Setup - Default development configuration</summary>
 
 ```typescript
 // you don't need to explicitly initialize SRE
@@ -269,7 +269,7 @@ Use cases :
 -   ...
 
 <details>
-<summary>👆 <strong>Click to expand:</strong> Production SRE Setup - Enterprise-grade configuration with custom connectors</summary>
+<summary><strong>Click to expand:</strong> Production SRE Setup - Enterprise-grade configuration with custom connectors</summary>
 
 ```typescript
 const sre = SRE.init({
@@ -292,50 +292,51 @@ main();
 
 </details>
 
-### 🧩 Component System
+### Component System
 
 40+ production-ready components for every AI use case.
 These components can be invoked programmatically or through the symbolic representation of the agent workflow (the .smyth file).
 
--   **🤖 AI/LLM**: `GenAILLM`, `VisionLLM`, `MultimodalLLM`, `LLMAssistant`
--   **🌐 External**: `APICall`, `WebSearch`, `WebScrape`, `ZapierAction`
--   **📊 Data**: `DataSourceIndexer`, `DataSourceLookup`, `JSONFilter`
--   **🔧 Logic**: `LogicAND`, `LogicOR`, `Classifier`, `ForEach`
--   **💾 Storage**: `FileStore`, `Code`, `ServerlessCode`
+-   **AI/LLM**: `GenAILLM`, `VisionLLM`, `MultimodalLLM`, `LLMAssistant`
+-   **External**: `APICall`, `WebSearch`, `WebScrape`, `ZapierAction`
+-   **Data**: `DataSourceIndexer`, `DataSourceLookup`, `JSONFilter`
+-   **Logic**: `LogicAND`, `LogicOR`, `Classifier`, `ForEach`
+-   **Storage**: `FileStore`, `Code`, `ServerlessCode`
 
-## 🌟 Key Features
+## Key Features
 
-| Feature                  | Description                                            |
-| ------------------------ | ------------------------------------------------------ |
-| **🎯 Agent-Centric**     | Built specifically for AI agent workloads and patterns |
-| **🔒 Secure by Default** | Enterprise-grade security with data isolation          |
-| **⚡ High Performance**  | Optimized for high-throughput AI operations            |
-| **🧩 Modular**           | Swap any component without breaking your system        |
-| **📊 Observable**        | Built-in monitoring, logging, and debugging tools      |
-| **🌍 Cloud-Native**      | Runs anywhere - local, cloud, edge, or hybrid          |
-| **🔄 Scalable**          | From development to enterprise production              |
+| Feature               | Description                                            |
+| --------------------- | ------------------------------------------------------ |
+| **Agent-Centric**     | Built specifically for AI agent workloads and patterns |
+| **Secure by Default** | Enterprise-grade security with data isolation          |
+| **High Performance**  | Optimized for high-throughput AI operations            |
+| **Modular**           | Swap any component without breaking your system        |
+| **Observable**        | Built-in monitoring, logging, and debugging tools      |
+| **Cloud-Native**      | Runs anywhere - local, cloud, edge, or hybrid          |
+| **Scalable**          | From development to enterprise production              |
 
-## 📚 Documentation
+## Documentation
 
 -   **[Complete Overview](packages/core/doc/overview.md)** - Deep dive into SRE architecture
 -   **[SDK Documentation](packages/sdk/README.md)** - SDK API reference and examples
 -   **[Component Library](packages/core/doc/components/)** - All available components
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
 
-## 🔮 What's Next?
+## What's Next?
 
-- We will release an open source visual agent IDE later this year.
-- Support us at [SmythOS](https://smythos.com)
-- Join our [community](https://discord.gg/smythos) to stay updated on new features, connectors, and capabilities.
+-   We will release an open source visual agent IDE later this year.
+-   Support us at [Smythos](https://smythos.com)
+-   Join our [community](https://discord.gg/smythos) to stay updated on new features, connectors, and capabilities.
 
 ---
+
 /smɪθ oʊ ɛs/
 
-Ride the llama.🦙 Skip the drama. 😹
+Ride the llama. Skip the drama.
