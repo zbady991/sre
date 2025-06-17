@@ -6,13 +6,13 @@ The SDK is a lightweight wrapper around the Smyth Runtime Environment. It lets y
 
 ## Key Features
 
--   ** Fluent Agent API**: A clean and intuitive API for creating and interacting with agents.
--   ** Extensible Skills**: Easily add new capabilities to your agents, from calling APIs to running custom code.
--   ** Streaming Support**: Get real-time responses from your agents for dynamic and interactive experiences.
--   ** Integrated AI Components**: Seamlessly connect to LLMs, Vector Databases, and Storage solutions.
--   ** Agent Serialization**: Save and load your agent's state, including skills and memory.
--   ** Team Management**: Orchestrate multiple agents to work together in teams.
--   ** Document Parsing**: Built-in support for parsing various document types like PDF, DOCX, and Markdown.
+-   **Fluent Agent API**: A clean and intuitive API for creating and interacting with agents.
+-   **Extensible Skills**: Easily add new capabilities to your agents, from calling APIs to running custom code.
+-   **Streaming Support**: Get real-time responses from your agents for dynamic and interactive experiences.
+-   **Integrated AI Components**: Seamlessly connect to LLMs, Vector Databases, and Storage solutions.
+-   **Agent Serialization**: Save and load your agent's state, including skills and memory.
+-   **Team Management**: Orchestrate multiple agents to work together in teams.
+-   **Document Parsing**: Built-in support for parsing various document types like PDF, DOCX, and Markdown.
 
 ## Getting Started
 
