@@ -1,6 +1,6 @@
 {
     "name": "@smythos/cli",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "SmythOS SRE Command Line Interface",
     "keywords": [
         "smythos",
@@ -8,7 +8,8 @@
         "cli",
         "agentic AI",
         "AI",
-        "LLM"
+        "LLM",
+        "vector-db"
     ],
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
@@ -45,7 +46,6 @@
     },
     "homepage": "https://github.com/smythos/sre#readme",
     "scripts": {
-        "postinstall": "node dist/scripts/postinstall.js",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:bundle": "cross-env BUILD=dev rollup -c",
         "build": "pnpm run build:bundle && pnpm run build:types && pnpm run oclif:manifest",

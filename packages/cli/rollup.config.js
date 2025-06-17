@@ -23,13 +23,14 @@ const config = {
         'commands/update': 'src/commands/update.ts',
         'hooks/preparse': 'src/hooks/preparse.ts',
         help: 'src/help.ts',
-        'scripts/postinstall': 'src/scripts/postinstall.ts',
     },
     output: {
         dir: 'dist',
         format: 'es',
         sourcemap: true,
         banner: '#!/usr/bin/env node',
+        entryFileNames: '[name].js',
+        chunkFileNames: 'shared.js',
     },
     external: isExternal,
     plugins: [
