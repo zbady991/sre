@@ -24,6 +24,9 @@ export default class Create extends Command {
 }
 
 async function RunProject(options: any) {
+    console.log('Not implemented yet');
+    return;
+
     console.log(
         banner(
             [],

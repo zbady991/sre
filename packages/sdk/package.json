@@ -18,11 +18,11 @@
     ],
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
-    "main": "dist/index.dev.js",
+    "main": "dist/index.js",
     "types": "dist/types/index.d.ts",
     "exports": {
         ".": {
-            "import": "./dist/index.dev.js",
+            "import": "./dist/index.js",
             "types": "./dist/types/index.d.ts"
         }
     },

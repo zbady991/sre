@@ -42,8 +42,8 @@ export class FileStore extends Component {
             try {
                 const s3Key = `teams/${agent.teamId}/components_data/${fileName}`;
 
-                await s3StorageConnector.user(AccessCandidate.agent(agent.teamId)).write(s3Key, buffer, null, metadata);
-                await s3StorageConnector.user(AccessCandidate.agent(agent.teamId)).expire(s3Key, +ttl);
+                await s3StorageConnector.requester(AccessCandidate.agent(agent.teamId)).write(s3Key, buffer, null, metadata);
+                await s3StorageConnector.requester(AccessCandidate.agent(agent.teamId)).expire(s3Key, +ttl);
                 const smythFSUrl = `smythfs://${agent.teamId}.team/components_data/${fileName}`;
                 const url = await SmythFS.Instance.genResourceUrl(smythFSUrl, AccessCandidate.agent(agent.teamId));
                 Output = {

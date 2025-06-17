@@ -33,7 +33,7 @@ export class NKVRedis extends NKVConnector {
     @NKVRedis.NamespaceAccessControl
     protected async get(acRequest: AccessRequest, namespace: string, key: string): Promise<StorageData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).get(this.key(`team_${teamId}`, namespace, key));
+        return await this.redisCacheConnector.requester(AccessCandidate.team(teamId)).get(this.key(`team_${teamId}`, namespace, key));
     }
 
     @NKVRedis.Validate
@@ -42,11 +42,13 @@ export class NKVRedis extends NKVConnector {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
         const setKey = this.key(`team_${teamId}`, namespace, key);
-        await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(setKey, value);
+        await this.redisCacheConnector.requester(AccessCandidate.team(teamId)).set(setKey, value);
         // to set namespace ownership
-        const isNewNs = !(await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(namespace));
+        const isNewNs = !(await this.redisCacheConnector.requester(AccessCandidate.team(teamId)).exists(namespace));
         if (isNewNs) {
-            await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(this.key(`team_${teamId}`, namespace), '', undefined, { ns: true });
+            await this.redisCacheConnector
+                .requester(AccessCandidate.team(teamId))
+                .set(this.key(`team_${teamId}`, namespace), '', undefined, { ns: true });
         }
     }
 
@@ -54,14 +56,14 @@ export class NKVRedis extends NKVConnector {
     @NKVRedis.NamespaceAccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, key: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        await this.redisCacheConnector.user(AccessCandidate.team(teamId)).delete(this.key(`team_${teamId}`, namespace, key));
+        await this.redisCacheConnector.requester(AccessCandidate.team(teamId)).delete(this.key(`team_${teamId}`, namespace, key));
     }
 
     @NKVRedis.Validate
     @NKVRedis.NamespaceAccessControl
     protected async exists(acRequest: AccessRequest, namespace: string, key: string): Promise<boolean> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(this.key(`team_${teamId}`, namespace, key));
+        return await this.redisCacheConnector.requester(AccessCandidate.team(teamId)).exists(this.key(`team_${teamId}`, namespace, key));
     }
 
     @NKVRedis.NamespaceAccessControl

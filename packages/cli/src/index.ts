@@ -16,22 +16,13 @@ const notifier = updateNotifier({
     shouldNotifyInNpmScript: false,
 });
 
-// Show update notificationAdd commentMore actions
-notifier.notify({
-    isGlobal: true,
-    boxenOptions: {
-        padding: 1,
-        margin: 1,
-        textAlignment: 'center',
-        borderColor: 'yellow',
-        borderStyle: 'round',
-    },
-});
-
 // Run the Oclif CLI with better error handling
 (async () => {
     try {
+        const stime = Date.now();
         await run(process.argv.slice(2), import.meta.url);
+        const etime = Date.now();
+        console.log(`Time taken: ${etime - stime}ms`);
     } catch (error: any) {
         // Handle different types of errors gracefully
         if (error.oclif?.exit !== undefined) {
@@ -70,3 +61,15 @@ notifier.notify({
         }
     }
 })();
+
+// Show update notificationAdd commentMore actions
+notifier.notify({
+    isGlobal: true,
+    boxenOptions: {
+        padding: 1,
+        margin: 1,
+        textAlignment: 'center',
+        borderColor: 'yellow',
+        borderStyle: 'round',
+    },
+});

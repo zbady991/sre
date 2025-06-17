@@ -1,22 +1,24 @@
-import { OpenAI } from 'openai';
-import { IRequestImage, Runware } from '@runware/sdk-js';
+//TODO: this component need to be fully refactored to use the same approach as GenAI LLM
 
-import { IAgent as Agent } from '@sre/types/Agent.types';
-import { Component } from './Component.class';
-import Joi from 'joi';
-import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
+import { IRequestImage, Runware } from '@runware/sdk-js';
+import { OpenAI } from 'openai';
+
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { IAgent as Agent } from '@sre/types/Agent.types';
+import { APIKeySource, GenerateImageConfig } from '@sre/types/LLM.types';
+import Joi from 'joi';
+import { Component } from './Component.class';
 
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 import appConfig from '@sre/config';
+import { BUILT_IN_MODEL_PREFIX, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { SUPPORTED_MIME_TYPES_MAP, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './Image/imageSettings.config';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { getCredentials } from '../subsystems/Security/Credentials.helper';
 
 enum DALL_E_MODELS {
     DALL_E_2 = 'dall-e-2',
@@ -257,7 +259,10 @@ const imageGenerator = {
     },
     [MODEL_FAMILY.RUNWARE]: async ({ model, prompt, config, agent, input }) => {
         // Initialize Runware client
-        const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
+        const teamId = agent.teamId;
+        const apiKey = (await getCredentials(AccessCandidate.team(teamId), 'runware')) as string;
+
+        const runware = new Runware({ apiKey });
         await runware.ensureConnection();
 
         const negativePrompt = config?.data?.negativePrompt || '';
@@ -299,7 +304,7 @@ const imageGenerator = {
 
             imageGenerator.reportUsage(
                 { cost: firstImage.cost },
-                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId },
+                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId }
             );
 
             return { output };

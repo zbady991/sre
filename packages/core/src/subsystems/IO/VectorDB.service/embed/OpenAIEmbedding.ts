@@ -1,7 +1,7 @@
 import OpenAI, { type ClientOptions, OpenAI as OpenAIClient } from 'openai';
 import { BaseEmbedding, TEmbeddings } from './BaseEmbedding';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { getLLMCredentials } from '@sre/LLMManager/LLM.service/Credentials.helper';
+import { getLLMCredentials } from '@sre/LLMManager/LLM.service/LLMCredentials.helper';
 import { TLLMCredentials, TLLMModel } from '@sre/types/LLM.types';
 
 // Helper function to create OpenAI API errors

@@ -7,7 +7,7 @@ import qs from 'qs';
 export class VaultHelper {
     static async getTeamKey(key: string, teamId: string): Promise<string> {
         const vaultConnector = ConnectorService.getVaultConnector();
-        return await vaultConnector.user(AccessCandidate.team(teamId)).get(key);
+        return await vaultConnector.requester(AccessCandidate.team(teamId)).get(key);
     }
 
     static async getUserKey(key: string, userId: string): Promise<string> {
@@ -16,7 +16,7 @@ export class VaultHelper {
 
         const teamId = await accountConnector.getCandidateTeam(AccessCandidate.user(userId));
 
-        return await vaultConnector.user(AccessCandidate.team(teamId)).get(key);
+        return await vaultConnector.requester(AccessCandidate.team(teamId)).get(key);
     }
 
     static async getAgentKey(key: string, agentId: string): Promise<string> {
@@ -25,7 +25,6 @@ export class VaultHelper {
 
         const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId));
 
-        return await vaultConnector.user(AccessCandidate.team(teamId)).get(key);
+        return await vaultConnector.requester(AccessCandidate.team(teamId)).get(key);
     }
-
 }

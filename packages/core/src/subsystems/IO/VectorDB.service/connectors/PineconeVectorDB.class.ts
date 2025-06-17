@@ -226,7 +226,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         const accessCandidate = acRequest.candidate;
 
-        const isNewNs = !(await this.user(AccessCandidate.clone(accessCandidate)).namespaceExists(namespace));
+        const isNewNs = !(await this.requester(AccessCandidate.clone(accessCandidate)).namespaceExists(namespace));
         if (isNewNs) {
             let acl = new ACL().addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
             await this.setACL(acRequest, namespace, acl);
@@ -286,7 +286,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
         // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
         await this.nkvConnector
-            .user(acRequest.candidate as AccessCandidate)
+            .requester(acRequest.candidate as AccessCandidate)
             .set(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
         // return { id: dsId, vectorIds: _vIds };
         return dsData;
@@ -301,7 +301,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         let ds: IStorageVectorDataSource = JSONContentHelper.create(
             (
                 await this.nkvConnector
-                    .user(acRequest.candidate as AccessCandidate)
+                    .requester(acRequest.candidate as AccessCandidate)
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
             )?.toString()
         ).tryParse();
@@ -313,7 +313,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         await this.delete(acRequest, namespace, ds.vectorIds || []);
 
         await this.nkvConnector
-            .user(acRequest.candidate as AccessCandidate)
+            .requester(acRequest.candidate as AccessCandidate)
             .delete(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId);
     }
 
@@ -322,7 +322,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
         return (
-            await this.nkvConnector.user(acRequest.candidate as AccessCandidate).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)
+            await this.nkvConnector
+                .requester(acRequest.candidate as AccessCandidate)
+                .list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)
         ).map((ds) => {
             return JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource;
         });
@@ -335,24 +337,26 @@ export class PineconeVectorDB extends VectorDBConnector {
         return JSONContentHelper.create(
             (
                 await this.nkvConnector
-                    .user(acRequest.candidate as AccessCandidate)
+                    .requester(acRequest.candidate as AccessCandidate)
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
             )?.toString()
         ).tryParse() as IStorageVectorDataSource;
     }
 
     private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
-        await this.cache.user(AccessCandidate.clone(acRequest.candidate)).set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
+        await this.cache
+            .requester(AccessCandidate.clone(acRequest.candidate))
+            .set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
     }
 
     private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
-        let aclRes = await this.cache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        let aclRes = await this.cache.requester(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
         const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
         return acl;
     }
 
     private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
-        this.cache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        this.cache.requester(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
     }
 
     public constructNsName(candidate: AccessCandidate, name: string) {

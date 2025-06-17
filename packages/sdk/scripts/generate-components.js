@@ -35,6 +35,8 @@ const INCLUDED_COMPONENTS = [
     'FSign',
     'FTimestamp',
     'ImageGenerator',
+    'TavilyWebSearch',
+    'MCPClient',
 ]; // Example: ['APICall', 'GenAILLM', 'Image']
 
 /**

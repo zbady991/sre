@@ -4,8 +4,30 @@ import Joi from 'joi';
 import SREConfig from '@sre/config';
 import axios from 'axios';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { getCredentials } from '../subsystems/Security/Credentials.helper';
+import { AccessCandidate } from '../subsystems/Security/AccessControl/AccessCandidate.class';
 
-export class WebSearch extends Component {
+export class TavilyWebSearch extends Component {
+    protected schema = {
+        name: 'TavilyWebSearch',
+        description: 'Use this component to generate a responses from an LLM',
+
+        inputs: {
+            SearchQuery: {
+                type: 'Text',
+                description: 'The search query to get the web search results of',
+                default: true,
+            },
+        },
+        outputs: {
+            Results: {
+                type: 'Array',
+                description: 'The web search results',
+                default: true,
+            },
+        },
+    };
+
     protected configSchema = Joi.object({
         includeImages: Joi.boolean().default(false).label('Include Image Results'),
         sourcesLimit: Joi.number().integer().default(10).label('Sources Limit'),
@@ -28,12 +50,16 @@ export class WebSearch extends Component {
             let Output: any = {};
             let _error = undefined;
             let searchQuery = input['SearchQuery'];
+
+            const teamId = agent.teamId;
+            const api_key = await getCredentials(AccessCandidate.team(teamId), 'tavily');
+
             logger.debug('Payload:', JSON.stringify(config.data));
             const response = await axios({
                 method: 'post',
                 url: 'https://api.tavily.com/search',
                 data: {
-                    api_key: SREConfig.env.TAVILY_API_KEY,
+                    api_key,
                     query: searchQuery,
                     topic: config.data.searchTopic,
                     exclude_domains: config.data.excludeDomains?.length ? config.data.excludeDomains.split(',') : [],

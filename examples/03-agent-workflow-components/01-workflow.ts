@@ -51,7 +51,7 @@ async function main() {
 
     //#endregion
 
-    console.log(agent.data);
+    //console.log(agent.data); //this outputs the .smyth file data
 
     //const result = await agent.prompt('Hello, what is the price of bitcoin in USD');
 

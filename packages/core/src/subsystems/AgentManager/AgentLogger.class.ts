@@ -146,7 +146,7 @@ class LogTransaction {
             // path.posix.join('teams', teamId, category ? category : '');
             const storagePath = path.posix.join('teams', this.agent.teamId, `logs/${this.agent.id}/${filePath}`);
             const metadata = { teamid: this.agent.teamId, agentid: this.agent.id, ContentType: 'text/plain' };
-            await this.storage.user(AccessCandidate.agent(this.agent.id)).write(storagePath, body, undefined, metadata);
+            await this.storage.requester(AccessCandidate.agent(this.agent.id)).write(storagePath, body, undefined, metadata);
         } catch (error) {
             console.error('Error storing Log File : ', filePath, error);
         }
@@ -178,10 +178,7 @@ class LogTransaction {
                 await this.storeLogData(resultObj?.full, raw_result);
                 await this.storeLogData(errorObj?.full, raw_error);
 
-                // const logResult = await this.smythAPI.post(`/v1/ai-agent/${this.agent.id}/logs/calls`, data, {
-                //     headers: await this.getSmythRequestHeaders(),
-                // });
-                const logResult = await logConnector.user(AccessCandidate.agent(this.agent.id)).log(data);
+                const logResult = await logConnector.requester(AccessCandidate.agent(this.agent.id)).log(data);
 
                 this._callId = logResult?.data?.log?.id;
             } else {
@@ -210,8 +207,7 @@ class LogTransaction {
                     await this.storeLogData(resultObj?.full, raw_result);
                     await this.storeLogData(errorObj?.full, raw_error);
 
-                    // await this.smythAPI.put(`/v1/ai-agent/logs/calls/${this._callId}`, data, { headers: await this.getSmythRequestHeaders() });
-                    await logConnector.user(AccessCandidate.agent(this.agent.id)).log(data, this._callId);
+                    await logConnector.requester(AccessCandidate.agent(this.agent.id)).log(data, this._callId);
                 }
             }
         } catch (error) {
@@ -291,7 +287,7 @@ export class AgentLogger {
 
         if (!agent.usingTestDomain) {
             // only report if on a non test domain
-            await logConnector.user(AccessCandidate.agent(agent.id)).logTask(tasks, agent.usingTestDomain);
+            await logConnector.requester(AccessCandidate.agent(agent.id)).logTask(tasks, agent.usingTestDomain);
         }
 
         //ensure that a cleanup interval is running

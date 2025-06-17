@@ -4,9 +4,11 @@ import Joi from 'joi';
 import SREConfig from '@sre/config';
 import axios from 'axios';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { AccessCandidate } from '../subsystems/Security/AccessControl/AccessCandidate.class';
+import { getCredentials } from '../subsystems/Security/Credentials.helper';
 // const CREDITS_PER_URL = 0.2;
 
-export class WebScrape extends Component {
+export class ScrapflyWebScrape extends Component {
     protected configSchema = Joi.object({
         // includeImages: Joi.boolean().default(false).label('Include Image Results'),
         antiScrapingProtection: Joi.boolean().default(false).label('Enable Anti-Scraping Protection'),
@@ -30,8 +32,10 @@ export class WebScrape extends Component {
             const scrapeUrls = this.extractUrls(input);
             logger.debug('Payload:', JSON.stringify(config.data));
             logger.debug(`Vaild URLs: ${JSON.stringify(scrapeUrls)}`);
+            const teamId = agent.teamId;
+            const key = await getCredentials(AccessCandidate.team(teamId), 'scrapfly');
 
-            const scrapeResults = await Promise.all(scrapeUrls.map((url) => this.scrapeURL(url, config.data)));
+            const scrapeResults = await Promise.all(scrapeUrls.map((url) => this.scrapeURL(url, config.data, key)));
             const results = scrapeResults
                 .filter((result) => result.success)
                 .map((result) => {
@@ -59,14 +63,14 @@ export class WebScrape extends Component {
         }
     }
 
-    async scrapeURL(url, data) {
+    async scrapeURL(url, data, key) {
         try {
             const response = await axios({
                 method: 'get',
                 url: 'https://api.scrapfly.io/scrape',
                 params: {
                     url: encodeURIComponent(url),
-                    key: SREConfig.env.SCRAPFLY_API_KEY,
+                    key,
                     cost_budget: 80,
                     ...(data.format ? { format: data.format } : { format: 'markdown' }),
                     ...(data.antiScrapingProtection && { asp: true }),

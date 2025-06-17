@@ -6,7 +6,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { JSONFileVaultConfig, EncryptionSettings } from '@sre/types/Security.types';
+
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -19,7 +19,7 @@ export class NullVault extends VaultConnector {
     private index: any;
     private sharedVault: boolean;
 
-    constructor(protected _settings: JSONFileVaultConfig) {
+    constructor(protected _settings: any) {
         super(_settings);
         console.warn('NullVault is used : Vault features will not be available');
     }

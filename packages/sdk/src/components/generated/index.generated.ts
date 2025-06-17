@@ -7,8 +7,10 @@ import { Classifier } from './Classifier';
 import { GenAILLM } from './GenAILLM';
 import { HuggingFace } from './HuggingFace';
 import { ImageGenerator } from './ImageGenerator';
+import { MCPClient } from './MCPClient';
+import { TavilyWebSearch } from './TavilyWebSearch';
 
 
 
-const Components = { APICall, APIOutput, Await, Classifier, GenAILLM, HuggingFace, ImageGenerator, };
+const Components = { APICall, APIOutput, Await, Classifier, GenAILLM, HuggingFace, ImageGenerator, MCPClient, TavilyWebSearch, };
  export default Components; 

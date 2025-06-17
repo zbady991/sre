@@ -140,7 +140,7 @@ export class Agent implements IAgent {
             //hosted components are custom components that are specific to some SRE instances implementations : e.g Shell component is only available to local SRE
             const componentConnector = ConnectorService.getComponentConnector();
             componentConnector
-                .user(AccessCandidate.agent(id))
+                .requester(AccessCandidate.agent(id))
                 .getAll()
                 .then((customComponents) => {
                     this._componentInstance = { ...this._componentInstance, ...customComponents };

@@ -23,7 +23,7 @@ export class ComponentHost extends Component {
             const componentName = config.data._component;
             const componentConnector = ConnectorService.getComponentConnector();
 
-            const component = await componentConnector.user(AccessCandidate.agent(agent.id)).get(componentName);
+            const component = await componentConnector.requester(AccessCandidate.agent(agent.id)).get(componentName);
 
             if (!component) {
                 logger.debug(`Component ${componentName} not found`);

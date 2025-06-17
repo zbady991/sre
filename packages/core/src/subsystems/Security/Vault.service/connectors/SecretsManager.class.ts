@@ -6,7 +6,6 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { SecretsManagerConfig } from '@sre/types/Security.types';
 import { VaultConnector } from '../VaultConnector';
 import {
     SecretsManagerClient,
@@ -17,6 +16,12 @@ import {
 } from '@aws-sdk/client-secrets-manager';
 
 const console = Logger('SecretsManager');
+
+export type SecretsManagerConfig = {
+    region: string;
+    awsAccessKeyId?: string;
+    awsSecretAccessKey?: string;
+};
 export class SecretsManager extends VaultConnector {
     public name: string = 'SecretsManager';
     private secretsManager: SecretsManagerClient;

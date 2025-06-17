@@ -1,29 +1,27 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 //import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { OAuthConfig, SecretsManagerConfig, SmythConfigs } from '@sre/types/Security.types';
 
-import { getM2MToken } from '@sre/utils/oauth.utils';
-import axios, { AxiosInstance } from 'axios';
-import { ManagedVaultConnector } from '../ManagedVaultConnector';
 import {
     CreateSecretCommand,
     DeleteSecretCommand,
+    GetSecretValueCommand,
     GetSecretValueCommandOutput,
     ListSecretsCommand,
     ListSecretsCommandOutput,
     PutSecretValueCommand,
     SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
-import { GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { randomUUID } from 'crypto';
+import { ManagedVaultConnector } from '../ManagedVaultConnector';
+import { SecretsManagerConfig } from '../../Vault.service/connectors/SecretsManager.class';
 
 const console = Logger('SecretManagerManagedVault');
+
 export class SecretManagerManagedVault extends ManagedVaultConnector {
     public name: string = 'SecretManagerManagedVault';
     public scope: string = 'smyth-managed-vault';

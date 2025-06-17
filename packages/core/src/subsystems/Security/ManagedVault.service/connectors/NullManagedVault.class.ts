@@ -16,7 +16,7 @@ const console = Logger('NullManagedVault');
 export class NullManagedVault extends ManagedVaultConnector {
     public name: string = 'NullManagedVault';
 
-    constructor(protected _settings: SmythConfigs & OAuthConfig & { vaultName: string }) {
+    constructor(protected _settings: any) {
         super(_settings);
     }
 

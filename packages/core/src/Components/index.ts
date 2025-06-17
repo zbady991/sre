@@ -3,7 +3,6 @@ import { APIEndpoint } from './APIEndpoint.class';
 import { APIOutput } from './APIOutput.class';
 import { PromptGenerator } from './PromptGenerator.class';
 import { APICall } from './APICall/APICall.class';
-import { VisionLLM } from './VisionLLM.class';
 import { FSleep } from './FSleep.class';
 import { FHash } from './FHash.class';
 import { FEncDec } from './FEncDec.class';
@@ -22,31 +21,17 @@ import { LLMAssistant } from './LLMAssistant.class';
 import { Async } from './Async.class';
 import { Await } from './Await.class';
 import { ForEach } from './ForEach.class';
-import { Code } from './Code.class';
 import { HuggingFace } from './HuggingFace.class';
 import { GPTPlugin } from './GPTPlugin.class';
 import { Classifier } from './Classifier.class';
 import { FSign } from './FSign.class';
-import { MultimodalLLM } from './MultimodalLLM.class';
 import { GenAILLM } from './GenAILLM.class';
 import { FileStore } from './FileStore.class';
-import { WebScrape } from './WebScrape.class';
-import { WebSearch } from './WebSearch.class';
+import { ScrapflyWebScrape } from './ScrapflyWebScrape.class';
+import { TavilyWebSearch } from './TavilyWebSearch.class';
 import { ComponentHost } from './ComponentHost.class';
-import { ServerlessCode } from './ServerlessCode.class';
 import { ImageGenerator } from './ImageGenerator.class'; // Legacy
-import { TextToImage } from './Image/TextToImage.class';
-import { ImageToImage } from './Image/ImageToImage.class';
-import { ImageToText } from './Image/ImageToText.class';
-import { BackgroundRemoval } from './Image/BackgroundRemoval.class';
-import { ImageUpscaling } from './Image/ImageUpscaling.class';
-import { RestyleControlNet } from './Image/RestyleControlNet.class';
-import { RestyleIPAdapter } from './Image/RestyleIPAdapter.class';
-import { Outpainting } from './Image/Outpainting.class';
-import { Inpainting } from './Image/Inpainting.class';
 import { MCPClient } from './MCPClient.class';
-import { SystemEvents } from '@sre/Core/SystemEvents';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const components = {
     Component: new Component(),
@@ -56,7 +41,6 @@ const components = {
     PromptGenerator: new PromptGenerator(),
     LLMPrompt: new PromptGenerator(),
     APICall: new APICall(),
-    VisionLLM: new VisionLLM(),
     FSleep: new FSleep(),
     FHash: new FHash(),
     FEncDec: new FEncDec(),
@@ -76,27 +60,17 @@ const components = {
     Async: new Async(),
     Await: new Await(),
     ForEach: new ForEach(),
-    Code: new Code(),
     HuggingFace: new HuggingFace(),
     GPTPlugin: new GPTPlugin(),
     Classifier: new Classifier(),
-    MultimodalLLM: new MultimodalLLM(),
     GenAILLM: new GenAILLM(),
     FileStore: new FileStore(),
-    WebSearch: new WebSearch(),
-    WebScrape: new WebScrape(),
+    WebSearch: new TavilyWebSearch(),
+    WebScrape: new ScrapflyWebScrape(),
+    TavilyWebSearch: new TavilyWebSearch(),
+    ScrapflyWebScrape: new ScrapflyWebScrape(),
     ComponentHost: new ComponentHost(),
-    ServerlessCode: new ServerlessCode(),
     ImageGenerator: new ImageGenerator(),
-    TextToImage: new TextToImage(),
-    ImageToImage: new ImageToImage(),
-    ImageToText: new ImageToText(),
-    BackgroundRemoval: new BackgroundRemoval(),
-    ImageUpscaling: new ImageUpscaling(),
-    RestyleControlNet: new RestyleControlNet(),
-    RestyleIPAdapter: new RestyleIPAdapter(),
-    Outpainting: new Outpainting(),
-    Inpainting: new Inpainting(),
     MCPClient: new MCPClient(),
 };
 

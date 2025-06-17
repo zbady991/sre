@@ -39,13 +39,13 @@ export class LLMCache {
         if (!this._cacheConnector.valid) return;
 
         await this._cacheConnector
-            .user(this._candidate)
+            .requester(this._candidate)
             .set(`${this._cacheId}:${key}`, typeof data === 'object' ? JSON.stringify(data) : data, null, null, this._ttl);
     }
     async get(key: string, format: 'json' | 'text' = 'json') {
         if (!this._cacheConnector.valid) return;
 
-        const obj = await this._cacheConnector.user(this._candidate).get(`${this._cacheId}:${key}`);
+        const obj = await this._cacheConnector.requester(this._candidate).get(`${this._cacheId}:${key}`);
         let result;
         if (format === 'json') {
             try {
@@ -62,11 +62,11 @@ export class LLMCache {
     async delete(key: string) {
         if (!this._cacheConnector.valid) return;
 
-        await this._cacheConnector.user(this._candidate).delete(`${this._cacheId}:${key}`);
+        await this._cacheConnector.requester(this._candidate).delete(`${this._cacheId}:${key}`);
     }
     async clear() {
         if (!this._cacheConnector.valid) return;
 
-        await this._cacheConnector.user(this._candidate).delete(this._cacheId);
+        await this._cacheConnector.requester(this._candidate).delete(this._cacheId);
     }
 }

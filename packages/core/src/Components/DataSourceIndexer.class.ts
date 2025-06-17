@@ -9,7 +9,6 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-
 export class DataSourceIndexer extends Component {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;
     protected configSchema = Joi.object({
@@ -48,11 +47,10 @@ export class DataSourceIndexer extends Component {
             const vectorDbConnector =
                 // (await vectorDBHelper.getTeamConnector(teamId)) ||
                 ConnectorService.getVectorDBConnector();
-            const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+            const nsExists = await vectorDbConnector.requester(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
 
             if (!nsExists) {
-
-                const newNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
+                const newNs = await vectorDbConnector.requester(AccessCandidate.team(teamId)).createNamespace(namespaceId);
                 debugOutput += `[Created namespace] \n${newNs}\n\n`;
             }
 
@@ -163,7 +161,7 @@ export class DataSourceIndexer extends Component {
         // vectorDbConnector = customTeamConnector;
         // }
         // }
-        const id = await vectorDbConnector.user(AccessCandidate.team(teamId)).createDatasource(namespaceId, {
+        const id = await vectorDbConnector.requester(AccessCandidate.team(teamId)).createDatasource(namespaceId, {
             text,
             metadata,
             id: sourceId,

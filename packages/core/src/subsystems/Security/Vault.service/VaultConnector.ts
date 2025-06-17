@@ -11,7 +11,7 @@ export interface IVaultRequest {
 }
 
 export abstract class VaultConnector extends SecureConnector {
-    user(candidate: AccessCandidate): IVaultRequest {
+    requester(candidate: AccessCandidate): IVaultRequest {
         return {
             get: async (keyId: string) => this.get(candidate.readRequest, keyId),
             exists: async (keyId: string) => this.exists(candidate.readRequest, keyId),

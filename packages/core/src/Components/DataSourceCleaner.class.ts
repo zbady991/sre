@@ -44,7 +44,7 @@ export class DataSourceCleaner extends Component {
 
             let vectorDbConnector = ConnectorService.getVectorDBConnector();
 
-            let existingnamespace = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+            let existingnamespace = await vectorDbConnector.requester(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
             if (!existingnamespace) {
                 throw new Error(`Namespace ${namespaceId} does not exist`);
             }
@@ -58,7 +58,7 @@ export class DataSourceCleaner extends Component {
 
             const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
 
-            await vectorDbConnector.user(AccessCandidate.team(teamId)).deleteDatasource(namespaceId, dsId);
+            await vectorDbConnector.requester(AccessCandidate.team(teamId)).deleteDatasource(namespaceId, dsId);
 
             debugOutput += `Deleted data source with id: ${providedId}\n`;
 

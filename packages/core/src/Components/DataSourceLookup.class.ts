@@ -57,7 +57,7 @@ export class DataSourceLookup extends Component {
         const topK = Math.max(config.data?.topK || 50, 50);
 
         let vectorDbConnector = ConnectorService.getVectorDBConnector();
-        let existingNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespace);
+        let existingNs = await vectorDbConnector.requester(AccessCandidate.team(teamId)).namespaceExists(namespace);
 
         if (!existingNs) {
             throw new Error(`Namespace ${namespace} does not exist`);
@@ -66,7 +66,9 @@ export class DataSourceLookup extends Component {
         let results: string[] | { content: string; metadata: any }[];
         let _error;
         try {
-            const response = await vectorDbConnector.user(AccessCandidate.team(teamId)).search(namespace, _input, { topK, includeMetadata: true });
+            const response = await vectorDbConnector
+                .requester(AccessCandidate.team(teamId))
+                .search(namespace, _input, { topK, includeMetadata: true });
             results = response.slice(0, config.data.topK).map((result) => ({
                 content: result.metadata?.text,
                 metadata: result.metadata,

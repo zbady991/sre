@@ -410,11 +410,13 @@ export class MilvusVectorDB extends VectorDBConnector {
     }
 
     private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
-        await this.cache.user(AccessCandidate.clone(acRequest.candidate)).set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
+        await this.cache
+            .requester(AccessCandidate.clone(acRequest.candidate))
+            .set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
     }
 
     private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
-        let aclRes = await this.cache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        let aclRes = await this.cache.requester(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
         const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
         return acl;
     }
@@ -433,7 +435,7 @@ export class MilvusVectorDB extends VectorDBConnector {
     }
 
     private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
-        this.cache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        this.cache.requester(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
     }
 
     public constructNsName(candidate: AccessCandidate, name: string) {

@@ -70,7 +70,7 @@ export class LLMInference {
         params.files = files;
 
         try {
-            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(params.agentId)).request(params);
+            let response: TLLMChatResponse = await this.llmConnector.requester(AccessCandidate.agent(params.agentId)).request(params);
 
             const result = this.llmConnector.postProcess(response?.content);
             if (result.error) {
@@ -116,146 +116,6 @@ export class LLMInference {
         }
     }
 
-    public async promptRequest(prompt, settings: any = {}, agent: string | IAgent, customParams: any = {}) {
-        const clonedConfig = _.cloneDeep(settings);
-        const messages = customParams?.messages || [];
-
-        if (prompt) {
-            const _prompt = this.llmConnector.enhancePrompt(prompt, settings);
-            messages.push({ role: TLLMMessageRole.User, content: _prompt });
-        }
-
-        if (!messages?.length) {
-            throw new Error('Input prompt is required!');
-        }
-
-        // override params with customParams
-        let params: any = Object.assign(clonedConfig.data, { ...customParams, messages });
-
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        if (!this.llmConnector) {
-            throw new Error(`Model ${params.model} not supported`);
-        }
-
-        if (!params.model) {
-            params.model = this.model;
-        }
-
-        try {
-            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(params);
-
-            const result = this.llmConnector.postProcess(response?.content);
-            if (result.error) {
-                // If the model stopped before completing the response, this is usually due to output token limit reached.
-                if (response.finishReason !== 'stop') {
-                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
-                }
-
-                // If the model stopped due to other reasons, throw the error
-                throw new Error(result.error);
-            }
-            return result;
-        } catch (error: any) {
-            console.error('Error in chatRequest: ', error);
-
-            throw error;
-        }
-    }
-
-    public async visionRequest(prompt, files: string[], config: any = {}, agent: string | IAgent) {
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        const promises = [];
-        const _files = [];
-
-        for (let image of files) {
-            const binaryInput = BinaryInput.from(image);
-            _files.push(binaryInput);
-            promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
-        }
-
-        await Promise.all(promises);
-
-        const params = config.data;
-
-        params.files = _files;
-
-        if (!params.model) {
-            params.model = this.model;
-        }
-
-        try {
-            params.prompt = this.llmConnector.enhancePrompt(prompt, config);
-
-            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(params);
-
-            const result = this.llmConnector.postProcess(response?.content);
-
-            if (result.error) {
-                if (response.finishReason !== 'stop') {
-                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
-                }
-
-                // If the model stopped due to other reasons, throw the error
-                throw new Error(result.error);
-            }
-
-            return result;
-        } catch (error: any) {
-            console.error('Error in visionRequest: ', error);
-
-            throw error;
-        }
-    }
-
-    // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
-    public async multimodalRequest(prompt, files: string[], config: any = {}, agent: string | IAgent) {
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        const promises = [];
-        const _files = [];
-
-        // TODO [Forhad]: For models from Google AI, we currently store files twice — once here and once in the GoogleAIConnector. We need to optimize this process.
-        for (let file of files) {
-            const binaryInput = BinaryInput.from(file);
-            _files.push(binaryInput);
-            promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
-        }
-
-        await Promise.all(promises);
-
-        const params = config.data;
-
-        params.files = _files;
-
-        if (!params.model) {
-            params.model = this.model;
-        }
-
-        try {
-            params.prompt = this.llmConnector.enhancePrompt(prompt, config);
-            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(params);
-
-            const result = this.llmConnector.postProcess(response?.content);
-
-            if (result.error) {
-                if (response.finishReason !== 'stop') {
-                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
-                }
-
-                // If the model stopped due to other reasons, throw the error
-                throw new Error(result.error);
-            }
-
-            return result;
-        } catch (error: any) {
-            console.error('Error in multimodalRequest: ', error);
-
-            throw error;
-        }
-    }
-
     public async imageGenRequest({ query, files, params }: TPromptParams) {
         params.prompt = query;
         return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageGenRequest(params);
@@ -265,24 +125,6 @@ export class LLMInference {
         params.prompt = query;
         params.files = files;
         return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageEditRequest(params);
-    }
-
-    public async toolRequest(params: any, agent: string | IAgent) {
-        if (!params.messages || !params.messages?.length) {
-            throw new Error('Input messages are required.');
-        }
-
-        const model = params.model || this.model;
-
-        try {
-            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-            return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest({ ...params, model });
-        } catch (error: any) {
-            console.error('Error in toolRequest: ', error);
-
-            throw error;
-        }
     }
 
     public async streamRequest(params: any, agent: string | IAgent) {

@@ -1,8 +1,9 @@
 # Smyth Runtime Environment (SRE) Core
 
-This package contains the **Smyth Runtime Environment (SRE)**, the kernel of the SmythOS agent operating system. It is responsible for low-level agent orchestration, secure resource management, and providing the foundational services upon which all higher-level agent functionalities are built.
+This package contains the **Smyth Runtime Environment (SRE)**, the core of SmythOS. It is responsible for low-level agent orchestration, secure resource management, and providing the foundational services upon which all higher-level agent functionalities are built.
 
-This document provides a technical deep-dive into the SRE's architecture. For building applications and agents on top of SmythOS, please refer to the developer-friendly **[@smythos/sdk](../sdk)** package.
+This document provides a technical deep-dive into the SRE's architecture, you only need to read this if you are interested in the internals of SmythOS or if you are planning to [contribute](../../CONTRIBUTING.md) to the SmythOS codebase.
+For building applications and agents on top of SmythOS, please refer to the developer-friendly **[@smythos/sdk](../sdk)** package.
 
 ---
 

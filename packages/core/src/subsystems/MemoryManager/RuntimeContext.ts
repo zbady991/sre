@@ -99,7 +99,7 @@ export class RuntimeContext extends EventEmitter {
         let ctxData: any = {};
 
         this._cacheConnector
-            .user(AccessCandidate.agent(this.runtime.agent.id))
+            .requester(AccessCandidate.agent(this.runtime.agent.id))
             .get(this.ctxFile)
             .then(async (data) => {
                 if (!data) {
@@ -122,7 +122,7 @@ export class RuntimeContext extends EventEmitter {
                     }
                     //fs.writeFileSync(this.ctxFile, JSON.stringify(ctxData, null, 2));
                     await this._cacheConnector
-                        .user(AccessCandidate.agent(this.runtime.agent.id))
+                        .requester(AccessCandidate.agent(this.runtime.agent.id))
                         .set(this.ctxFile, JSON.stringify(ctxData, null, 2), null, null, 6 * 60 * 60); //expires in 6 hours max
                 } else {
                     ctxData = JSON.parse(data);
@@ -174,12 +174,14 @@ export class RuntimeContext extends EventEmitter {
         const deleteSession = this.runtime.sessionClosed;
 
         if (deleteSession) {
-            const exists = await this._cacheConnector.user(AccessCandidate.agent(this.runtime.agent.id)).exists(this.ctxFile);
+            const exists = await this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).exists(this.ctxFile);
 
             if (exists) {
                 if (this.runtime.debug)
-                    this._cacheConnector.user(AccessCandidate.agent(this.runtime.agent.id)).updateTTL(this.ctxFile, 5 * 60); //expires in 5 minute
-                else this._cacheConnector.user(AccessCandidate.agent(this.runtime.agent.id)).delete(this.ctxFile);
+                    this._cacheConnector
+                        .requester(AccessCandidate.agent(this.runtime.agent.id))
+                        .updateTTL(this.ctxFile, 5 * 60); //expires in 5 minute
+                else this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).delete(this.ctxFile);
                 //if (this.runtime.debug && fs.existsSync(this.ctxFile)) await delay(1000 * 60); //if we're in debug mode, we keep the file for a while to allow final state read
                 //if (fs.existsSync(this.ctxFile)) fs.unlinkSync(this.ctxFile);
             }
@@ -188,7 +190,7 @@ export class RuntimeContext extends EventEmitter {
             //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
             if (data)
                 await this._cacheConnector
-                    .user(AccessCandidate.agent(this.runtime.agent.id))
+                    .requester(AccessCandidate.agent(this.runtime.agent.id))
                     .set(this.ctxFile, JSON.stringify(data, null, 2), null, null, 6 * 60 * 60); //expires in 6 hours max
         }
     }

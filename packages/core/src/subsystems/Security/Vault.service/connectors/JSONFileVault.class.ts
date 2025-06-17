@@ -6,7 +6,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { JSONFileVaultConfig, EncryptionSettings } from '@sre/types/Security.types';
+import { EncryptionSettings } from '@sre/types/Security.types';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
 import os from 'os';
 import crypto from 'crypto';
@@ -15,6 +15,13 @@ import * as readlineSync from 'readline-sync';
 import path from 'path';
 
 const console = Logger('JSONFileVault');
+
+export type JSONFileVaultConfig = {
+    file?: string;
+    fileKey?: string;
+    shared?: boolean;
+};
+
 export class JSONFileVault extends VaultConnector {
     public name: string = 'JSONFileVault';
     private vaultData: any;

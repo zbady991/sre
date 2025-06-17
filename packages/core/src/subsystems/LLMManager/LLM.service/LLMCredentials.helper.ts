@@ -2,16 +2,6 @@ import config from '@sre/config';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TBedrockSettings, TCustomLLMModel, TLLMCredentials, TLLMModel, TVertexAISettings } from '@sre/types/LLM.types';
-const SMYTHOS_API_KEYS = {
-    echo: '',
-    openai: config.env.OPENAI_API_KEY,
-    anthropic: config.env.ANTHROPIC_API_KEY,
-    googleai: config.env.GOOGLE_AI_API_KEY,
-    togetherai: config.env.TOGETHER_AI_API_KEY,
-    groq: config.env.GROQ_API_KEY,
-    xai: config.env.XAI_API_KEY,
-    perplexity: config.env.PERPLEXITY_API_KEY,
-};
 
 export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
     //create a credentials list that we can iterate over
@@ -28,11 +18,7 @@ export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: T
             case TLLMCredentials.None: {
                 return { apiKey: '' };
             }
-            case TLLMCredentials.Internal: {
-                const credentials = await getInternalCredentials(modelInfo as TLLMModel);
-                if (credentials) return credentials;
-                break;
-            }
+            case TLLMCredentials.Internal:
             case TLLMCredentials.Vault: {
                 const credentials = await getStandardLLMCredentials(candidate, modelInfo as TLLMModel);
                 if (credentials) return credentials;
@@ -54,13 +40,6 @@ export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: T
     return {};
 }
 
-async function getInternalCredentials(modelInfo: TLLMModel): Promise<{ apiKey: string }> {
-    const provider = (modelInfo.provider || modelInfo.llm)?.toLowerCase();
-    const apiKey = SMYTHOS_API_KEYS?.[provider] || '';
-    if (!apiKey) return null;
-    return { apiKey };
-}
-
 /**
  * Retrieves API key credentials for standard LLM providers from the vault
  * @param candidate - The access candidate requesting the credentials
@@ -75,7 +54,7 @@ async function getStandardLLMCredentials(candidate: AccessCandidate, modelInfo: 
     const vaultConnector = ConnectorService.getVaultConnector();
 
     const apiKey = await vaultConnector
-        .user(candidate)
+        .requester(candidate)
         .get(provider)
         .catch(() => '');
 
@@ -107,15 +86,15 @@ async function getBedrockCredentials(
 
     const [accessKeyId, secretAccessKey, sessionToken] = await Promise.all([
         vaultConnector
-            .user(candidate)
+            .requester(candidate)
             .get(keyIdName)
             .catch(() => ''),
         vaultConnector
-            .user(candidate)
+            .requester(candidate)
             .get(secretKeyName)
             .catch(() => ''),
         vaultConnector
-            .user(candidate)
+            .requester(candidate)
             .get(sessionKeyName)
             .catch(() => ''),
     ]);
@@ -155,7 +134,7 @@ async function getVertexAICredentials(candidate: AccessCandidate, modelInfo: TCu
     const vaultConnector = ConnectorService.getVaultConnector();
 
     let jsonCredentials = await vaultConnector
-        .user(candidate)
+        .requester(candidate)
         .get(jsonCredentialsName)
         .catch(() => '');
 
