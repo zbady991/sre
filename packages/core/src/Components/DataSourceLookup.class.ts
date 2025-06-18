@@ -70,7 +70,7 @@ export class DataSourceLookup extends Component {
                 .requester(AccessCandidate.team(teamId))
                 .search(namespace, _input, { topK, includeMetadata: true });
             results = response.slice(0, config.data.topK).map((result) => ({
-                content: result.metadata?.text,
+                content: result.text,
                 metadata: result.metadata,
             }));
 
