@@ -137,7 +137,7 @@ class LogTransaction {
 
     private async storeLogData(filePath: string, content: any) {
         const logConnector = ConnectorService.getLogConnector();
-        if (!logConnector.valid) return;
+        if (!logConnector.valid || logConnector.name == 'ConsoleLog') return;
 
         if (!filePath) return;
         try {

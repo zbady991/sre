@@ -92,6 +92,13 @@ async function RunProject() {
         },
     ]);
 
+    console.log(
+        `\n${chalk.magentaBright('ℹ')} ${chalk.magentaBright(
+            'You can configure the following API keys to avoid hardcoding them in your source code.'
+        )}`
+    );
+    console.log(`  ${chalk.magentaBright('They will be securely stored in a vault file and automatically loaded by the SDK at runtime.')}\n`);
+
     let vault: { [key: string]: string } = {};
 
     if (hasDetectedKeys) {
@@ -99,7 +106,7 @@ async function RunProject() {
             {
                 type: 'confirm',
                 name: 'useDetectedKeys',
-                message: `We detected these API keys: ${detectedKeysInfo}. Do you want to use them in your project's vault?`,
+                message: `We detected these API keys: ${detectedKeysInfo} in your environment. Do you want to use them in your project's vault?`,
                 default: true,
             },
         ]);
@@ -114,13 +121,10 @@ async function RunProject() {
         .map((provider) => ({
             type: 'input',
             name: provider,
-            message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key (optional, press Enter to skip)`,
+            message: `Enter your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key (Enter value, or press Enter to skip)\n`,
         }));
 
     if (missingKeyQuestions.length > 0) {
-        console.log(
-            `\n${chalk.blue('ℹ')} These API keys will be used as default keys for your LLMs if you don't explicitly set an api key in your code.\n`
-        );
         const keyAnswers = await inquirer.prompt(missingKeyQuestions);
         for (const [provider, key] of Object.entries(keyAnswers)) {
             if (key) {

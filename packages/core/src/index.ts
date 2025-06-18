@@ -144,6 +144,7 @@ export * from './subsystems/AgentManager/AgentData.service/connectors/NullAgentD
 export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
 export * from './subsystems/ComputeManager/Code.service/connectors/AWSLambdaCode.class';
 export * from './subsystems/IO/Log.service/connectors/ConsoleLog.class';
+export * from './subsystems/IO/NKV.service/connectors/NKVLocalStorage.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRAM.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRedis.class';
 export * from './subsystems/IO/Router.service/connectors/ExpressRouter.class';

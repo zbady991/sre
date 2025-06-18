@@ -42,8 +42,8 @@ const config = {
         sourcemaps(),
         esbuild({
             sourceMap: true,
-            minify: false,
-            treeShaking: false,
+            minify: true,
+            treeShaking: true,
             sourcesContent: true,
         }),
         //terser(),
