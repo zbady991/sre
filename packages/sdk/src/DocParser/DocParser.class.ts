@@ -50,9 +50,9 @@ export type TParsedDocument = {
 };
 
 export class DocParser {
-    constructor(protected source: string, protected params?: TDocumentParseSettings) {}
+    constructor() {}
 
-    async parse(): Promise<TParsedDocument> {
+    async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         return {
             title: '',
             metadata: {

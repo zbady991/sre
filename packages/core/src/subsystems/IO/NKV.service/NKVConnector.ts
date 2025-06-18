@@ -16,6 +16,8 @@ export interface INKVRequest {
 
 /**
  * NKV = Namespace-Key-Value Connector
+ * The NKV Connectors are used to store and retrieve data in a namespace-key-value format.
+ * It is generally used by internal connectors to index data : for example, some vectorDB providers may use it to keep track of inserted vectors.
  */
 export abstract class NKVConnector extends SecureConnector {
     public requester(candidate: AccessCandidate): INKVRequest {

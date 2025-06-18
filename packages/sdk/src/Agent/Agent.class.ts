@@ -1,24 +1,24 @@
 import { AccessCandidate, AgentProcess, Conversation, DEFAULT_TEAM_ID, TLLMConnectorParams, TLLMEvent, TLLMProvider } from '@smythos/sre';
 import EventEmitter from 'events';
-import { Chat, prepareConversation } from './LLM/Chat.class';
-import { Component } from './components/components.index';
-import { ComponentWrapper } from './components/ComponentWrapper.class';
-import { TSkillSettings } from './components/Skill';
-import { DummyAccountHelper } from './DummyAccount.helper';
+import { Chat, prepareConversation } from '../LLM/Chat.class';
+import { Component } from '../Components/Components.index';
+import { ComponentWrapper } from '../Components/ComponentWrapper.class';
+import { TSkillSettings } from '../Components/Skill';
+import { DummyAccountHelper } from '../Security/DummyAccount.helper';
 
-import { StorageInstance } from './Storage/StorageInstance.class';
-import { TStorageProvider, TStorageProviderInstances } from './types/generated/Storage.types';
-import { uid } from './utils/general.utils';
-import { SDKObject } from './SDKObject.class';
+import { StorageInstance } from '../Storage/StorageInstance.class';
+import { TStorageProvider, TStorageProviderInstances } from '../types/generated/Storage.types';
+import { uid } from '../utils/general.utils';
+import { SDKObject } from '../Core/SDKObject.class';
 import fs from 'fs';
-import { SDKLog } from './utils/console.utils';
-import { HELP, showHelp } from './help';
-import { Team } from './Team.class';
-import { TVectorDBProvider, TVectorDBProviderInstances } from './types/generated/VectorDB.types';
-import { VectorDBInstance } from './VectorDB/VectorDBInstance.class';
-import { TLLMInstanceFactory, TLLMProviderInstances } from './LLM/LLM.class';
-import { LLMInstance, TLLMInstanceParams } from './LLM/LLMInstance.class';
-import { AgentData, ChatOptions, Scope } from './types/SDKTypes';
+import { SDKLog } from '../utils/console.utils';
+import { HELP, showHelp } from '../utils/help';
+import { Team } from '../Security/Team.class';
+import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generated/VectorDB.types';
+import { VectorDBInstance } from '../VectorDB/VectorDBInstance.class';
+import { TLLMInstanceFactory, TLLMProviderInstances } from '../LLM/LLM.class';
+import { LLMInstance, TLLMInstanceParams } from '../LLM/LLMInstance.class';
+import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
 
 const console = SDKLog;
 

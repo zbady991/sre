@@ -11,7 +11,7 @@ import { AccountConnector } from '@sre/Security/Account.service/AccountConnector
 import Joi from 'joi';
 
 export class NKVRAM extends NKVConnector {
-    public name = 'RAM';
+    public name = 'NKVRAM';
     private storage: Map<string, any> = new Map();
     private namespaces: Set<string> = new Set();
     private accountConnector: AccountConnector;

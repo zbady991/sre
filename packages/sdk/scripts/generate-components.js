@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 
 // Define the paths
 const COMPONENTS_DIR = path.join(__dirname, '../../core/src/Components');
-const SDK_OUTPUT_DIR = path.join(__dirname, '../src/components/generated');
+const SDK_OUTPUT_DIR = path.join(__dirname, '../src/Components/generated');
 const COMPONENT_TEMPLATE_PATH = path.join(__dirname, './templates/Component.ts.tpl');
 const INDEX_TEMPLATE_PATH = path.join(__dirname, './templates/index.ts.tpl');
 

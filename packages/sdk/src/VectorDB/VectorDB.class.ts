@@ -1,6 +1,6 @@
 import { AccessCandidate, DEFAULT_TEAM_ID } from '@smythos/sre';
 
-import { HELP } from '../help';
+import { HELP } from '../utils/help';
 import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generated/VectorDB.types';
 import { Scope } from '../types/SDKTypes';
 import { VectorDBInstance } from './VectorDBInstance.class';

@@ -7,7 +7,26 @@ import { Command, Flags } from '@oclif/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import { banner } from '../../utils/banner';
+
+const normalizeProjectName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, '-');
+
+const detectApiKeys = () => {
+    const keys: { [key: string]: string | undefined } = {
+        openai: process.env.OPENAI_API_KEY || 'fake API key for testing',
+        anthropic: process.env.ANTHROPIC_API_KEY,
+        google: process.env.GOOGLE_API_KEY,
+    };
+
+    return Object.entries(keys).reduce((acc, [key, value]) => {
+        if (value) {
+            acc[key] = value;
+        }
+        return acc;
+    }, {} as { [key: string]: string });
+};
 
 export default class Create extends Command {
     static override description = 'Create a new SRE project';
@@ -19,14 +38,11 @@ export default class Create extends Command {
     };
 
     async run(): Promise<void> {
-        await RunProject(Create.flags as any);
+        await RunProject();
     }
 }
 
-async function RunProject(options: any) {
-    console.log('Not implemented yet');
-    return;
-
+async function RunProject() {
     console.log(
         banner(
             [],
@@ -42,20 +58,25 @@ async function RunProject(options: any) {
             ]
         )
     );
-    const currentFolder = process.cwd();
-    const isEmpty = fs.readdirSync(currentFolder).length === 0;
 
-    const questions = [
+    const detectedKeys = detectApiKeys();
+    const hasDetectedKeys = Object.keys(detectedKeys).length > 0;
+    const detectedKeysInfo = Object.keys(detectedKeys)
+        .map((k) => chalk.yellow(k))
+        .join(', ');
+
+    let answers = await inquirer.prompt([
         {
             type: 'input',
             name: 'projectName',
             message: 'Project name',
+            validate: (input: string) => (input.trim().length > 0 ? true : 'Project name cannot be empty.'),
         },
         {
             type: 'input',
             name: 'targetFolder',
-            message: 'Target folder',
-            default: () => (isEmpty ? currentFolder : undefined),
+            message: 'Project folder',
+            default: (ans: { projectName: string }) => path.join(process.cwd(), normalizeProjectName(ans.projectName)),
             suffix: `\n${chalk.grey('Tip: If it does not exist it will be created.')}`,
         },
         {
@@ -63,29 +84,85 @@ async function RunProject(options: any) {
             name: 'projectType',
             message: `Project type\n${chalk.grey('Choose the project type.')}`,
             choices: [
-                { name: 'Build with SRE SDK', value: 'sdk' },
-                { name: 'Extend SRE with custom components and connectors', value: 'extend' },
+                { name: 'Build AI Agent with the SDK (simple)', value: 'sdk' },
+                { name: 'Extend SRE with custom connectors', value: 'connectors' },
+                { name: 'Extend SRE with custom components', value: 'components' },
+                { name: 'Extend components and connectors', value: 'extend' },
             ],
         },
+    ]);
+
+    let vault: { [key: string]: string } = {};
+
+    if (hasDetectedKeys) {
+        const { useDetectedKeys } = await inquirer.prompt([
+            {
+                type: 'confirm',
+                name: 'useDetectedKeys',
+                message: `We detected these API keys: ${detectedKeysInfo}. Do you want to use them in your project's vault?`,
+                default: true,
+            },
+        ]);
+        if (useDetectedKeys) {
+            vault = { ...detectedKeys };
+        }
+    }
+
+    const allProviders = ['openai', 'anthropic', 'google'];
+    const missingKeyQuestions = allProviders
+        .filter((provider) => !vault[provider])
+        .map((provider) => ({
+            type: 'input',
+            name: provider,
+            message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key (optional, press Enter to skip)`,
+        }));
+
+    if (missingKeyQuestions.length > 0) {
+        console.log(
+            `\n${chalk.blue('ℹ')} These API keys will be used as default keys for your LLMs if you don't explicitly set an api key in your code.\n`
+        );
+        const keyAnswers = await inquirer.prompt(missingKeyQuestions);
+        for (const [provider, key] of Object.entries(keyAnswers)) {
+            if (key) {
+                vault[provider] = key as string;
+            }
+        }
+    }
+
+    const remainingAnswers = await inquirer.prompt([
         {
             type: 'list',
-            name: 'sentinelMcp',
-            message: `Sentinel MCP\n${chalk.grey('Sentinel is a local agent that can assist you to build with SRE (requires OpenAI key)')}`,
+            name: 'smythResources',
+            message: 'Smyth Resources Folder',
+            suffix: `\n${chalk.grey('This folder stores resources. ~/.smyth/ is shared across projects.')}`,
             choices: [
-                { name: 'Yes', value: true },
-                { name: 'No', value: false },
+                { name: `Shared folder (user home directory) (~/.smyth)`, value: path.join(os.homedir(), '.smyth') },
+                {
+                    name: `Project-local folder (${path.basename(answers.targetFolder)}/.smyth)`,
+                    value: path.join(answers.targetFolder, '.smyth'),
+                },
             ],
+            default: 0,
         },
-    ];
+    ]);
 
-    const answers = await inquirer.prompt(questions);
+    answers = { ...answers, ...remainingAnswers };
 
-    console.log('...');
+    const finalConfig = {
+        projectName: answers.projectName,
+        targetFolder: answers.targetFolder,
+        projectType: answers.projectType,
+        smythResources: answers.smythResources,
+        vault,
+    };
 
-    console.log('🎉 Project created successfully! 🎊');
+    // TODO: Implement the scaffolding logic based on the answers
+    console.log('\nAnswers received:', finalConfig);
 
-    console.log('⚡ Available commands:');
-    console.log(`  ${chalk.green('npm run build')} ${chalk.grey('🔨 Build your awesome project')}`);
-    console.log(`  ${chalk.green('npm run start')} ${chalk.grey('🚀 Launch your project into action')}`);
-    console.log(`  ${chalk.green('npm run bundle:exe')} ${chalk.grey('📦 Package your project as an executable')}`);
+    console.log('\n🎉 Project created successfully! 🎊');
+
+    console.log('\n⚡ Available commands:');
+    console.log(`  ${chalk.green('pnpm run build')} ${chalk.grey('🔨 Build your awesome project')}`);
+    console.log(`  ${chalk.green('pnpm run start')} ${chalk.grey('🚀 Launch your project into action')}`);
+    console.log(`  ${chalk.green('pnpm run bundle:exe')} ${chalk.grey('📦 Package your project as an executable')}`);
 }

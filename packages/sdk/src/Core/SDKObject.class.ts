@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { ControlledPromise } from './utils';
+import { ControlledPromise } from '../utils';
 import { SRE } from '@smythos/sre';
 
 /**

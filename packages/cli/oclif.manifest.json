@@ -25,8 +25,7 @@
         },
         "chat": {
           "char": "c",
-          "description": "Start chat interface",
-          "helpGroup": "chat",
+          "description": "Start chat interface\n\n ",
           "name": "chat",
           "hasDynamicHelp": false,
           "helpValue": "[model-name]",
@@ -35,8 +34,7 @@
         },
         "models": {
           "char": "M",
-          "description": "A list of models to use in a json file or directory of json files",
-          "helpGroup": "models",
+          "description": "A list of models to use in a json file or directory of json files\n\n ",
           "name": "models",
           "hasDynamicHelp": false,
           "helpValue": "<models> [options]",
@@ -45,8 +43,7 @@
         },
         "skill": {
           "char": "s",
-          "description": "Execute an Agent skill, you can pass input parameters as key=\"value\" pairs",
-          "helpGroup": "skill",
+          "description": "Execute an Agent skill, you can pass input parameters as key=\"value\" pairs\n\n ",
           "name": "skill",
           "hasDynamicHelp": false,
           "helpValue": "<skill> [key1=\"value1\" ...]",
@@ -55,8 +52,7 @@
         },
         "prompt": {
           "char": "p",
-          "description": "Query agent with a prompt, by default it will use the agent model or default to gpt-4o, you can force a model by passing it as a second argument after the prompt",
-          "helpGroup": "prompt",
+          "description": "Query agent with a prompt, by default it will use the agent model or default to gpt-4o, you can force a model by passing it as a second argument after the prompt\n\n ",
           "helpLabel": "--prompt",
           "name": "prompt",
           "hasDynamicHelp": false,
@@ -65,8 +61,7 @@
           "type": "option"
         },
         "mcp": {
-          "description": "Start MCP server",
-          "helpGroup": "mcp",
+          "description": "Start MCP server\n\n ",
           "name": "mcp",
           "hasDynamicHelp": false,
           "helpValue": "[server-type] [port]",

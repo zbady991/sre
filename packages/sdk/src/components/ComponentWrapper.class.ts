@@ -1,6 +1,6 @@
 import { uid } from '../utils/general.utils';
 import { createSafeAccessor } from './utils';
-import { Agent } from '../Agent.class';
+import { Agent } from '../Agent/Agent.class';
 import { InputSettings } from '../types/SDKTypes';
 
 export class ComponentWrapper {

@@ -2,7 +2,7 @@ import { TLLMModel, Conversation, TLLMEvent, ILLMContextStore, AccessCandidate }
 import { EventEmitter } from 'events';
 import { uid } from '../utils/general.utils';
 import { AgentData, ChatOptions } from '../types/SDKTypes';
-import { SDKObject } from '../SDKObject.class';
+import { SDKObject } from '../Core/SDKObject.class';
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { SDKLog } from '../utils/console.utils';
 

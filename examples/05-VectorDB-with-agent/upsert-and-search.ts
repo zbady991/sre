@@ -73,12 +73,12 @@ async function indexDataForAgent(agent: Agent) {
 
     await pinecone.purge();
 
-    const parsedDoc = await Doc.md(filePath, {
+    const parsedDoc = await Doc.md.parse(filePath, {
         title: 'Bitcoin',
         author: 'Satoshi Nakamoto',
         date: '2009-01-03',
         tags: ['bitcoin', 'crypto', 'blockchain'],
-    }).parse();
+    });
 
     await pinecone.insertDoc(parsedDoc.title, parsedDoc, { myEntry: 'My Metadata' });
 }

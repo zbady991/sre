@@ -11,42 +11,40 @@ async function main() {
     const txtFilePath = path.join(__dirname, '../files/bitcoin.txt');
     const markdownFilePath = path.join(__dirname, '../files/bitcoin.md');
 
-    //Initialize the pdf parser
-    const pdfDoc = Doc.pdf(pdfFilePath);
     //parse the pdf document
-    const parsedPDFDoc = await pdfDoc.parse();
+    const parsedPDFDoc = await Doc.pdf.parse(pdfFilePath);
     console.log(parsedPDFDoc);
 
     //initialize and parse in one line
-    const parsedDocxDoc = await Doc.docx(docxFilePath).parse();
+    const parsedDocxDoc = await Doc.docx.parse(docxFilePath);
     console.log(parsedDocxDoc);
 
     //initialize and parse markdown file in one line, with custom metadata
-    const parsedMarkdownDoc = await Doc.md(markdownFilePath, {
+    const parsedMarkdownDoc = await Doc.md.parse(markdownFilePath, {
         title: 'Bitcoin',
         author: 'Satoshi Nakamoto',
         date: '2009-01-03',
         tags: ['bitcoin', 'crypto', 'blockchain'],
-    }).parse();
+    });
     console.log(parsedMarkdownDoc);
 
     //initialize and parse text file in one line, with custom metadata
-    const parsedTxtDoc = await Doc.text(txtFilePath, {
+    const parsedTxtDoc = await Doc.text.parse(txtFilePath, {
         title: 'Bitcoin',
         author: 'Satoshi Nakamoto',
         date: '2009-01-03',
         tags: ['bitcoin', 'crypto', 'blockchain'],
-    }).parse();
+    });
     console.log(parsedTxtDoc);
 
     //parse a string
     const stringContent = fs.readFileSync(txtFilePath, 'utf8');
-    const parsedString = await Doc.text(stringContent, {
+    const parsedString = await Doc.text.parse(stringContent, {
         title: 'Bitcoin',
         author: 'Satoshi Nakamoto',
         date: '2009-01-03',
         tags: ['bitcoin', 'crypto', 'blockchain'],
-    }).parse();
+    });
     console.log(parsedString);
 }
 

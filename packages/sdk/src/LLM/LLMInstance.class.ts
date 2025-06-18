@@ -11,7 +11,7 @@ import {
 } from '@smythos/sre';
 import { EventEmitter } from 'events';
 import { Chat } from './Chat.class';
-import { SDKObject } from '../SDKObject.class';
+import { SDKObject } from '../Core/SDKObject.class';
 import { adaptModelParams } from './utils';
 import { uid } from '../utils/general.utils';
 import { ChatOptions } from '../types/SDKTypes';

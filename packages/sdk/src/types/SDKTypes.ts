@@ -1,5 +1,5 @@
 import { ILLMContextStore } from '@smythos/sre';
-import { ComponentWrapper } from '../components/ComponentWrapper.class';
+import { ComponentWrapper } from '../Components/ComponentWrapper.class';
 
 export type InputSettings = {
     type?: 'Text' | 'Number' | 'Boolean' | 'Object' | 'Array' | 'Any' | 'Binary';

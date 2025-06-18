@@ -3,13 +3,9 @@ import { readFile } from 'fs/promises';
 import * as mammoth from 'mammoth';
 
 export class DOCXParser extends DocParser {
-    constructor(source: string, params?: TDocumentParseSettings) {
-        super(source, params);
-    }
-
-    async parse(): Promise<TParsedDocument> {
+    async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         try {
-            const dataBuffer = await readFile(this.source);
+            const dataBuffer = await readFile(source);
 
             // Parse document structure with enhanced page break detection
             const documentStructure = await this.extractDocumentStructure(dataBuffer);
@@ -28,9 +24,9 @@ export class DOCXParser extends DocParser {
             );
 
             return {
-                title: this.extractTitleFromPath(this.source),
+                title: this.extractTitleFromPath(source),
                 metadata: {
-                    uri: this.source,
+                    uri: source,
                     author: '',
                     date: '',
                     tags: [],

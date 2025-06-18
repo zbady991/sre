@@ -13,6 +13,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import * as readlineSync from 'readline-sync';
 import path from 'path';
+import { findSmythPath } from '../../../../helpers/Sysconfig.helper';
 
 const console = Logger('JSONFileVault');
 
@@ -57,6 +58,8 @@ export class JSONFileVault extends VaultConnector {
                     this.vaultData = JSON.parse(fs.readFileSync(vaultFile).toString());
                 }
             } catch (e) {
+                console.error('Error parsing vault file:', e);
+                console.error('!!! Vault features might not work properly !!!');
                 this.vaultData = {};
             }
 
@@ -82,24 +85,21 @@ export class JSONFileVault extends VaultConnector {
         if (fs.existsSync(_vaultFile)) {
             return _vaultFile;
         }
-        console.warn('Vault file not found in:', _vaultFile, 'trying to find in local .smyth directory');
-
-        //try local directory
-        _vaultFile = path.join(process.cwd(), '.smyth', '.sre', 'vault.json');
-        if (fs.existsSync(_vaultFile)) {
-            console.warn('Using alternative vault file found in : ', _vaultFile);
-            return _vaultFile;
-        }
-
-        console.warn('Vault file not found in:', _vaultFile, 'trying to find in user home directory');
-        //try to find the vault file in the .smyth directory
-        _vaultFile = path.join(os.homedir(), '.smyth', '.sre', 'vault.json');
-        if (fs.existsSync(_vaultFile)) {
-            console.warn('Using alternative vault file found in : ', _vaultFile);
-            return _vaultFile;
-        }
-
         console.warn('Vault file not found in:', _vaultFile);
+
+        //try to find the .smyth directory and check if it contains a valid vault
+
+        _vaultFile = findSmythPath('.sre/vault.json', (dir, success, nextDir) => {
+            if (!success) {
+                console.warn('Vault file not found in:', nextDir);
+            }
+        });
+
+        if (fs.existsSync(_vaultFile)) {
+            console.warn('Using alternative vault file found in : ', _vaultFile);
+            return _vaultFile;
+        }
+
         console.warn('!!! All attempts to find the vault file failed !!!');
         console.warn('!!! Will continue without vault !!!');
         console.warn('!!! Many features might not work !!!');

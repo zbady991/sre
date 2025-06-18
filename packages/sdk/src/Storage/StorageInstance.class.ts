@@ -1,6 +1,6 @@
 import { AccessCandidate, ConnectorService, DEFAULT_TEAM_ID, SmythFS, StorageConnector, TAccessRole, TConnectorService } from '@smythos/sre';
 
-import { SDKObject } from '../SDKObject.class';
+import { SDKObject } from '../Core/SDKObject.class';
 import { TStorageProvider } from '../types/generated/Storage.types';
 
 export class StorageInstance extends SDKObject {

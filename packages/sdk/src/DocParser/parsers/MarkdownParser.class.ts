@@ -4,19 +4,15 @@ import { existsSync } from 'fs';
 import path from 'path';
 
 export class MarkdownParser extends DocParser {
-    constructor(source: string, params?: TDocumentParseSettings) {
-        super(source, params);
-    }
-
-    async parse(): Promise<TParsedDocument> {
+    async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         try {
-            let markdownContent: string = this.source; // Default to raw source
+            let markdownContent: string = source; // Default to raw source
             let isFilePath = false;
 
             // Try to treat as a file path, but gracefully fallback to raw content
             try {
-                if (this.isLikelyFilePath(this.source)) {
-                    const normalizedPath = path.resolve(this.source);
+                if (this.isLikelyFilePath(source)) {
+                    const normalizedPath = path.resolve(source);
                     if (existsSync(normalizedPath)) {
                         markdownContent = await readFile(normalizedPath, 'utf-8');
                         isFilePath = true;
@@ -31,7 +27,7 @@ export class MarkdownParser extends DocParser {
             let title = this.extractTitleFromMarkdown(markdownContent);
 
             if (!title && isFilePath) {
-                const fileName = path.basename(this.source, path.extname(this.source));
+                const fileName = path.basename(source, path.extname(source));
                 title = fileName || 'Untitled';
             }
 
@@ -40,8 +36,8 @@ export class MarkdownParser extends DocParser {
             }
 
             // Override with params if provided
-            if (this.params?.title) {
-                title = this.params.title;
+            if (params?.title) {
+                title = params.title;
             }
 
             // Parse markdown content into structured format
@@ -49,10 +45,10 @@ export class MarkdownParser extends DocParser {
 
             // Build metadata
             const metadata = {
-                uri: isFilePath ? this.source : '',
-                author: this.params?.author || '',
-                date: this.params?.date || '',
-                tags: this.params?.tags || [],
+                uri: isFilePath ? source : '',
+                author: params?.author || '',
+                date: params?.date || '',
+                tags: params?.tags || [],
             };
 
             return {

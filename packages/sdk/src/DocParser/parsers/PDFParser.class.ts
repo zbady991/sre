@@ -8,14 +8,10 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 
 export class PDFParser extends DocParser {
-    constructor(source: string, params?: TDocumentParseSettings) {
-        super(source, params);
-    }
-
-    async parse(): Promise<TParsedDocument> {
+    async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         try {
-            const dataBuffer = await readFile(this.source);
-            const fileNameWithoutExtension = path.basename(this.source, path.extname(this.source));
+            const dataBuffer = await readFile(source);
+            const fileNameWithoutExtension = path.basename(source, path.extname(source));
 
             // Use pdfjs-dist for text extraction and metadata
             const loadingTask = pdfjsLib.getDocument({
@@ -161,7 +157,7 @@ export class PDFParser extends DocParser {
             return {
                 title: info.Title || fileNameWithoutExtension || '',
                 metadata: {
-                    uri: this.source,
+                    uri: source,
                     author: info.Author || '',
                     date: info.CreationDate || '',
                     tags: (info.Keywords || '')

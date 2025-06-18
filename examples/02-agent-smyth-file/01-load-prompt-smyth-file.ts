@@ -1,4 +1,4 @@
-import { Agent, Model } from '@smythos/sdk';
+import { Agent, Model, Scope } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -26,8 +26,6 @@ async function main() {
     });
 
     const result = await agent.prompt('What are the current prices of Bitcoin and Ethereum ?');
-
-    //const result = await agent.call('get_price', { coin_id: 'bitcoin' });
 
     console.log(result);
 }

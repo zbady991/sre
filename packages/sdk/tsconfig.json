@@ -5,7 +5,7 @@
         "target": "ESNext",
         "moduleResolution": "node",
         //"noImplicitAny": true,
-        //"strict": true,
+        "strict": false,
         "sourceMap": true,
         "preserveSymlinks": true,
         "resolveJsonModule": true,
@@ -14,7 +14,11 @@
         "allowSyntheticDefaultImports": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
-        "typeRoots": ["./node_modules/@types"]
+        "typeRoots": ["./node_modules/@types"],
+        "isolatedModules": true,
+        "forceConsistentCasingInFileNames": true,
+        "noEmit": true,
+        "jsx": "react-jsx"
     },
     "include": ["src/**/*.ts"],
     "exclude": ["node_modules"]

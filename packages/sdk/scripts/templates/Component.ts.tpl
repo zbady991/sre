@@ -1,4 +1,4 @@
-import { Agent } from '../../Agent.class';
+import { Agent } from '../../Agent/Agent.class';
 import { createSafeAccessor } from '../utils';
 import { ComponentWrapper } from '../ComponentWrapper.class';
 import { InputSettings, ComponentInput } from '../../types/SDKTypes';

@@ -20,9 +20,7 @@ async function main() {
     // This will wipe all the data in 'test' namespace
     await pinecone.purge();
 
-    const doc = Doc.pdf(filePath);
-
-    const parsedDoc = await doc.parse();
+    const parsedDoc = await Doc.pdf.parse(filePath);
 
     const result = await pinecone.insertDoc('test', parsedDoc, { myEntry: 'My Metadata' });
     console.log(result);

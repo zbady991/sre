@@ -1,4 +1,4 @@
-import { SDKLog } from './utils/console.utils';
+import { SDKLog } from './console.utils';
 
 const console = SDKLog;
 

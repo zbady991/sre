@@ -1,9 +1,9 @@
-import { TStorageProvider, TStorageProviderInstances } from './types/generated/Storage.types';
-import { Agent, TAgentSettings } from './Agent.class';
-import { StorageInstance } from './Storage/StorageInstance.class';
+import { TStorageProvider, TStorageProviderInstances } from '../types/generated/Storage.types';
+import { Agent, TAgentSettings } from '../Agent/Agent.class';
+import { StorageInstance } from '../Storage/StorageInstance.class';
 import { AccessCandidate } from '@smythos/sre';
-import { TVectorDBProvider, TVectorDBProviderInstances } from './types/generated/VectorDB.types';
-import { VectorDBInstance } from './VectorDB/VectorDBInstance.class';
+import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generated/VectorDB.types';
+import { VectorDBInstance } from '../VectorDB/VectorDBInstance.class';
 
 export class Team {
     constructor(public id: string) {}

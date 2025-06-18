@@ -11,6 +11,7 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import fs, { existsSync } from 'fs';
 import os from 'os';
 import path from 'path';
+import { findSmythPath } from '../../../..';
 
 const console = Logger('LocalStorage');
 
@@ -35,12 +36,31 @@ export class LocalStorage extends StorageConnector {
         super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.folder = _settings?.folder || path.join(os.homedir(), '.smyth/storage');
+        this.folder = this.findStorageFolder(_settings?.folder);
         this.initialize();
         if (!fs.existsSync(this.folder)) {
             //throw new Error('Invalid folder provided');
             console.error(`Invalid folder provided: ${this.folder}`);
         }
+    }
+
+    private findStorageFolder(folder) {
+        let _storageFolder = folder;
+
+        if (fs.existsSync(_storageFolder)) {
+            return _storageFolder;
+        }
+
+        _storageFolder = findSmythPath('storage');
+
+        if (fs.existsSync(_storageFolder)) {
+            console.warn('Using alternative storage folder found in : ', _storageFolder);
+            return _storageFolder;
+        }
+
+        console.warn('!!! All attempts to find an existing storage folder failed !!!');
+        console.warn('!!! I will use this folder: ', _storageFolder);
+        return _storageFolder;
     }
 
     /**

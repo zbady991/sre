@@ -34,38 +34,35 @@ export default class AgentCmd extends Command {
         help: Flags.help({ char: 'h' }),
         chat: Flags.string({
             char: 'c',
-            description: 'Start chat interface',
+            description: 'Start chat interface\n\n ',
             helpValue: '[model-name]',
-            helpGroup: 'chat',
         }),
         models: Flags.string({
             char: 'M',
-            description: 'A list of models to use in a json file or directory of json files',
+            description: 'A list of models to use in a json file or directory of json files\n\n ',
             helpValue: '<models> [options]',
-            helpGroup: 'models',
         }),
         skill: Flags.string({
             char: 's',
-            description: 'Execute an Agent skill, you can pass input parameters as key="value" pairs',
+            description: 'Execute an Agent skill, you can pass input parameters as key="value" pairs\n\n ',
             helpValue: '<skill> [key1="value1" ...]',
-            helpGroup: 'skill',
+
             multiple: true,
         }),
 
         prompt: Flags.string({
             char: 'p',
             description:
-                'Query agent with a prompt, by default it will use the agent model or default to gpt-4o, you can force a model by passing it as a second argument after the prompt',
-            helpGroup: 'prompt',
+                'Query agent with a prompt, by default it will use the agent model or default to gpt-4o, you can force a model by passing it as a second argument after the prompt\n\n ',
+
             helpLabel: '--prompt',
             helpValue: '<prompt> [model]',
             multiple: true,
         }),
 
         mcp: Flags.string({
-            description: 'Start MCP server',
+            description: 'Start MCP server\n\n ',
             helpValue: '[server-type] [port]',
-            helpGroup: 'mcp',
             multiple: true,
         }),
     };

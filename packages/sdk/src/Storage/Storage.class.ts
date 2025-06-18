@@ -1,6 +1,6 @@
 import { AccessCandidate, DEFAULT_TEAM_ID } from '@smythos/sre';
 
-import { HELP } from '../help';
+import { HELP } from '../utils/help';
 import { TStorageProvider, TStorageProviderInstances } from '../types/generated/Storage.types';
 import { Scope } from '../types/SDKTypes';
 import { StorageInstance } from './StorageInstance.class';

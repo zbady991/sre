@@ -19,15 +19,14 @@ async function main() {
             password: process.env.MILVUS_PASSWORD,
             token: process.env.MILVUS_TOKEN,
         },
+
         embeddings: Model.OpenAI('text-embedding-3-large'),
     });
 
     // This will wipe all the data in 'test' namespace
     await milvus.purge();
 
-    const doc = Doc.pdf(filePath);
-
-    const parsedDoc = await doc.parse();
+    const parsedDoc = await Doc.pdf.parse(filePath);
 
     const result = await milvus.insertDoc('test', parsedDoc, { myEntry: 'My Metadata' });
     console.log(result);

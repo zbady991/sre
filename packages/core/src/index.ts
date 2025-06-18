@@ -57,6 +57,7 @@ export * from './helpers/Log.helper';
 export * from './helpers/OpenApiParser.helper';
 export * from './helpers/S3Cache.helper';
 export * from './helpers/SmythURI.helper';
+export * from './helpers/Sysconfig.helper';
 export * from './helpers/TemplateString.helper';
 export * from './helpers/TypeChecker.helper';
 export * from './types/ACL.types';

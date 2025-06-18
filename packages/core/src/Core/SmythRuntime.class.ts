@@ -1,14 +1,10 @@
 import { boot } from './boot';
 
 import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
+import { Logger } from '../helpers/Log.helper';
 import { ConnectorService } from './ConnectorsService';
 import { SystemEvents } from './SystemEvents';
-import { Logger } from '../helpers/Log.helper';
-import path from 'path';
-import fs from 'fs';
-import os from 'os';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { findSmythPath } from '../helpers/Sysconfig.helper';
 
 const logger = Logger('SRE');
 
@@ -90,7 +86,7 @@ export class SmythRuntime {
 
     public init(_config?: SREConfig): SmythRuntime {
         if (!_config || JSON.stringify(_config) === '{}') {
-            this._smythDir = findSmythDir();
+            this._smythDir = findSmythPath();
             logger.info('.smyth directory found in:', this._smythDir);
         }
 
@@ -197,65 +193,6 @@ export class SmythRuntime {
 
 export const SRE = SmythRuntime.Instance;
 let shuttingDown = false;
-
-function findSmythDir() {
-    // 1. Try to find in local directory (the directory from which the program was run)
-    const localDir = path.resolve(process.cwd(), '.smyth');
-    if (fs.existsSync(localDir)) {
-        return localDir;
-    }
-
-    // 2. Try to find from main script's directory (entry point)
-    const mainScriptPath = process.argv[1];
-    const mainScriptDir = path.dirname(path.resolve(mainScriptPath));
-    if (mainScriptPath) {
-        const mainScriptSmythDir = path.resolve(mainScriptDir, '.smyth');
-        if (fs.existsSync(mainScriptSmythDir)) {
-            return mainScriptSmythDir;
-        }
-    }
-
-    // 3. Try to find it in current package root directory (where package.json is)
-    let packageRootDir = findPackageRoot();
-    if (packageRootDir) {
-        const packageSmythDir = path.resolve(packageRootDir, '.smyth');
-        if (fs.existsSync(packageSmythDir)) {
-            return packageSmythDir;
-        }
-    }
-
-    // 4. Try to find it in current package root directory from main script's directory
-    packageRootDir = findPackageRoot(mainScriptDir);
-    if (packageRootDir) {
-        const packageSmythDir = path.resolve(packageRootDir, '.smyth');
-        if (fs.existsSync(packageSmythDir)) {
-            return packageSmythDir;
-        }
-    }
-
-    // 5. Try to find it in user home directory
-    const homeDir = path.resolve(os.homedir(), '.smyth');
-    if (fs.existsSync(homeDir)) {
-        return homeDir;
-    }
-
-    // Default: return path in current working directory (will be created if needed)
-    return localDir;
-}
-
-function findPackageRoot(startDir = process.cwd()) {
-    let currentDir = startDir;
-
-    while (currentDir !== path.dirname(currentDir)) {
-        const packageJsonPath = path.resolve(currentDir, 'package.json');
-        if (fs.existsSync(packageJsonPath)) {
-            return currentDir;
-        }
-        currentDir = path.dirname(currentDir);
-    }
-
-    return null;
-}
 
 async function shutdown(reason) {
     if (!SmythRuntime.Instance.started) return;

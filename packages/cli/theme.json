@@ -4,7 +4,7 @@
     "commandSummary": "white",
     "dollarSign": "gray",
     "flag": "blue",
-    "flagDefaultValue": "dim",
+    "flagDefaultValue": "white",
     "flagOptions": "yellow",
     "flagRequired": "red",
     "flagSeparator": "dim",

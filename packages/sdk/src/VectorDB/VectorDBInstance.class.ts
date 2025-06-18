@@ -1,10 +1,10 @@
 import { AccessCandidate, ConnectorService, DEFAULT_TEAM_ID, IVectorDBRequest, TConnectorService } from '@smythos/sre';
 
 import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generated/VectorDB.types';
-import { SDKObject } from '../SDKObject.class';
+import { SDKObject } from '../Core/SDKObject.class';
 import { TParsedDocument } from '../DocParser/DocParser.class';
 import { Scope } from '../types/SDKTypes';
-import { HELP } from '../help';
+import { HELP } from '../utils/help';
 //import { TVectorDBProviderInstances } from './types/generated/VectorDB.types';
 
 export type TVectorDBSearchOptions = {

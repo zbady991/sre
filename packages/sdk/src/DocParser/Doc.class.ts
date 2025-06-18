@@ -4,38 +4,28 @@ import { DOCXParser } from './parsers/DOCXParser.class';
 import { MarkdownParser } from './parsers/MarkdownParser.class';
 import { TextParser } from './parsers/TextParser.class';
 
-export const DocType = {
-    PDF: 'PDF',
-    DOCX: 'DOCX',
-    MD: 'MD',
-    TEXT: 'TEXT',
-} as const;
-
-export type TDocType = keyof typeof DocType;
-
-const ParserMap: Record<TDocType, typeof DocParser> = {
-    PDF: PDFParser,
-    DOCX: DOCXParser,
-    MD: MarkdownParser,
-    TEXT: TextParser,
+const BuiltinDocParsers: Record<string, DocParser> = {
+    pdf: new PDFParser(),
+    docx: new DOCXParser(),
+    md: new MarkdownParser(),
+    text: new TextParser(),
 };
+export type TDocType = keyof typeof BuiltinDocParsers;
+
+// Extensible interface for custom providers
+export interface IDocParsers {}
+// Combined provider type that can be extended
+export type TDocParser = TDocType | keyof IDocParsers;
 
 export type TDocParserFactory = {
-    (source: string, params?: TDocumentParseSettings): DocParser;
+    [K in TDocParser]: DocParser;
 };
 
-export type TDocParserFactories = {
-    [key in TDocType as Lowercase<key>]: TDocParserFactory;
-};
+const Doc = {} as TDocParserFactory;
 
-const Doc = {} as TDocParserFactories;
-
-for (const type of Object.keys(ParserMap) as TDocType[]) {
-    const key = type.toLowerCase() as Lowercase<TDocType>;
-    const ParserClass = ParserMap[type];
-    Doc[key] = (source: string, params?: TDocumentParseSettings): DocParser => {
-        return new ParserClass(source, params);
-    };
+for (const type of Object.keys(BuiltinDocParsers) as TDocParser[]) {
+    const key = type as TDocParser;
+    Doc[key] = BuiltinDocParsers[type];
 }
 
 export { Doc };
