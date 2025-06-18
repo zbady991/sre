@@ -6,9 +6,8 @@
 import { Command, Flags } from '@oclif/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import fs from 'fs';
-import path from 'path';
 import os from 'os';
+import path from 'path';
 import { banner } from '../../utils/banner';
 
 const normalizeProjectName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, '-');
