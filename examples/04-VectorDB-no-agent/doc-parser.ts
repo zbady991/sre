@@ -12,8 +12,16 @@ async function main() {
     const markdownFilePath = path.join(__dirname, '../files/bitcoin.md');
 
     //parse the pdf document
+    let sTime = performance.now();
     const parsedPDFDoc = await Doc.pdf.parse(pdfFilePath);
+    let eTime = performance.now();
+    console.log(`PDF parsing took ${eTime - sTime}ms`);
     console.log(parsedPDFDoc);
+
+    sTime = performance.now();
+    await Doc.pdf.parse(pdfFilePath);
+    eTime = performance.now();
+    console.log(`2nd PDF parsing took ${eTime - sTime}ms`);
 
     //initialize and parse in one line
     const parsedDocxDoc = await Doc.docx.parse(docxFilePath);
