@@ -1,7 +1,18 @@
 import { Agent } from '@smythos/sdk';
+import { SRE } from '@smythos/sre';
 import ora from 'ora';
 
 export default async function runPrompt(args: any, flags: any) {
+    if (flags.vault) {
+        SRE.init({
+            Vault: {
+                Connector: 'JSONFileVault',
+                Settings: {
+                    file: flags.vault,
+                },
+            },
+        });
+    }
     const agentPath = args.path;
     const prompt = flags.prompt;
     const model = flags.promptModel || 'gpt-4o';
