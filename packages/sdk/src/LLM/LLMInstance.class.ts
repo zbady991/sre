@@ -115,7 +115,7 @@ export type TLLMInstanceParams = {
  * Represents a LLM instance. These instances are created by the LLM Factory ({@link LLM}).
  *
  *
- * @example
+ * @example Usage example
  * ```typescript
  * const llm = LLM.OpenAI({ model: 'gpt-4o' });
  * //the above is equivalent to:
@@ -135,6 +135,7 @@ export type TLLMInstanceParams = {
  * chat.prompt('Hello, world!');
  *
  * ```
+ * More examples are available in the **{@link LLM}** namespace.
  */
 export class LLMInstance extends SDKObject {
     private _llmRequester: ILLMConnectorRequest;

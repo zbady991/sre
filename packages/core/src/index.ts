@@ -144,6 +144,7 @@ export * from './subsystems/AgentManager/AgentData.service/connectors/NullAgentD
 export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
 export * from './subsystems/ComputeManager/Code.service/connectors/AWSLambdaCode.class';
 export * from './subsystems/IO/Log.service/connectors/ConsoleLog.class';
+export * from './subsystems/IO/NKV.service/connectors/NKVLocalStorage.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRAM.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRedis.class';
 export * from './subsystems/IO/Router.service/connectors/ExpressRouter.class';
@@ -164,7 +165,7 @@ export * from './subsystems/LLMManager/LLM.service/connectors/Groq.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/OpenAI.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Perplexity.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/VertexAI.class';
-export * from './subsystems/LLMManager/ModelsProvider.service/connectors/SmythModelsProvider.class';
+export * from './subsystems/LLMManager/ModelsProvider.service/connectors/JSONModelsProvider.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/LocalStorageCache.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/RAMCache.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/RedisCache.class';

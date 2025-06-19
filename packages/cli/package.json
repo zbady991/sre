@@ -26,7 +26,6 @@
     },
     "files": [
         "dist",
-        "src",
         "theme.json",
         "README.md",
         "CHANGELOG.md"

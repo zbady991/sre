@@ -1,14 +1,19 @@
 import { DocParser, TDocumentParseSettings, TParsedDocument } from '../DocParser.class';
 import { readFile } from 'fs/promises';
 import path from 'path';
-// Use the legacy build for Node.js environments
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-
-// Set up the worker for pdfjs-dist (legacy build for Node.js)
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 
 export class PDFParser extends DocParser {
+    protected supportedMimeTypes: string[] = ['application/pdf'];
+    protected supportedExtensions: string[] = ['pdf'];
     async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
+        // Lazy-load pdfjs-dist to reduce initial bundle size
+        const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        // Set up the worker for pdfjs-dist (legacy build for Node.js)
+        // This is necessary for the library to function correctly in a Node.js environment.
+        if (pdfjsLib.GlobalWorkerOptions.workerSrc !== 'pdfjs-dist/legacy/build/pdf.worker.mjs') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+        }
+
         try {
             const dataBuffer = await readFile(source);
             const fileNameWithoutExtension = path.basename(source, path.extname(source));

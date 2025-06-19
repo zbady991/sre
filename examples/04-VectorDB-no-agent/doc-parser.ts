@@ -11,15 +11,21 @@ async function main() {
     const txtFilePath = path.join(__dirname, '../files/bitcoin.txt');
     const markdownFilePath = path.join(__dirname, '../files/bitcoin.md');
 
-    //parse the pdf document
+    //We can use Doc.auto to let the SDK choose a parser automatically
+    const parsedDoc = await Doc.auto.parse(pdfFilePath);
+    console.log(parsedDoc);
+
+    //or we can explicitly choose a parser
+
+    //PDF
     const parsedPDFDoc = await Doc.pdf.parse(pdfFilePath);
     console.log(parsedPDFDoc);
 
-    //initialize and parse in one line
+    //DOCX
     const parsedDocxDoc = await Doc.docx.parse(docxFilePath);
     console.log(parsedDocxDoc);
 
-    //initialize and parse markdown file in one line, with custom metadata
+    //Markdown with custom metadata
     const parsedMarkdownDoc = await Doc.md.parse(markdownFilePath, {
         title: 'Bitcoin',
         author: 'Satoshi Nakamoto',
@@ -28,7 +34,7 @@ async function main() {
     });
     console.log(parsedMarkdownDoc);
 
-    //initialize and parse text file in one line, with custom metadata
+    //Text with custom metadata
     const parsedTxtDoc = await Doc.text.parse(txtFilePath, {
         title: 'Bitcoin',
         author: 'Satoshi Nakamoto',
@@ -37,7 +43,7 @@ async function main() {
     });
     console.log(parsedTxtDoc);
 
-    //parse a string
+    //Text from a string
     const stringContent = fs.readFileSync(txtFilePath, 'utf8');
     const parsedString = await Doc.text.parse(stringContent, {
         title: 'Bitcoin',

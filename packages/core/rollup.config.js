@@ -42,8 +42,10 @@ const config = {
         sourcemaps(),
         esbuild({
             sourceMap: true,
-            minify: false,
-            treeShaking: false,
+            minifyWhitespace: true,
+            minifySyntax: true,
+            minifyIdentifiers: false,
+            treeShaking: true,
             sourcesContent: true,
         }),
 

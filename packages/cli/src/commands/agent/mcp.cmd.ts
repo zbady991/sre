@@ -8,8 +8,26 @@ import { CallToolRequestSchema, ListToolsRequestSchema, Tool } from '@modelconte
 import { Agent } from '@smythos/sdk';
 const clientTransports = new Map<string, { transport: SSEServerTransport; server: Server }>();
 const defaultPort = 3388;
-export const startMcpServer = async (agentData, serverType, port): Promise<void> => {
-    await SRE.init();
+export const startMcpServer = async (agentData, serverType, port, flags): Promise<void> => {
+    const sreConfigs: any = {};
+    if (flags.vault) {
+        sreConfigs.Vault = {
+            Connector: 'JSONFileVault',
+            Settings: {
+                file: flags.vault,
+            },
+        };
+    }
+    if (flags.models) {
+        sreConfigs.ModelsProvider = {
+            Connector: 'JSONModelsProvider',
+            Settings: {
+                models: flags.models,
+                mode: 'merge',
+            },
+        };
+    }
+    SRE.init(sreConfigs);
     await SRE.ready();
 
     if (serverType.toLowerCase() === 'stdio') {

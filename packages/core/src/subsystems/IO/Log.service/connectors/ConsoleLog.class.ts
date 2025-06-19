@@ -8,6 +8,7 @@ import { AgentCallLog } from '@sre/types/AgentLogger.types';
 const console = Logger('SmythLog');
 
 export class ConsoleLog extends LogConnector {
+    public name: string = 'ConsoleLog';
     public id: string;
     public getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
         return Promise.resolve(new ACL());
@@ -24,5 +25,4 @@ export class ConsoleLog extends LogConnector {
 
         return Promise.resolve();
     }
-    public name: string;
 }

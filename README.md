@@ -1,5 +1,11 @@
 # SmythOS - The Operating System for Agentic AI
 
+[![Homepage](https://img.shields.io/badge/_Homepage-SmythOS-green?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJHSURBVHgBfVNNqBJRFL7jT1IYCeUqcRG+AsGVFLhIJIIHLVq93MRsSgpTWgRudaELBRctBDeB2qpdohsVdSOKok+eBC4UAiNSKX9440PtzYydM9yJqV4eOPfOvff8fd85Q8jFosElHo8fJhIJN71TgTJkj+CjWj6sVqu2KIo7VBCuUCg8VNj9E0iLSyQSuQmOx7VaLS4IAjqKsJ/jx3K5PKlUKg88Ho/p74ok58lkkkXDTCbziuO4rz9BMDvP898Ain04HL7fUVksFp+SyeS93+mn02kODKXHer3OYmbQTalUeoLveI8VbTabNQ36o1wuH0nOdrtdiw4iBTsYDALtdjuhwCsR2mw22e12e1YsFo/+gGC1WvW0MilALpd7Tg3UCo4kY4vFooOEV5SEq/r9/gqSD8GXASVQ6mXqJCgCiIjE7/e7Op3OWa/Xe03fNRhZo1arb7darRcMwxCDwXCN/EeAAw53m832FpJ+xyCIj8dKHA7HOygv7XQ6ryogCAoI4nq9FiViGKl7N7xer03uJe47t9t9KxwO97vdrlyiigYSG43GS7PZfJcG3OGi0+lOpVM0GrVB74+RRGB6Kw+Rz+e7HovF7sDVBC+CwSC2GNsogH4mcou0Wq0KymP0ej25BDKfz09SqdSzUCj00Wg03gfjc8xqMplwJ3D+wrLsgewvYySBQOAAhufxaDT6QIcHp0sEB348Hldms1k5m80eUh8NuUAkdqrV6iP8gRAKHbBTl8ulUfC196+UiSPpdPppPp9/sy/jL4yPfDIO4aFTAAAAAElFTkSuQmCC&logoWidth=14)](https://smythos.com)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/smythos)
+[![](https://img.shields.io/badge/📄_Code_License-MIT-green)](https://github.com/SmythOS/sre/blob/main/LICENSE)
+
+[SDK Documentation](https://smythos.github.io/sre/sdk/) | [SRE Core Documentation](https://smythos.github.io/sre/core/) | [Code Examples](examples)
+
 Everything you need to build, deploy, and manage intelligent AI agents at scale. SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
 
 ## Why SmythOS exists
@@ -42,6 +48,8 @@ npm i -g @smythos/cli
 sre create
 ```
 
+_Note: "sre create" command is not implemented yet in this release, will be available very soon_
+
 The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs.
 
 ### Method 2: Direct SDK Installation
@@ -52,7 +60,7 @@ Add the SDK directly to your existing project:
 npm install @smythos/sdk
 ```
 
-Check the [Examples](packages/examples) and documentation to get started.
+Check the [Examples](examples) and [documentation](https://smythos.github.io/sre/sdk/) to get started.
 
 ---
 

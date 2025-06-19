@@ -33,7 +33,10 @@ describe('SDK LLM Tests', () => {
     });
 
     it('LLM - Prompt from named LLM', async () => {
-        const llm = LLM.OpenAI('gpt-4o-mini');
+        const llm = LLM.OpenAI('gpt-4o-mini', {
+            temperature: 0.1,
+            maxTokens: 100,
+        });
 
         const result = await llm.prompt('What is the capital of France?');
 

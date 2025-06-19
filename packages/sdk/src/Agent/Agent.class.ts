@@ -102,6 +102,63 @@ class AgentCommand {
         await this.agent.ready;
         const conversation = await prepareConversation(this.agent.data);
 
+        const eventEmitter = new EventEmitter();
+
+        const toolInfoHandler = (toolInfo: any) => {
+            eventEmitter.emit(TLLMEvent.ToolInfo, toolInfo);
+            this.agent.emit(TLLMEvent.ToolInfo, toolInfo);
+        };
+        const interruptedHandler = (interrupted: any) => {
+            eventEmitter.emit(TLLMEvent.Interrupted, interrupted);
+            this.agent.emit(TLLMEvent.Interrupted, interrupted);
+        };
+
+        const contentHandler = (content: string) => {
+            eventEmitter.emit(TLLMEvent.Content, content);
+            this.agent.emit(TLLMEvent.Content, content);
+        };
+        const toolCallHandler = (toolCall: any) => {
+            eventEmitter.emit(TLLMEvent.ToolCall, toolCall);
+            this.agent.emit(TLLMEvent.ToolCall, toolCall);
+        };
+        const toolResultHandler = (toolResult: any) => {
+            eventEmitter.emit(TLLMEvent.ToolResult, toolResult);
+            this.agent.emit(TLLMEvent.ToolResult, toolResult);
+        };
+        const endHandler = () => {
+            eventEmitter.emit(TLLMEvent.End);
+            this.agent.emit(TLLMEvent.End);
+            removeHandlers();
+        };
+        const errorHandler = (error: any) => {
+            eventEmitter.emit(TLLMEvent.Error, error);
+            this.agent.emit(TLLMEvent.Error, error);
+            removeHandlers();
+        };
+        const usageHandler = (usage: any) => {
+            eventEmitter.emit(TLLMEvent.Usage, usage);
+            this.agent.emit(TLLMEvent.Usage, usage);
+        };
+
+        const removeHandlers = () => {
+            conversation.off(TLLMEvent.ToolCall, toolCallHandler);
+            conversation.off(TLLMEvent.ToolResult, toolResultHandler);
+            conversation.off(TLLMEvent.Usage, usageHandler);
+            conversation.off(TLLMEvent.End, endHandler);
+            conversation.off(TLLMEvent.Error, errorHandler);
+            conversation.off(TLLMEvent.Content, contentHandler);
+            conversation.off(TLLMEvent.ToolInfo, toolInfoHandler);
+            conversation.off(TLLMEvent.Interrupted, interruptedHandler);
+        };
+
+        conversation.on(TLLMEvent.ToolCall, toolCallHandler);
+        conversation.on(TLLMEvent.ToolResult, toolResultHandler);
+        conversation.on(TLLMEvent.End, endHandler);
+        conversation.on(TLLMEvent.Error, errorHandler);
+        conversation.on(TLLMEvent.Content, contentHandler);
+        conversation.on(TLLMEvent.ToolInfo, toolInfoHandler);
+        conversation.on(TLLMEvent.Interrupted, interruptedHandler);
+
         conversation.streamPrompt(this.prompt);
 
         return conversation;
@@ -555,8 +612,6 @@ export class Agent extends SDKObject {
      * // Simple prompt (promise mode)
      * const answer = await agent.prompt("What is the capital of France?");
      *
-     * // Explicit execution
-     * const result = await agent.prompt("Analyze this data").run();
      *
      * // Streaming for long responses
      * const stream = await agent.prompt("Write a detailed report").stream();
