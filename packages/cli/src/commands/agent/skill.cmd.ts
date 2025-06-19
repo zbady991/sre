@@ -3,16 +3,26 @@ import { SRE } from '@smythos/sre';
 import util from 'util';
 
 export default async function runSkill(args: any, flags: any) {
+    const sreConfigs: any = {};
     if (flags.vault) {
-        SRE.init({
-            Vault: {
-                Connector: 'JSONFileVault',
-                Settings: {
-                    file: flags.vault,
-                },
+        sreConfigs.Vault = {
+            Connector: 'JSONFileVault',
+            Settings: {
+                file: flags.vault,
             },
-        });
+        };
     }
+    if (flags.models) {
+        sreConfigs.ModelsProvider = {
+            Connector: 'JSONModelsProvider',
+            Settings: {
+                models: flags.models,
+                mode: 'merge',
+            },
+        };
+    }
+    SRE.init(sreConfigs);
+    await SRE.ready();
     const agentPath = args.path;
 
     //Importing the agent workflow

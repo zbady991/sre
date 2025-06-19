@@ -19,6 +19,7 @@ export default class AgentCmd extends Command {
 
     static override examples = [
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --chat',
+        '<%= config.bin %> <%= command.id %> ./myagent.smyth --prompt "What is the weather in Tokyo?"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask question="who are you"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --mcp sse',
     ];
@@ -70,7 +71,7 @@ export default class AgentCmd extends Command {
 
         vault: Flags.string({
             char: 'v',
-            description: 'Provide a vault path to use for the agent\n\n ',
+            description: 'Provide a vault path to use for the agent\nExample: sre ./myagent.smyth --chat --vault ./myvault.json\n\n ',
             helpValue: '<vault-path>',
             helpLabel: '--vault',
             multiple: false,
@@ -151,7 +152,13 @@ export default class AgentCmd extends Command {
         if (flags.vault) {
             this.log(chalk.cyan(`  • Vault mode: ${flags.vault}`));
             const formattedVaultPath = validateVaultPath(flags.vault, this);
-            vaultPath = formattedVaultPath ;
+            vaultPath = formattedVaultPath;
+        }
+
+        let modelsPath;
+        if (flags.models) {
+            this.log(chalk.cyan(`  • Models mode: ${flags.models}`));
+            modelsPath = flags.models;
         }
 
         if (!flags.chat && !flags.skill && !flags.endpoint && !flags.prompt) {
@@ -185,6 +192,7 @@ export default class AgentCmd extends Command {
             prompt,
             promptModel,
             vault: vaultPath || null,
+            models: modelsPath || null,
         };
         this.log(chalk.gray(`   Flags: ${JSON.stringify(allFlags, null, 2).replace(/\n/g, '\n          ')}`));
 

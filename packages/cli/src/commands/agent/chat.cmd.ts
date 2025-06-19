@@ -5,16 +5,26 @@ import logUpdate from 'log-update';
 import { SRE } from '@smythos/sre';
 
 export default async function runChat(args: any, flags: any) {
+    const sreConfigs: any = {};
     if (flags.vault) {
-        SRE.init({
-            Vault: {
-                Connector: 'JSONFileVault',
-                Settings: {
-                    file: flags.vault,
-                },
+        sreConfigs.Vault = {
+            Connector: 'JSONFileVault',
+            Settings: {
+                file: flags.vault,
             },
-        });
+        };
     }
+    if (flags.models) {
+        sreConfigs.ModelsProvider = {
+            Connector: 'JSONModelsProvider',
+            Settings: {
+                models: flags.models,
+                mode: 'merge',
+            },
+        };
+    }
+    SRE.init(sreConfigs);
+    await SRE.ready();
     const agentPath = args.path;
     const model = flags.chat === 'DEFAULT_MODEL' ? 'gpt-4o' : flags.chat;
 
