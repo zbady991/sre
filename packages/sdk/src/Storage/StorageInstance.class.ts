@@ -65,6 +65,12 @@ export class StorageInstance extends SDKObject {
 
         return `smythfs://${this._candidate.id}${tld}/${resourceName}`;
     }
+
+    /**
+     * Read a resource from the storage
+     * @param resourceName - The name or smythfs:// uri of the resource to read
+     * @returns the resource data
+     */
     async read(resourceName: string) {
         const uri = resourceName.startsWith('smythfs://') ? resourceName : await this.getResourceUri(resourceName);
         try {
@@ -74,6 +80,13 @@ export class StorageInstance extends SDKObject {
             throw error;
         }
     }
+
+    /**
+     * Write a resource to the storage
+     * @param resourceName - The name or smythfs:// uri of the resource to write
+     * @param data - The data to write to the resource
+     * @returns SmythFS URI of the written resource in the format (smythfs://<candidateId>.<role>/<resourceName>)
+     */
     async write(resourceName: string, data: any) {
         const uri = resourceName.startsWith('smythfs://') ? resourceName : await this.getResourceUri(resourceName);
         try {
@@ -84,6 +97,12 @@ export class StorageInstance extends SDKObject {
             throw error;
         }
     }
+
+    /**
+     * Delete a resource from the storage
+     * @param resourceName - The name or smythfs:// uri of the resource to delete
+     * @returns SmythFS URI of the deleted resource in the format (smythfs://<candidateId>.<role>/<resourceName>)
+     */
     async delete(resourceName: string) {
         const uri = resourceName.startsWith('smythfs://') ? resourceName : await this.getResourceUri(resourceName);
         try {
@@ -94,6 +113,12 @@ export class StorageInstance extends SDKObject {
             throw error;
         }
     }
+
+    /**
+     * Check if a resource exists in the storage
+     * @param resourceName - The name or smythfs:// uri of the resource to check
+     * @returns true if the resource exists, false otherwise
+     */
     async exists(resourceName: string) {
         const uri = resourceName.startsWith('smythfs://') ? resourceName : await this.getResourceUri(resourceName);
         try {

@@ -13,6 +13,7 @@ async function main() {
 
     //parse the pdf document
     let sTime = performance.now();
+
     const parsedPDFDoc = await Doc.pdf.parse(pdfFilePath);
     let eTime = performance.now();
     console.log(`PDF parsing took ${eTime - sTime}ms`);

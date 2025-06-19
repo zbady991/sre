@@ -1,16 +1,17 @@
-import { DocParser, TDocumentParseSettings } from './DocParser.class';
-import { PDFParser } from './parsers/PDFParser.class';
+import { DocParser } from './DocParser.class';
 import { DOCXParser } from './parsers/DOCXParser.class';
 import { MarkdownParser } from './parsers/MarkdownParser.class';
+import { PDFParser } from './parsers/PDFParser.class';
 import { TextParser } from './parsers/TextParser.class';
 
-const BuiltinDocParsers: Record<string, DocParser> = {
+export const Doc = {
     pdf: new PDFParser(),
     docx: new DOCXParser(),
     md: new MarkdownParser(),
     text: new TextParser(),
 };
-export type TDocType = keyof typeof BuiltinDocParsers;
+
+export type TDocType = keyof typeof Doc;
 
 // Extensible interface for custom providers
 export interface IDocParsers {}
@@ -21,11 +22,6 @@ export type TDocParserFactory = {
     [K in TDocParser]: DocParser;
 };
 
-const Doc = {} as TDocParserFactory;
-
-for (const type of Object.keys(BuiltinDocParsers) as TDocParser[]) {
-    const key = type as TDocParser;
-    Doc[key] = BuiltinDocParsers[type];
-}
-
-export { Doc };
+// This ensures that Doc is compatible with the factory type,
+// which is useful for module augmentation.
+const _: TDocParserFactory = Doc;
