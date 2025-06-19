@@ -4,7 +4,7 @@
 [![Discord](https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/smythos)
 [![](https://img.shields.io/badge/📄_Code_License-MIT-green)](https://github.com/SmythOS/sre/blob/main/LICENSE)
 
-[SDK Documentation](https://smythos.github.io/sre/sdk/) | [SRE Core Documentation](https://smythos.github.io/sre/core/) | [Code Examples](Examples)
+[SDK Documentation](https://smythos.github.io/sre/sdk/) | [SRE Core Documentation](https://smythos.github.io/sre/core/) | [Code Examples](examples)
 
 Everything you need to build, deploy, and manage intelligent AI agents at scale. SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
 
@@ -60,7 +60,7 @@ Add the SDK directly to your existing project:
 npm install @smythos/sdk
 ```
 
-Check the [Examples](Examples) and [documentation](https://smythos.github.io/sre/sdk/) to get started.
+Check the [Examples](examples) and [documentation](https://smythos.github.io/sre/sdk/) to get started.
 
 ---
 
