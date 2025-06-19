@@ -3,6 +3,8 @@ import { readFile } from 'fs/promises';
 import * as mammoth from 'mammoth';
 
 export class DOCXParser extends DocParser {
+    protected supportedMimeTypes: string[] = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    protected supportedExtensions: string[] = ['docx'];
     async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         try {
             const dataBuffer = await readFile(source);

@@ -4,6 +4,8 @@ import { existsSync } from 'fs';
 import path from 'path';
 
 export class MarkdownParser extends DocParser {
+    protected supportedMimeTypes: string[] = ['text/markdown', 'text/x-markdown', 'text/x-md'];
+    protected supportedExtensions: string[] = ['md'];
     async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         try {
             let markdownContent: string = source; // Default to raw source

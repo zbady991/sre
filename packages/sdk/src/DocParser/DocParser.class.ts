@@ -50,6 +50,8 @@ export type TParsedDocument = {
 };
 
 export class DocParser {
+    protected supportedMimeTypes: string[] = [];
+    protected supportedExtensions: string[] = [];
     constructor() {}
 
     async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {

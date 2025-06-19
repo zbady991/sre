@@ -3,6 +3,8 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 
 export class PDFParser extends DocParser {
+    protected supportedMimeTypes: string[] = ['application/pdf'];
+    protected supportedExtensions: string[] = ['pdf'];
     async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         // Lazy-load pdfjs-dist to reduce initial bundle size
         const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');

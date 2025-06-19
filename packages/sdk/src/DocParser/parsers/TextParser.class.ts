@@ -4,6 +4,8 @@ import { existsSync } from 'fs';
 import path from 'path';
 
 export class TextParser extends DocParser {
+    protected supportedMimeTypes: string[] = ['text/plain', 'text/x-plain', 'text/x-txt'];
+    protected supportedExtensions: string[] = ['txt'];
     async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
         try {
             let textContent: string = source; // Default to raw source
