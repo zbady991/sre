@@ -21,6 +21,21 @@
  * @returns {'npm' | 'pnpm' | 'yarn'} The detected package manager.
  */
 export const getPackageManager = (): 'npm' | 'pnpm' | 'yarn' => {
+    const userAgent = process.env.npm_config_user_agent;
+
+    if (userAgent) {
+        if (userAgent.startsWith('pnpm')) {
+            return 'pnpm';
+        }
+        if (userAgent.startsWith('yarn')) {
+            return 'yarn';
+        }
+        if (userAgent.startsWith('npm')) {
+            return 'npm';
+        }
+    }
+
+    // Fallback for older versions or unusual environments
     try {
         // `__filename` is a CJS global. It's the path to the current module file.
         // When a package is installed globally with pnpm, its location will be
@@ -32,10 +47,5 @@ export const getPackageManager = (): 'npm' | 'pnpm' | 'yarn' => {
         // `__filename` is not available in ESM, so we ignore the error.
     }
 
-    // `process.env.npm_config_user_agent` is set by yarn and npm.
-    if (process.env.npm_config_user_agent?.startsWith('yarn')) {
-        return 'yarn';
-    }
-
-    return 'npm';
+    return 'npm'; // Default to npm
 };

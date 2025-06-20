@@ -169,7 +169,6 @@
           "char": "p",
           "description": "Specify package manager (npm, pnpm, yarn)",
           "name": "package",
-          "default": "pnpm",
           "hasDynamicHelp": false,
           "multiple": false,
           "options": [
@@ -196,5 +195,5 @@
       ]
     }
   },
-  "version": "0.2.1"
+  "version": "0.2.0"
 }
