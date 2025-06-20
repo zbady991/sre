@@ -17,6 +17,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
+const MAX_LATENCY = 50;
 
 export class Agent implements IAgent {
     public name: any;
@@ -302,9 +303,9 @@ export class Agent implements IAgent {
             step = await this.agentRuntime.runCycle();
 
             //adjust latency based on cpu load
-            const qosLatency = Math.floor(OSResourceMonitor.cpu.load * this.planInfo?.maxLatency || 0);
+            const qosLatency = Math.floor(OSResourceMonitor.cpu.load * MAX_LATENCY || 0);
 
-            await delay(30 + qosLatency);
+            await delay(10 + qosLatency);
         } while (!step?.finalResult && !this._kill);
 
         if (this._kill) {
