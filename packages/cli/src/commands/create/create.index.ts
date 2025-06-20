@@ -119,12 +119,14 @@ async function RunProject(projectNameArg?: string) {
         )
     );
 
+    console.log(chalk.yellowBright(`===[ Let's configure your project ]===`));
+
     const { smythDir, sreDir, storageDir, vaultFile } = prepareSmythDirectory();
 
     const detectedKeys = detectApiKeys();
     const hasDetectedKeys = Object.keys(detectedKeys).length > 0;
     const detectedKeysInfo = Object.keys(detectedKeys)
-        .map((k) => chalk.yellow(k))
+        .map((k) => chalk.cyan(k))
         .join(', ');
 
     const initialAnswers = await inquirer.prompt([
@@ -182,7 +184,7 @@ async function RunProject(projectNameArg?: string) {
 
     let _useSharedVault = false;
 
-    console.log(chalk.white(`\n===[ Now let's set your secrets ]===`));
+    console.log(chalk.yellowBright(`\n===[ Now let's set your secrets ]===`));
     console.log(
         `${chalk.gray(
             'SmythOS uses a vault to store your secrets. Set your secrets once, they’ll be securely stored and loaded by the SDK only when needed.This keeps LLM API keys out of your code.\n'
@@ -190,7 +192,7 @@ async function RunProject(projectNameArg?: string) {
     );
 
     if (vaultFile) {
-        console.log(chalk.yellow(`  ℹ  I found an existing shared vault file ${vaultFile}`));
+        console.log(chalk.magenta(`  ℹ  I found an existing shared vault file ${vaultFile}`));
         const { useSharedVault } = await inquirer.prompt([
             {
                 type: 'confirm',
@@ -236,7 +238,7 @@ async function RunProject(projectNameArg?: string) {
             message: `Enter your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key (Enter value, or press Enter to skip)\n`,
         }));
 
-    if (missingKeyQuestions.length > 0) {
+    if (!_useSharedVault && missingKeyQuestions.length > 0) {
         const keyAnswers = await inquirer.prompt(missingKeyQuestions);
         for (const [provider, key] of Object.entries(keyAnswers)) {
             if (key) {
@@ -245,7 +247,7 @@ async function RunProject(projectNameArg?: string) {
         }
     }
 
-    console.log(chalk.white(`\n===[ Now let's configure Smyth Resources folder ]===`));
+    console.log(chalk.yellowBright(`\n===[ Now let's configure Smyth Resources folder ]===`));
     console.log(
         `${chalk.gray(
             'Some connectors in SmythOS might need to store data locally, in order to keep things clean, we store all SmythOS related data in a single place.\n'
