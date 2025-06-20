@@ -145,7 +145,7 @@ async function RunProject(projectNameArg?: string) {
             name: 'targetFolder',
             message: 'Project folder',
             default: path.join(process.cwd(), normalizeProjectName(projectName)),
-            suffix: `\n${chalk.grey('Tip: If it does not exist it will be created.\n')}`,
+            suffix: `\n${chalk.grey('If it does not exist it will be created.\n')}`,
         },
         // {
         //     type: 'list',
@@ -181,7 +181,7 @@ async function RunProject(projectNameArg?: string) {
     let _useSharedVault = false;
 
     if (vaultFile) {
-        console.log(chalk.yellow(`\n ℹ Found an existing shared vault file ${vaultFile}`));
+        console.log(chalk.yellow(`\n ℹ  Found an existing shared vault file ${vaultFile}`));
         const { useSharedVault } = await inquirer.prompt([
             {
                 type: 'confirm',
@@ -206,9 +206,9 @@ async function RunProject(projectNameArg?: string) {
 
     if (hasDetectedKeys && !_useSharedVault) {
         console.log(
-            `\n${chalk.yellow('ℹ')} ${chalk.yellow('You can configure the following API keys to avoid hardcoding them in your source code.')}`
+            `\n${chalk.yellow('ℹ')}  ${chalk.yellow('You can configure the following API keys to avoid hardcoding them in your source code.')}`
         );
-        console.log(`  ${chalk.yellow('They will be securely stored in the vault file and automatically loaded by the SDK at runtime.')}`);
+        console.log(`   ${chalk.yellow('They will be securely stored in the vault file and automatically loaded by the SDK at runtime.')}`);
 
         const { useDetectedKeys } = await inquirer.prompt([
             {
@@ -278,11 +278,11 @@ async function RunProject(projectNameArg?: string) {
         }
 
         console.log('\n🎉 Project created successfully! 🎊');
-        console.log('\n\n🚀 Next steps:');
+        console.log('\n\n🚀 Next steps :');
         console.log(`\n${chalk.green('cd')} ${chalk.underline(finalConfig.targetFolder)}`);
         console.log(`${chalk.green('npm install')}`);
         console.log(`${chalk.green('npm run build')}`);
-        console.log(`${chalk.green('npm start')}`);
+        console.log(`${chalk.green('npm start')}\n\n`);
     } catch (error) {
         console.error(chalk.red('🚨 Error creating project:'), error);
     }
@@ -298,6 +298,13 @@ function createProject(config: any) {
 
         //create project folder
         projectFolder = config.targetFolder;
+
+        //if the folder already exists and is not empty, cancel the operation
+        if (fs.existsSync(projectFolder) && fs.readdirSync(projectFolder).length > 0) {
+            console.log(chalk.red('Project folder already exists and is not empty.'));
+            return false;
+        }
+
         const projectId = path.basename(projectFolder);
         //clone the repo branch into the project folder
         const cloneCommand = `git clone --branch ${branch} ${gitRepoUrl} ${projectFolder}`;

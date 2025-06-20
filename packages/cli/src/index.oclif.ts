@@ -7,6 +7,7 @@ import { Command, Flags } from '@oclif/core';
 import { version } from '../package.json';
 import updateNotifier from 'update-notifier';
 import chalk from 'chalk';
+import { getPackageManager } from './utils/getPackageManager.js';
 
 // Check for updates
 const notifier = updateNotifier({
@@ -25,7 +26,8 @@ notifier.notify({
         borderColor: 'yellow',
         borderStyle: 'round',
     },
-});
+    packageManager: getPackageManager(),
+} as any);
 
 /**
  * Main CLI Command
