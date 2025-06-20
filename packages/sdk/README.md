@@ -32,15 +32,16 @@ this will install "sre" command in your system.
 **Create a new project**
 
 Run the following command, and follow the instructions to create a new project.
-Select empty template.
 
 ```bash
 sre create "My Awesome Agent"
 ```
 
-### 2. Create your Agent
+Select **Empty Project** template when asked.
 
-Create a file named `index.ts` and add the following code:
+### 2. Create your First Agent
+
+Edit `index.ts` file and add the following code:
 
 ```typescript
 import { Agent } from '@smythos/sdk';
@@ -48,30 +49,30 @@ import { Agent } from '@smythos/sdk';
 async function main() {
     // Create a new agent
     const agent = new Agent({
-        name: 'CryptoMarket Assistant',
-        behavior: 'You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD',
+        name: 'Book Assistant',
         model: 'gpt-4o',
+        behavior: 'You are a helpful assistant that can answer questions about the books.',
     });
 
-    // Add a skill to the agent
+    // Add a skill to the agent that uses the openlibrary api to get information about a book
     agent.addSkill({
-        name: 'MarketData',
-        description: 'Use this skill to get comprehensive market data and statistics for a cryptocurrency',
-        process: async ({ coin_id }) => {
-            const url = `https://api.coingecko.com/api/v3/coins/${coin_id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
+        name: 'get_book_info',
+        description: 'Use this skill to get information about a book',
+        process: async ({ book_name }) => {
+            const url = `https://openlibrary.org/search.json?q=${book_name}`;
+
             const response = await fetch(url);
             const data = await response.json();
-            return data.market_data;
+
+            return data.docs[0];
         },
     });
 
     // Prompt the agent and let it use the skill
-    const promptResult = await agent.prompt('What are the current prices of Bitcoin and Ethereum ?');
-    console.log(promptResult);
+    const promptResult = await agent.prompt('What is the author of the book "The Great Gatsby" ?');
 
-    // You can also call the skill directly
-    const directCallResult = await agent.call('MarketData', { coin_id: 'bitcoin' });
-    console.log('Direct call to MarketData for Bitcoin:', directCallResult.current_price.usd);
+    //get the result
+    console.log(promptResult);
 }
 
 main();
@@ -79,11 +80,19 @@ main();
 
 ### 3. Run your Agent
 
+first you need to build the project
+
 ```bash
-ts-node index.ts
+npm run build
 ```
 
-You should see your agent respond with the current prices of Bitcoin and Ethereum!
+then you can run the agent
+
+```bash
+npm start
+```
+
+You should see your agent respond with the author of the book "The Great Gatsby"!
 
 ## Core Concepts
 
@@ -95,9 +104,9 @@ The `Agent` is the fundamental building block of the SmythOS SDK. It encapsulate
 import { Agent } from '@smythos/sdk';
 
 const agent = new Agent({
-    name: 'My Assistant',
-    model: 'gpt-4',
-    behavior: 'You are a helpful assistant.',
+    name: 'Book Assistant',
+    model: 'gpt-4o',
+    behavior: 'You are a helpful assistant that can answer questions about the books.',
 });
 ```
 
@@ -108,7 +117,7 @@ The `prompt()` method is the primary way to interact with an agent. It returns a
 **Promise-based response:**
 
 ```typescript
-const response = await agent.prompt('Hello, world!');
+const response = await agent.prompt('What is the author of the book "The Great Gatsby" ?');
 console.log(response);
 ```
 
@@ -116,12 +125,28 @@ console.log(response);
 
 ```typescript
 const stream = await agent.prompt('Tell me a story.').stream();
-stream.on('data', (chunk) => process.stdout.write(chunk));
+stream.on(TLLMEvent.Content, (chunk) => process.stdout.write(chunk));
+
+//other events are available
+//TLLMEvent.Content  : Generated response chunks
+//TLLMEvent.Thinking : Thinking blocks/chunks
+//TLLMEvent.End : End of the response
+//TLLMEvent.Error : Error
+//TLLMEvent.ToolInfo : Tool information : emitted by the LLM determines the next tool call
+//TLLMEvent.ToolCall : Tool call : emitted before the tool call
+//TLLMEvent.ToolResult : Tool result : emitted after the tool call
+//TLLMEvent.Usage : Tokens usage information
+//TLLMEvent.Interrupted : Interrupted : emitted when the response is interrupted before completion
 ```
 
 ### Skills
 
 Skills are functions that you can add to your agent to extend its capabilities. The agent's LLM can intelligently decide which skill to use based on the user's prompt.
+
+#### Code skills
+
+A code skill, is a skill where the logic is defined in the skill "process" function.
+This is the classic way of implementing skills via SDK
 
 ```typescript
 agent.addSkill({
@@ -135,42 +160,18 @@ agent.addSkill({
 });
 ```
 
+#### Workflow skills
+
+A workflow skill, is a skill where the logic is defined in a workflow.
+This is the internal mode used by the visual designer, but can also be implemented programmatically.
+(Will be covered in a separate documentation)
+
 You can also call a skill directly using `agent.call()`:
 
 ```typescript
 const sum = await agent.call('calculator', { operation: 'add', a: 5, b: 3 });
 console.log(sum); // 8
 ```
-
-### AI Components
-
-The SDK provides seamless integration with essential AI components:
-
--   **LLMs**: Connect to different large language models.
--   **VectorDB**: Manage vector embeddings for semantic search and memory.
--   **Storage**: Persistent key-value storage for your agents.
-
-You can access these components through the agent instance:
-
-```typescript
-// Access integrated components
-const llm = agent.llm;
-const vectorDB = agent.vectorDB;
-const storage = agent.storage;
-```
-
-## Examples
-
-The `examples/` folder in the repository contains a variety of runnable projects to demonstrate the SDK's features in action.
-
--   **[01-agent-code-skill](./examples/01-agent-code-skill/)**: Basic agent creation, prompting, and skills.
--   **[02-agent-smyth-file](./examples/02-agent-smyth-file/)**: Shows how to save and load agent definitions from files.
--   **[03-agent-workflow-components](./examples/03-agent-workflow-components/)**: Demonstrates more complex agent workflows.
--   **[04-VectorDB-no-agent](./examples/04-VectorDB-no-agent/)**: Using the VectorDB component directly without an agent.
--   **[05-VectorDB-with-agent](./examples/05-VectorDB-with-agent/)**: Integrating a VectorDB with an agent.
--   **[06-Storage-no-agent](./examples/06-Storage-no-agent/)**: Using the Storage component directly.
-
-Explore these examples to learn how to leverage the full power of the SmythOS SDK.
 
 ## API Reference
 

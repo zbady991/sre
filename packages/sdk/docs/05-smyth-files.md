@@ -1,27 +1,60 @@
 # Managing Agents with `.smyth` Files
 
-As your agents become more complex, defining them entirely in code can be cumbersome. The SmythOS SDK offers a powerful solution: `.smyth` files. These are human-readable YAML files that allow you to define an agent's structure—its name, behavior, and skills—in a portable and declarative way.
+The SmythOS SDK introduces `.smyth` files to bridge the gap between visual agent design and code implementation. While you can define agents entirely in code, `.smyth` files—which are JSON exports from the SmythOS visual builder—offer a powerful way to represent an agent's structure, including its name, behavior, and skills.
 
-This approach promotes a clean separation of concerns: the agent's definition lives in a `.smyth` file, while your application code handles the logic of interacting with it.
+This approach offers several advantages:
+
+-   **Visual Workflow:** It allows complex agent workflows to be visualized, making them easier to understand and manage, which is especially useful for critical processes.
+-   **Collaboration:** It facilitates collaboration between developers and non-developers. Product managers or designers can use the visual builder to create or modify agent logic, which developers can then import and extend in code.
+-   **Separation of Concerns:** It promotes a clean separation where the agent's high-level structure is defined in the `.smyth` file, and the application code handles the runtime logic and interaction.
 
 The [`examples/02-agent-smyth-file`](../../examples/02-agent-smyth-file) directory contains a working example of this concept.
 
 ## The `.smyth` File Format
 
-A `.smyth` file is a simple YAML or JSON file that describes the agent's configuration. Here's an example of what `my-agent.smyth` might look like:
+A `.smyth` file is a JSON file that describes the agent's configuration. The format is an export from the SmythOS builder, but you can create them by hand. Here's a simplified example of what `my-crypto-agent.smyth` might look like, containing two connected components for fetching a cryptocurrency price:
 
-```yaml
-# my-agent.smyth
-name: 'Example File Agent'
-behavior: 'You are a helpful assistant defined in a YAML file.'
-defaultModel: 'gpt-4' # Note: This can be overridden in code
-components:
-    - name: 'greeter'
-      type: 'skill'
-      description: 'Use this skill to greet someone.'
-      # For skills defined in the file, the 'process' logic is just a string.
-      # This is less common; typically skills are added via code for complex logic.
-      process: '({name}) => `Hello, ${name}!`'
+```jsonc
+// my-crypto-agent.smyth
+{
+    "name": "Crypto Info Agent",
+    "behavior": "You are a cryptocurrency information assistant that uses the CoinGecko API.",
+    "defaultModel": "gpt-4",
+    "components": [
+        {
+            "id": "CP001",
+            "name": "APIEndpoint",
+            "description": "Exposes an endpoint to get a crypto price.",
+            "data": { "endpoint": "get_price", "method": "GET" },
+            "inputs": [{ "name": "coin_id", "type": "String", "index": 0 }],
+            "outputs": [
+                { "name": "headers", "index": 0 },
+                { "name": "body", "index": 1 },
+                { "name": "query", "index": 2 },
+                { "name": "query.coin_id", "index": 3 }
+            ]
+        },
+        {
+            "id": "CP002",
+            "name": "APICall",
+            "title": "CoinGecko Price",
+            "description": "Calls the CoinGecko API to get the price.",
+            "data": {
+                "method": "GET",
+                "url": "https://api.coingecko.com/api/v3/simple/price?ids={{coin_id}}&vs_currencies=usd"
+            },
+            "inputs": [{ "name": "coin_id", "type": "String", "index": 0 }]
+        }
+    ],
+    "connections": [
+        {
+            "sourceId": "CP001",
+            "sourceIndex": "query.coin_id",
+            "targetId": "CP002",
+            "targetIndex": "coin_id"
+        }
+    ]
+}
 ```
 
 ## Importing an Agent
@@ -34,7 +67,7 @@ import path from 'path';
 
 async function main() {
     // Construct the full path to your .smyth file
-    const agentPath = path.resolve(__dirname, 'my-agent.smyth');
+    const agentPath = path.resolve(__dirname, 'my-crypto-agent.smyth');
 
     console.log(`Importing agent from: ${agentPath}`);
 
@@ -42,8 +75,8 @@ async function main() {
     const agent = await Agent.import(agentPath);
 
     // Now you can interact with the agent as usual
-    const response = await agent.prompt('Use the greeter skill to say hello to the world.');
-    console.log(response); // "Hello, world!"
+    const response = await agent.prompt('What is the price of bitcoin?');
+    console.log(response); // Outputs the price of Bitcoin.
 }
 
 main();
@@ -60,7 +93,7 @@ import { Agent, Model } from '@smythos/sdk';
 import path from 'path';
 
 async function main() {
-    const agentPath = path.resolve(__dirname, 'my-agent.smyth');
+    const agentPath = path.resolve(__dirname, 'my-crypto-agent.smyth');
 
     // Import the agent, but override the model to use gpt-4o
     const agent = await Agent.import(agentPath, {
@@ -68,17 +101,10 @@ async function main() {
         defaultModel: 'gpt-4o',
     });
 
-    // You can also add or override skills programmatically
-    agent.addSkill({
-        name: 'farewell',
-        description: 'Says goodbye.',
-        process: async ({ name }) => `Goodbye, ${name}!`,
-    });
-
     console.log(`Agent model is now: ${agent.data.defaultModel}`);
 
-    const farewell = await agent.prompt('Say goodbye to the world.');
-    console.log(farewell); // "Goodbye, world!"
+    const response = await agent.prompt('What is the price of ethereum?');
+    console.log(response); // Outputs the price of Ethereum.
 }
 
 main();
