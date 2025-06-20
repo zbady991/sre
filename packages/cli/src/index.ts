@@ -64,8 +64,7 @@ function checkForUpdates() {
         // Check for updates (non-blocking notification)
         const notifier = updateNotifier({
             pkg: { name: '@smythos/cli', version },
-            //updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily (production)
-            updateCheckInterval: 0, // Always check for updates
+            updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily (production)
             shouldNotifyInNpmScript: false,
         });
 

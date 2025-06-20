@@ -145,7 +145,7 @@ async function RunProject(projectNameArg?: string) {
             name: 'targetFolder',
             message: 'Project folder',
             default: path.join(process.cwd(), normalizeProjectName(projectName)),
-            suffix: `\n${chalk.grey('If it does not exist it will be created.\n')}`,
+            suffix: `\n${chalk.magenta('If it does not exist it will be created.')}\n`,
         },
         // {
         //     type: 'list',
@@ -162,7 +162,8 @@ async function RunProject(projectNameArg?: string) {
         {
             type: 'list',
             name: 'templateType',
-            message: `Project template\n${chalk.grey('Choose the project template.')}`,
+            message: `Project template`,
+            suffix: `\n${chalk.magenta('Choose the project template. (Use arrow keys ↑↓)')}\n`,
             choices: [
                 { name: 'Empty Project', value: 'sdk-empty' },
                 { name: 'Minimal : Just the basics to get started', value: 'code-agent-minimal' },
@@ -181,8 +182,15 @@ async function RunProject(projectNameArg?: string) {
 
     let _useSharedVault = false;
 
+    console.log(chalk.white(`\n===[ Now let's set your secrets ]===`));
+    console.log(
+        `${chalk.gray(
+            'SmythOS uses a vault to store your secrets. Set your secrets once, they’ll be securely stored and loaded by the SDK only when needed.This keeps LLM API keys out of your code.\n'
+        )}`
+    );
+
     if (vaultFile) {
-        console.log(chalk.yellow(`\n ℹ  Found an existing shared vault file ${vaultFile}`));
+        console.log(chalk.yellow(`  ℹ  I found an existing shared vault file ${vaultFile}`));
         const { useSharedVault } = await inquirer.prompt([
             {
                 type: 'confirm',
@@ -206,11 +214,6 @@ async function RunProject(projectNameArg?: string) {
     }
 
     if (hasDetectedKeys && !_useSharedVault) {
-        console.log(
-            `\n${chalk.yellow('ℹ')}  ${chalk.yellow('You can configure the following API keys to avoid hardcoding them in your source code.')}`
-        );
-        console.log(`   ${chalk.yellow('They will be securely stored in the vault file and automatically loaded by the SDK at runtime.')}`);
-
         const { useDetectedKeys } = await inquirer.prompt([
             {
                 type: 'confirm',
@@ -226,7 +229,7 @@ async function RunProject(projectNameArg?: string) {
 
     const allProviders = ['openai', 'anthropic', 'google'];
     const missingKeyQuestions = allProviders
-        .filter((provider) => !vault[provider])
+        .filter((provider) => !vault[provider] || vault[provider] === '#')
         .map((provider) => ({
             type: 'input',
             name: provider,
@@ -242,12 +245,19 @@ async function RunProject(projectNameArg?: string) {
         }
     }
 
+    console.log(chalk.white(`\n===[ Now let's configure Smyth Resources folder ]===`));
+    console.log(
+        `${chalk.gray(
+            'Some connectors in SmythOS might need to store data locally, in order to keep things clean, we store all SmythOS related data in a single place.\n'
+        )}`
+    );
+
     const remainingAnswers = await inquirer.prompt([
         {
             type: 'list',
             name: 'smythResources',
             message: 'Smyth Resources Folder',
-            suffix: `\n${chalk.grey('Location where we can store data like logs, cache, etc.')}`,
+            suffix: `\n${chalk.magenta('Location where we can store data like logs, cache, etc. (Use arrow keys ↑↓)')}\n`,
             choices: [
                 { name: `Shared folder in the ${chalk.underline('user home directory')} (~/.smyth)`, value: path.join(os.homedir(), '.smyth') },
                 {
