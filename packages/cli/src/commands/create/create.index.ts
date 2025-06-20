@@ -304,14 +304,16 @@ function createProject(config: any) {
         execSync(cloneCommand, { stdio: 'inherit' });
         folderCreated = true;
 
+        //ensure resources folder and .sre folder exists
+        //ensure the .sre folder exists
+        const sreFolder = path.join(config.smythResources, '.sre');
+        if (!fs.existsSync(sreFolder)) {
+            fs.mkdirSync(sreFolder, { recursive: true });
+        }
+
         //Write vault file
         if (!config.useSharedVault) {
             const vaultPath = path.join(config.smythResources, '.sre', 'vault.json');
-            //ensure the .sre folder exists
-            const sreFolder = path.join(config.smythResources, '.sre');
-            if (!fs.existsSync(sreFolder)) {
-                fs.mkdirSync(sreFolder, { recursive: true });
-            }
             if (config.vault && !fs.existsSync(vaultPath)) {
                 const vaultData = {
                     default: {
