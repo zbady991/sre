@@ -13,12 +13,12 @@ import { smyth_banner } from './utils/ascii';
 (async () => {
     try {
         // Check for updates before running command (non-blocking)
-        const updateCheckPromise = Promise.resolve().then(() => checkForUpdates());
+        //const updateCheckPromise = Promise.resolve().then(() => checkForUpdates());
 
         await run(process.argv.slice(2), import.meta.url);
 
         // Ensure update notification is shown
-        await updateCheckPromise;
+        await checkForUpdates();
     } catch (error: any) {
         // Handle different types of errors gracefully
         if (error.oclif?.exit !== undefined) {
@@ -63,7 +63,8 @@ function checkForUpdates() {
         // Check for updates (non-blocking notification)
         const notifier = updateNotifier({
             pkg: { name: '@smythos/cli', version },
-            updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily (production)
+            //updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily (production)
+            updateCheckInterval: 0, // Always check for updates
             shouldNotifyInNpmScript: false,
         });
 
