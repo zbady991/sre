@@ -35,16 +35,16 @@ export const getPackageManager = (): 'npm' | 'pnpm' | 'yarn' => {
         }
     }
 
-    // Fallback for older versions or unusual environments
-    try {
-        // `__filename` is a CJS global. It's the path to the current module file.
-        // When a package is installed globally with pnpm, its location will be
-        // in a path that contains `.pnpm`.
-        if (__filename.includes('.pnpm')) {
-            return 'pnpm';
-        }
-    } catch (error) {
-        // `__filename` is not available in ESM, so we ignore the error.
+    // Fallback for global installs where user-agent is not set.
+    // process.argv[1] is the path to the executed script.
+    const scriptPath = process.argv[1] || '';
+    if (scriptPath.includes('.pnpm')) {
+        return 'pnpm';
+    }
+
+    // A simple check for yarn's global install path
+    if (scriptPath.includes('yarn')) {
+        return 'yarn';
     }
 
     return 'npm'; // Default to npm

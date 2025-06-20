@@ -4,30 +4,9 @@
  */
 
 import { Command, Flags } from '@oclif/core';
-import { version } from '../package.json';
 import updateNotifier from 'update-notifier';
 import chalk from 'chalk';
 import { getPackageManager } from './utils/getPackageManager.js';
-
-// Check for updates
-const notifier = updateNotifier({
-    pkg: { name: '@smythos/cli', version },
-    updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily
-    shouldNotifyInNpmScript: false,
-});
-
-// Show update notification
-notifier.notify({
-    isGlobal: true,
-    boxenOptions: {
-        padding: 1,
-        margin: 1,
-        textAlignment: 'center',
-        borderColor: 'yellow',
-        borderStyle: 'round',
-    },
-    packageManager: getPackageManager(),
-} as any);
 
 /**
  * Main CLI Command
@@ -48,6 +27,28 @@ export default class SRE extends Command {
     };
 
     async run(): Promise<void> {
+        // Update notifier logic moved here to access runtime config
+        const notifier = updateNotifier({
+            pkg: {
+                name: this.config.pjson.name,
+                version: this.config.version,
+            },
+            updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily
+        });
+
+        // Show update notification
+        notifier.notify({
+            isGlobal: true,
+            boxenOptions: {
+                padding: 1,
+                margin: 1,
+                textAlignment: 'center',
+                borderColor: 'yellow',
+                borderStyle: 'round',
+            },
+            packageManager: getPackageManager(),
+        } as any);
+
         // Show welcome message if no command is provided
         this.log(chalk.blue('👋 Welcome to SRE CLI!'));
         this.log('');
