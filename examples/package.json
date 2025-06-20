@@ -1,6 +1,6 @@
 {
     "name": "@smythos/examples",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "private": true,
     "description": "SmythOS SDK Examples",
     "type": "module",

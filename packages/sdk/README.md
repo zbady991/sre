@@ -16,10 +16,26 @@ The SDK is a lightweight wrapper around the Smyth Runtime Environment. It lets y
 
 Let's build your first agent in just a few lines of code. This example creates a simple agent that can fetch cryptocurrency prices.
 
-### 1. Install the SDK
+### 1. Install SmythOS CLI
+
+The easiest way to get started is by using the scaffolding command from the SmythOS CLI.
+
+**Install the cli using your preferred package manager**
 
 ```bash
-pnpm install @smythos/sdk
+# install the cli using your preferred package manager
+npm i -g @smythos/cli
+```
+
+this will install "sre" command in your system.
+
+**Create a new project**
+
+Run the following command, and follow the instructions to create a new project.
+Select empty template.
+
+```bash
+sre create "My Awesome Agent"
 ```
 
 ### 2. Create your Agent

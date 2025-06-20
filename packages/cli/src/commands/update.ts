@@ -9,6 +9,7 @@ import updateNotifier from 'update-notifier';
 import { spawn } from 'child_process';
 import { version } from '../../package.json';
 import ora from 'ora';
+import inquirer from 'inquirer';
 import { getPackageManager } from '../utils/getPackageManager.js';
 
 export default class Update extends Command {
@@ -71,7 +72,22 @@ export default class Update extends Command {
                     this.log(chalk.blue('📋 Check complete. Use without --check to install.'));
                     this.showManualInstructions(packageManager);
                 } else {
-                    await this.performUpdate(packageManager, latest);
+                    const { confirm } = await inquirer.prompt([
+                        {
+                            type: 'confirm',
+                            name: 'confirm',
+                            message: 'Do you want to install this update now?',
+                            default: true,
+                        },
+                    ]);
+
+                    if (confirm) {
+                        await this.performUpdate(packageManager, latest);
+                    } else {
+                        this.log('');
+                        this.log(chalk.yellow('Update cancelled by user.'));
+                        this.showManualInstructions(packageManager);
+                    }
                 }
             } else {
                 this.log(chalk.green('✅ You are using the latest version!'));

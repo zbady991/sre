@@ -20,6 +20,7 @@ export * from './LLM/LLM.class';
 export * from './LLM/LLMInstance.class';
 export * from './LLM/Model';
 export * from './LLM/utils';
+export * from './MCP/MCP.class';
 export * from './Security/DummyAccount.helper';
 export * from './Security/Team.class';
 export * from './Storage/Storage.class';

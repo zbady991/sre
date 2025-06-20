@@ -52,7 +52,7 @@ export const startMcpServer = async (agentData, serverType, port, flags): Promis
         });
         const mcpPort = port || defaultPort;
         app.listen(mcpPort, () => {
-            console.log(`MCP Server running on port ${mcpPort}`);
+            console.log(`MCP Server running on http://localhost:${mcpPort}/mcp`);
         });
     }
 };

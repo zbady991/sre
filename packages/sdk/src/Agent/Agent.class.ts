@@ -19,6 +19,7 @@ import { VectorDBInstance } from '../VectorDB/VectorDBInstance.class';
 import { TLLMInstanceFactory, TLLMProviderInstances } from '../LLM/LLM.class';
 import { LLMInstance, TLLMInstanceParams } from '../LLM/LLMInstance.class';
 import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
+import { MCP, MCPSettings, MCPTransport } from '../MCP/MCP.class';
 
 const console = SDKLog;
 
@@ -675,5 +676,33 @@ export class Agent extends SDKObject {
         return new Chat(chatOptions, this._data.defaultModel, this.data, {
             agentId: this._data.id,
         });
+    }
+
+    /**
+     * Expose the agent as a MCP (Model Context Protocol) server
+     *
+     * The MCP server can be started in two ways:
+     * - STDIO: The MCP server will be started in STDIO mode
+     * - SSE: The MCP server will be started in SSE mode, this is case the listening url will be **http://localhost:<port>/mcp**
+     *
+     *
+     *
+     * @example
+     * ```typescript
+     * const agent = new Agent({ /* ... agent settings ... *\/ });
+     *
+     * const stdioMcp = agent.mcp(MCPTransport.STDIO);
+     * const sseMcp = agent.mcp(MCPTransport.SSE, 3389);
+     *
+     *
+     * ```
+     *
+     * @param transport - The transport for the MCP server
+     * @param port - The port for the MCP server (when using SSE transport)
+     * @returns MCP instance
+     */
+    public async mcp(transport: MCPTransport, port: number = 3388) {
+        const instance = new MCP(this);
+        return await instance.start({ transport, port });
     }
 }

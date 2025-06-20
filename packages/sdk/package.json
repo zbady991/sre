@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sdk",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "description": "SRE SDK",
     "keywords": [
         "smythos",
@@ -59,9 +59,11 @@
         "knip": "knip"
     },
     "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.13.0",
         "@smythos/sre": "workspace:*",
         "@types/mime-types": "^3.0.1",
         "chalk": "^5.4.1",
+        "express": "^4.21.2",
         "mammoth": "^1.9.1",
         "mime-types": "^3.0.1",
         "pdfjs-dist": "^4.0.379"

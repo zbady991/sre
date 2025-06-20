@@ -164,6 +164,7 @@ async function RunProject(projectNameArg?: string) {
             name: 'templateType',
             message: `Project template\n${chalk.grey('Choose the project template.')}`,
             choices: [
+                { name: 'Empty Project', value: 'sdk-empty' },
                 { name: 'Minimal : Just the basics to get started', value: 'code-agent-minimal' },
                 { name: 'Interactive : Chat with one agent', value: 'code-agent-book-assistant' },
                 {
