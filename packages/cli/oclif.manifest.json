@@ -6,7 +6,7 @@
         "path": {
           "description": "Path to the agent file (.smyth)",
           "name": "path",
-          "required": true
+          "required": false
         }
       },
       "description": "Run .smyth agent with various execution modes",
@@ -98,11 +98,17 @@
     },
     "create": {
       "aliases": [],
-      "args": {},
-      "description": "Create a new SRE project",
+      "args": {
+        "projectName": {
+          "description": "Name of the new SmythOS project",
+          "name": "projectName",
+          "required": false
+        }
+      },
+      "description": "Create a new SmythOS project",
       "examples": [
         "<%= config.bin %> <%= command.id %>",
-        "<%= config.bin %> <%= command.id %> --help"
+        "<%= config.bin %> <%= command.id %> \"My Awesome Project\""
       ],
       "flags": {
         "help": {
@@ -190,5 +196,5 @@
       ]
     }
   },
-  "version": "0.0.4"
+  "version": "0.2.0"
 }

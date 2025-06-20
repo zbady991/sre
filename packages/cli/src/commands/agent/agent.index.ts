@@ -3,7 +3,7 @@
  * Run .smyth agent with various execution modes
  */
 
-import { Args, Command, Flags } from '@oclif/core';
+import { Args, Command, Flags, Help } from '@oclif/core';
 import { Agent } from '@smythos/sdk';
 import chalk from 'chalk';
 import util from 'util';
@@ -29,7 +29,7 @@ export default class AgentCmd extends Command {
     static override args = {
         path: Args.string({
             description: 'Path to the agent file (.smyth)',
-            required: true,
+            required: false,
         }),
     };
 
@@ -87,6 +87,14 @@ export default class AgentCmd extends Command {
 
     async run(): Promise<void> {
         const { args, flags } = await this.parse(AgentCmd);
+
+        // If no arguments and no flags are provided, show help
+        if (!args.path && Object.keys(flags).length === 0) {
+            this.log('No agent path provided, showing help...');
+            const help = new Help(this.config);
+            await help.showHelp(['agent']);
+            return;
+        }
 
         this.log(chalk.blue('🚀 Agent command called!'));
         this.log(chalk.gray(`Agent file: ${args.path}`));

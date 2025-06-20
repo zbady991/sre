@@ -1,6 +1,6 @@
 {
     "name": "@smythos/cli",
-    "version": "0.0.4",
+    "version": "0.2.0",
     "description": "SmythOS SRE Command Line Interface",
     "keywords": [
         "smythos",
@@ -70,7 +70,7 @@
                 "description": "Run .smyth agent files"
             },
             "create": {
-                "description": "Create new SRE projects"
+                "description": "Create new SmythOS project"
             },
             "update": {
                 "description": "Update CLI and check for updates"
