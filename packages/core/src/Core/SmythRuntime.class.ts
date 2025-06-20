@@ -42,7 +42,7 @@ export class SmythRuntime {
             Connector: 'RAMVec',
         },
         ModelsProvider: {
-            Connector: 'SmythModelsProvider',
+            Connector: 'JSONModelsProvider',
         },
         AgentData: {
             Connector: 'NullAgentData',

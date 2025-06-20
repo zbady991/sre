@@ -3,7 +3,7 @@
  * Run .smyth agent with various execution modes
  */
 
-import { Args, Command, Flags } from '@oclif/core';
+import { Args, Command, Flags, Help } from '@oclif/core';
 import { Agent } from '@smythos/sdk';
 import chalk from 'chalk';
 import util from 'util';
@@ -11,12 +11,15 @@ import runChat from './chat.cmd';
 import runSkill from './skill.cmd';
 import runPrompt from './prompt.cmd';
 import { startMcpServer } from './mcp.cmd';
+import fs from 'fs';
+import path from 'path';
 
 export default class AgentCmd extends Command {
     static override description = 'Run .smyth agent with various execution modes';
 
     static override examples = [
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --chat',
+        '<%= config.bin %> <%= command.id %> ./myagent.smyth --prompt "What is the weather in Tokyo?"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask question="who are you"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --mcp sse',
     ];
@@ -26,7 +29,7 @@ export default class AgentCmd extends Command {
     static override args = {
         path: Args.string({
             description: 'Path to the agent file (.smyth)',
-            required: true,
+            required: false,
         }),
     };
 
@@ -65,6 +68,14 @@ export default class AgentCmd extends Command {
             helpValue: '[server-type] [port]',
             multiple: true,
         }),
+
+        vault: Flags.string({
+            char: 'v',
+            description: 'Provide a vault path to use for the agent\nExample: sre ./myagent.smyth --chat --vault ./myvault.json\n\n ',
+            helpValue: '<vault-path>',
+            helpLabel: '--vault',
+            multiple: false,
+        }),
     };
 
     private _logDisabled = true;
@@ -76,6 +87,14 @@ export default class AgentCmd extends Command {
 
     async run(): Promise<void> {
         const { args, flags } = await this.parse(AgentCmd);
+
+        // If no arguments and no flags are provided, show help
+        if (!args.path && Object.keys(flags).length === 0) {
+            this.log('No agent path provided, showing help...');
+            const help = new Help(this.config);
+            await help.showHelp(['agent']);
+            return;
+        }
 
         this.log(chalk.blue('🚀 Agent command called!'));
         this.log(chalk.gray(`Agent file: ${args.path}`));
@@ -137,6 +156,18 @@ export default class AgentCmd extends Command {
                 });
             }
         }
+        let vaultPath;
+        if (flags.vault) {
+            this.log(chalk.cyan(`  • Vault mode: ${flags.vault}`));
+            const formattedVaultPath = validateVaultPath(flags.vault, this);
+            vaultPath = formattedVaultPath;
+        }
+
+        let modelsPath;
+        if (flags.models) {
+            this.log(chalk.cyan(`  • Models mode: ${flags.models}`));
+            modelsPath = flags.models;
+        }
 
         if (!flags.chat && !flags.skill && !flags.endpoint && !flags.prompt) {
             this.log(chalk.yellow('  • No execution mode specified'));
@@ -168,6 +199,8 @@ export default class AgentCmd extends Command {
             mcp: flags.mcp ? parseFlagsarams(flags.mcp) : null,
             prompt,
             promptModel,
+            vault: vaultPath || null,
+            models: modelsPath || null,
         };
         this.log(chalk.gray(`   Flags: ${JSON.stringify(allFlags, null, 2).replace(/\n/g, '\n          ')}`));
 
@@ -191,7 +224,7 @@ export default class AgentCmd extends Command {
             } catch (e) {
                 port = 3388;
             }
-            await startMcpServer(args.path, serverType, port);
+            await startMcpServer(args.path, serverType, port, flags);
             return;
         }
     }
@@ -204,4 +237,34 @@ function parseFlagsarams(flags: string[]) {
         parsed[key] = value;
     }
     return parsed;
+}
+
+function validateVaultPath(vaultFlag: any, context: any) {
+    // Check if the provided path is relative or absolute
+    let vaultPath;
+    if (path.isAbsolute(vaultFlag)) {
+        vaultPath = vaultFlag;
+    } else {
+        // Convert relative path to absolute path
+        vaultPath = path.resolve(vaultFlag);
+    }
+
+    // Check if the file exists
+    if (!fs.existsSync(vaultPath)) {
+        context.log(chalk.red(`Vault file not found: ${vaultPath}`));
+        return;
+    }
+
+    // Check if it's a valid JSON file
+    try {
+        const vaultContent = fs.readFileSync(vaultPath, 'utf8');
+        JSON.parse(vaultContent); // Validate JSON
+        context.log(chalk.gray(`    Vault path: ${vaultPath}`));
+        context.log(chalk.gray(`    Vault file: Valid JSON`));
+    } catch (error) {
+        context.log(chalk.red(`Invalid JSON in vault file: ${vaultPath}`));
+        return;
+    }
+
+    return vaultPath;
 }

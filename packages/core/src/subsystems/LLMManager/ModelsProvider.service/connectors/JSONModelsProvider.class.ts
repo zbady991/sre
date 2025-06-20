@@ -12,6 +12,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { debounce } from '@sre/utils/general.utils';
 import chokidar from 'chokidar';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 
 const console = Logger('SmythModelsProvider');
@@ -35,8 +36,8 @@ type SmythModelsProviderConfig = {
     mode?: 'merge' | 'replace';
 };
 
-export class SmythModelsProvider extends ModelsProviderConnector {
-    public name = 'SmythModelsProvider';
+export class JSONModelsProvider extends ModelsProviderConnector {
+    public name = 'JSONModelsProvider';
 
     private models: TLLMModelsList;
 
@@ -99,7 +100,7 @@ export class SmythModelsProvider extends ModelsProviderConnector {
                 this.models = scannedModels;
             }
 
-            SmythModelsProvider.localCache.clear();
+            JSONModelsProvider.localCache.clear();
 
             console.debug(`Successfully reindexed models. Total models: ${Object.keys(this.models).length}`);
         } catch (error) {
@@ -185,9 +186,30 @@ export class SmythModelsProvider extends ModelsProviderConnector {
         return this.isValidSingleModel(data);
     }
 
-    private async initDirWatcher(dir) {
-        if (!(await fs.stat(dir)).isDirectory()) {
-            console.warn(`Directory "${dir}" does not exist`);
+    private initDirWatcher(dir) {
+        // Synchronous file system operations for initial setup
+        try {
+            const stats = fsSync.statSync(dir);
+
+            if (!stats.isDirectory()) {
+                //is it a file?
+                if (stats.isFile()) {
+                    //load the file
+                    const fileContent = fsSync.readFileSync(dir, 'utf-8');
+                    const modelData = JSON.parse(fileContent);
+
+                    if (this._settings?.mode === 'merge') this.models = { ...this.models, ...modelData };
+                    else this.models = modelData;
+
+                    this.started = true;
+                    return;
+                }
+
+                console.warn(`Path "${dir}" is neither a file nor a directory`);
+                return;
+            }
+        } catch (error) {
+            console.warn(`Path "${dir}" does not exist or cannot be accessed:`, error.message);
             return;
         }
 
@@ -220,10 +242,11 @@ export class SmythModelsProvider extends ModelsProviderConnector {
                 console.debug(`File ${path} has been removed`);
                 debouncedReindex();
             })
-            .on('ready', () => {
+            .on('ready', async () => {
                 console.debug(`Watcher ready. Performing initial scan of ${dir}`);
                 // Do initial scan once when watcher is ready
-                this.reindexModels(dir);
+                await this.reindexModels(dir);
+                this.started = true;
             });
     }
 }

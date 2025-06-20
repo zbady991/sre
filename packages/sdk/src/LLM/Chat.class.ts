@@ -57,39 +57,65 @@ class ChatCommand {
         return result;
     }
 
+    /**
+     * Execute the chat command as a streaming response.
+     *
+     * **Available Events:**
+     * - `'data'` - Text chunk received from the agent
+     * - `'end'` - The agent has finished responding
+     * - `'error'` - The agent encountered an error
+     *
+     * @returns Promise that resolves to an EventEmitter for streaming updates
+     *
+     * @example
+     * ```typescript
+     * const chat = agent.chat('my_chat_id');
+     *
+     * const stream = await chat.prompt("Tell me a long story").stream();
+     * stream.on('data', (chunk) => process.stdout.write(chunk));
+     * stream.on('end', () => console.log('\nStory completed!'));
+     * stream.on('error', (err) => console.error('Error:', err));
+     * ```
+     */
     async stream(): Promise<EventEmitter> {
         await this.chat.ready;
-        this._conversation.streamPrompt(this.prompt);
-        //return this._conversation;
 
         const eventEmitter = new EventEmitter();
 
         const toolInfoHandler = (toolInfo: any) => {
             eventEmitter.emit(TLLMEvent.ToolInfo, toolInfo);
+            this.chat.emit(TLLMEvent.ToolInfo, toolInfo);
         };
         const interruptedHandler = (interrupted: any) => {
             eventEmitter.emit(TLLMEvent.Interrupted, interrupted);
+            this.chat.emit(TLLMEvent.Interrupted, interrupted);
         };
 
         const contentHandler = (content: string) => {
             eventEmitter.emit(TLLMEvent.Content, content);
+            this.chat.emit(TLLMEvent.Content, content);
         };
         const toolCallHandler = (toolCall: any) => {
             eventEmitter.emit(TLLMEvent.ToolCall, toolCall);
+            this.chat.emit(TLLMEvent.ToolCall, toolCall);
         };
         const toolResultHandler = (toolResult: any) => {
             eventEmitter.emit(TLLMEvent.ToolResult, toolResult);
+            this.chat.emit(TLLMEvent.ToolResult, toolResult);
         };
         const endHandler = () => {
             eventEmitter.emit(TLLMEvent.End);
+            this.chat.emit(TLLMEvent.End);
             removeHandlers();
         };
         const errorHandler = (error: any) => {
             eventEmitter.emit(TLLMEvent.Error, error);
+            this.chat.emit(TLLMEvent.Error, error);
             removeHandlers();
         };
         const usageHandler = (usage: any) => {
             eventEmitter.emit(TLLMEvent.Usage, usage);
+            this.chat.emit(TLLMEvent.Usage, usage);
         };
 
         const removeHandlers = () => {
@@ -111,6 +137,7 @@ class ChatCommand {
         this._conversation.on(TLLMEvent.ToolInfo, toolInfoHandler);
         this._conversation.on(TLLMEvent.Interrupted, interruptedHandler);
 
+        this._conversation.streamPrompt(this.prompt);
         return eventEmitter;
     }
 }
@@ -169,6 +196,31 @@ export class Chat extends SDKObject {
         await registerProcessSkills(this._conversation, this._data);
     }
 
+    /**
+     * Send a prompt to the chat and get a response.
+     *
+     * The returned command can be executed in multiple ways:
+     * - **Promise mode**: `await chat.prompt("question")` - returns final result
+     * - **Explicit execution**: `await chat.prompt("question").run()` - same as above
+     * - **Streaming mode**: `await chat.prompt("question").stream()` - returns event emitter
+     *
+     * @example
+     * ```typescript
+     * const chat = agent.chat('my_chat_id');
+     *
+     * // Simple prompt (promise mode)
+     * const answer = await chat.prompt("What is the capital of France?");
+     *
+     *
+     * // Streaming for long responses
+     * const stream = await chat.prompt("Write a detailed report").stream();
+     * stream.on('data', chunk => console.log(chunk));
+     * stream.on('end', () => console.log('Complete!'));
+     * ```
+     *
+     * @param prompt - The message or question to send to the chat
+     * @returns ChatCommand that can be executed or streamed
+     */
     prompt(prompt: string) {
         return new ChatCommand(prompt, this);
     }

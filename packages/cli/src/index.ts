@@ -7,18 +7,19 @@ import { run } from '@oclif/core';
 import chalk from 'chalk';
 import updateNotifier from 'update-notifier';
 import { version } from '../package.json';
-import { smyth_banner } from './utils/ascii';
+import pkg from '../package.json';
+import { getPackageManager } from './utils/getPackageManager';
 
 // Run the Oclif CLI with better error handling
 (async () => {
     try {
         // Check for updates before running command (non-blocking)
-        const updateCheckPromise = Promise.resolve().then(() => checkForUpdates());
+        //const updateCheckPromise = Promise.resolve().then(() => checkForUpdates());
 
         await run(process.argv.slice(2), import.meta.url);
 
         // Ensure update notification is shown
-        await updateCheckPromise;
+        await checkForUpdates();
     } catch (error: any) {
         // Handle different types of errors gracefully
         if (error.oclif?.exit !== undefined) {
@@ -63,19 +64,42 @@ function checkForUpdates() {
         // Check for updates (non-blocking notification)
         const notifier = updateNotifier({
             pkg: { name: '@smythos/cli', version },
-            updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily (production)
+            //updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily (production)
+            updateCheckInterval: 0, // Always check for updates
             shouldNotifyInNpmScript: false,
         });
 
         // Only show notification if update is available
         if (notifier.update) {
+            const { latest, current } = notifier.update;
+            const packageManager = getPackageManager();
+            const pkgName = pkg.name;
+
+            let updateCommand = `npm i -g ${pkgName}`;
+            if (packageManager === 'pnpm') {
+                updateCommand = `pnpm i -g ${pkgName}`;
+            } else if (packageManager === 'yarn') {
+                updateCommand = `yarn global add ${pkgName}`;
+            }
+
+            const message =
+                chalk.bold('Update available ') +
+                chalk.dim(current) +
+                chalk.reset(' → ') +
+                chalk.green(latest) +
+                ' \nRun ' +
+                chalk.cyan(updateCommand) +
+                ' to update';
+
             notifier.notify({
                 isGlobal: true,
+                defer: true,
+                message,
                 boxenOptions: {
                     padding: 1,
                     margin: 1,
                     textAlignment: 'center',
-                    borderColor: 'yellow',
+                    borderColor: 'green',
                     borderStyle: 'round',
                 },
             });

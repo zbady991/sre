@@ -6,12 +6,13 @@
         "path": {
           "description": "Path to the agent file (.smyth)",
           "name": "path",
-          "required": true
+          "required": false
         }
       },
       "description": "Run .smyth agent with various execution modes",
       "examples": [
         "<%= config.bin %> <%= command.id %> ./myagent.smyth --chat",
+        "<%= config.bin %> <%= command.id %> ./myagent.smyth --prompt \"What is the weather in Tokyo?\"",
         "<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask question=\"who are you\"",
         "<%= config.bin %> <%= command.id %> ./myagent.smyth --mcp sse"
       ],
@@ -67,6 +68,16 @@
           "helpValue": "[server-type] [port]",
           "multiple": true,
           "type": "option"
+        },
+        "vault": {
+          "char": "v",
+          "description": "Provide a vault path to use for the agent\nExample: sre ./myagent.smyth --chat --vault ./myvault.json\n\n ",
+          "helpLabel": "--vault",
+          "name": "vault",
+          "hasDynamicHelp": false,
+          "helpValue": "<vault-path>",
+          "multiple": false,
+          "type": "option"
         }
       },
       "hasDynamicHelp": false,
@@ -87,11 +98,17 @@
     },
     "create": {
       "aliases": [],
-      "args": {},
-      "description": "Create a new SRE project",
+      "args": {
+        "projectName": {
+          "description": "Name of the new SmythOS project",
+          "name": "projectName",
+          "required": false
+        }
+      },
+      "description": "Create a new SmythOS project",
       "examples": [
         "<%= config.bin %> <%= command.id %>",
-        "<%= config.bin %> <%= command.id %> --help"
+        "<%= config.bin %> <%= command.id %> \"My Awesome Project\""
       ],
       "flags": {
         "help": {
@@ -152,7 +169,6 @@
           "char": "p",
           "description": "Specify package manager (npm, pnpm, yarn)",
           "name": "package",
-          "default": "pnpm",
           "hasDynamicHelp": false,
           "multiple": false,
           "options": [
@@ -179,5 +195,5 @@
       ]
     }
   },
-  "version": "0.0.3"
+  "version": "0.2.7"
 }

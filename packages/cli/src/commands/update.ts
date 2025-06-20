@@ -9,6 +9,8 @@ import updateNotifier from 'update-notifier';
 import { spawn } from 'child_process';
 import { version } from '../../package.json';
 import ora from 'ora';
+import inquirer from 'inquirer';
+import { getPackageManager } from '../utils/getPackageManager.js';
 
 export default class Update extends Command {
     static override description = 'Check for and install updates';
@@ -33,12 +35,12 @@ export default class Update extends Command {
             description: 'Specify package manager (npm, pnpm, yarn)',
             char: 'p',
             options: ['npm', 'pnpm', 'yarn'],
-            default: 'pnpm',
         }),
     };
 
     async run(): Promise<void> {
         const { flags } = await this.parse(Update);
+        const packageManager = flags.package || getPackageManager();
 
         this.log(chalk.blue('🔄 SmythOS CLI Update Manager'));
         this.log('');
@@ -68,9 +70,24 @@ export default class Update extends Command {
 
                 if (flags.check) {
                     this.log(chalk.blue('📋 Check complete. Use without --check to install.'));
-                    this.showManualInstructions(flags.package);
+                    this.showManualInstructions(packageManager);
                 } else {
-                    await this.performUpdate(flags.package, latest);
+                    const { confirm } = await inquirer.prompt([
+                        {
+                            type: 'confirm',
+                            name: 'confirm',
+                            message: 'Do you want to install this update now?',
+                            default: true,
+                        },
+                    ]);
+
+                    if (confirm) {
+                        await this.performUpdate(packageManager, latest);
+                    } else {
+                        this.log('');
+                        this.log(chalk.yellow('Update cancelled by user.'));
+                        this.showManualInstructions(packageManager);
+                    }
                 }
             } else {
                 this.log(chalk.green('✅ You are using the latest version!'));
@@ -86,7 +103,7 @@ export default class Update extends Command {
             this.log(chalk.red('❌ Error checking for updates:'));
             this.log(chalk.gray(error.message));
             this.log('');
-            this.showManualInstructions(flags.package);
+            this.showManualInstructions(packageManager);
         }
     }
 

@@ -1,4 +1,4 @@
-import { Agent, Model, Scope } from '@smythos/sdk';
+import { Agent, MCPTransport, Model, Scope } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -28,6 +28,10 @@ async function main() {
     const result = await agent.prompt('What are the current prices of Bitcoin and Ethereum ?');
 
     console.log(result);
+
+    const mcpUrl = await agent.mcp(MCPTransport.SSE, 3399);
+
+    console.log(`MCP server started on ${mcpUrl}`);
 }
 
 main();
