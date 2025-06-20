@@ -6,6 +6,7 @@
 import { Command, Flags } from '@oclif/core';
 import updateNotifier from 'update-notifier';
 import chalk from 'chalk';
+import boxen from 'boxen';
 import { getPackageManager } from './utils/getPackageManager.js';
 
 /**
@@ -27,27 +28,7 @@ export default class SRE extends Command {
     };
 
     async run(): Promise<void> {
-        // Update notifier logic moved here to access runtime config
-        const notifier = updateNotifier({
-            pkg: {
-                name: this.config.pjson.name,
-                version: this.config.version,
-            },
-            updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily
-        });
-
-        // Show update notification
-        notifier.notify({
-            isGlobal: true,
-            boxenOptions: {
-                padding: 1,
-                margin: 1,
-                textAlignment: 'center',
-                borderColor: 'yellow',
-                borderStyle: 'round',
-            },
-            packageManager: getPackageManager(),
-        } as any);
+        this.checkForUpdates();
 
         // Show welcome message if no command is provided
         this.log(chalk.blue('👋 Welcome to SRE CLI!'));
@@ -63,5 +44,54 @@ export default class SRE extends Command {
         this.log(chalk.yellow('Quick start:'));
         this.log(chalk.gray('  sre agent ./myagent.smyth --chat'));
         this.log('');
+    }
+
+    private checkForUpdates(): void {
+        const notifier = updateNotifier({
+            pkg: {
+                name: this.config.pjson.name,
+                version: this.config.version,
+            },
+            updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily
+        });
+
+        // Run in the background
+        if (notifier.update) {
+            // Use a promise to not block the main thread
+            Promise.resolve(notifier.update)
+                .then((update) => {
+                    const { latest, current } = update;
+                    const packageManager = getPackageManager();
+
+                    let updateCommand = 'npm i -g @smythos/cli';
+                    if (packageManager === 'pnpm') {
+                        updateCommand = 'pnpm i -g @smythos/cli';
+                    } else if (packageManager === 'yarn') {
+                        updateCommand = 'yarn global add @smythos/cli';
+                    }
+
+                    const message =
+                        'Update available ' +
+                        chalk.dim(current) +
+                        chalk.reset(' → ') +
+                        chalk.green(latest) +
+                        ' \nRun ' +
+                        chalk.cyan(updateCommand) +
+                        ' to update';
+
+                    this.log(
+                        boxen(message, {
+                            padding: 1,
+                            margin: 1,
+                            textAlignment: 'center',
+                            borderColor: 'yellow',
+                            borderStyle: 'round',
+                        })
+                    );
+                })
+                .catch(() => {
+                    // Ignore errors
+                });
+        }
     }
 }
