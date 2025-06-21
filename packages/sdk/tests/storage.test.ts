@@ -15,6 +15,7 @@ describe('SDK Storage Tests', () => {
         //const localStorage = new StorageInstance(TStorageProvider.LocalStorage);
 
         const localStorage = Storage.LocalStorage();
+        
 
         const result = await localStorage.write('test.txt', 'Hello, world!');
 
@@ -29,7 +30,9 @@ describe('SDK Storage Tests', () => {
             teamId: '123456',
         });
 
-        const localStorage = agent.storage.LocalStorage();
+        const localStorage = agent.storage.LocalStorage({});
+
+        
 
         const result = await localStorage.write('test2', 'Test Agent');
 

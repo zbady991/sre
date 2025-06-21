@@ -9,7 +9,13 @@ export class AccessCandidate implements IAccessCandidate {
         //this._candidate = candidate || { role: TAccessRole.Public, id: '' };
 
         this.role = candidate ? candidate.role : TAccessRole.Public;
-        this.id = candidate ? candidate.id : '';
+        this.id = candidate ? this._validateId(candidate.id) : '';
+    }
+
+    private _validateId(id: string) {
+        if (/[^a-zA-Z0-9-]/.test(id))
+            throw new Error('Access Candidate ID can only contain alphanumeric characters and hyphens');
+        return id;
     }
 
     public toString(): string {

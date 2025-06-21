@@ -9,9 +9,9 @@ import { Scope } from '../SDKTypes';
 
 // Define VectorDB provider settings mapping
 export type TVectorDBProviderSettings = {
-    Milvus: MilvusConfig;
-    Pinecone: PineconeConfig;
-    RAMVec: RAMVectorDBConfig;
+    Milvus: MilvusConfig
+    Pinecone: PineconeConfig
+    RAMVec: RAMVectorDBConfig
 };
 
 export type TAllVectorDBProviderSettings = TVectorDBProviderSettings & IVectorDBProviders;

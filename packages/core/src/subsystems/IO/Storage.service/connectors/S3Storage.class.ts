@@ -43,7 +43,15 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('S3Storage');
 
-export type S3Config = AWSCredentials & AWSRegionConfig & { bucket: string };
+//export type S3Config = AWSCredentials & AWSRegionConfig & { bucket: string };
+
+//We need to flatten the S3Config type in order to make it work with the SDK
+export type S3Config = {
+    region: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    bucket: string;
+};
 
 export class S3Storage extends StorageConnector {
     public name = 'S3Storage';

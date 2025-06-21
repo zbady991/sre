@@ -25,6 +25,8 @@ export type LocalStorageConfig = {
     folder?: string;
 };
 
+//TODO : detect and store ContentType metadata when saving
+
 export class LocalStorage extends StorageConnector {
     public name = 'LocalStorage';
     private folder: string;

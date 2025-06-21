@@ -29,9 +29,6 @@ async function main() {
 
     console.log(result);
 
-    const mcpUrl = await agent.mcp(MCPTransport.SSE, 3399);
-
-    console.log(`MCP server started on ${mcpUrl}`);
 }
 
 main();

@@ -113,7 +113,24 @@ export class SmythFS {
         return data ? this.toBuffer(data) : null;
     }
 
-    public async write(uri: string, data: any, candidate?: IAccessCandidate, metadata?: StorageMetadata, ttl?: number) {
+
+    public async getMetadata(uri: string, candidate?: IAccessCandidate) {
+        const smythURI = await this.URIParser(uri);
+        if (!smythURI) throw new Error('Invalid Resource URI');
+        candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
+
+        const accountConnector = ConnectorService.getAccountConnector();
+        const isMember = await accountConnector.isTeamMember(smythURI.team, candidate);
+        if (!isMember) throw new Error('Access Denied');
+
+        const resourceId = `teams/${smythURI.team}${smythURI.path}`;
+
+        const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
+
+        return await this.storage.requester(_candidate).getMetadata(resourceId);
+    }
+
+    public async write(uri: string, data: StorageData, candidate?: IAccessCandidate, metadata?: StorageMetadata, ttl?: number) {
         const smythURI = await this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
         candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
@@ -380,10 +397,10 @@ export class SmythFS {
             let candidate: IAccessCandidate;
             if (user) {
                 candidate = AccessCandidate.user(user);
-                basePath = '/' + user;
+                basePath = '.user/' + user;
             } else if (agent) {
                 candidate = AccessCandidate.agent(agent);
-                basePath = '/' + agent;
+                basePath = '.agent/' + agent;
             }
 
             if (candidate) {
