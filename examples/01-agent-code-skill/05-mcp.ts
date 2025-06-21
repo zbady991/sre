@@ -7,7 +7,7 @@ async function main() {
         model: 'gpt-4o',
     });
 
-    agent.addSkill({
+    const skill = agent.addSkill({
         name: 'Price',
         description: 'Use this skill to get the price of a cryptocurrency',
         process: async ({ coin_id }) => {
@@ -17,6 +17,15 @@ async function main() {
             return data.market_data.current_price;
         },
     });
+
+    //you can describe the input parameters for the skill using skill.in() method
+    skill.in({
+        coin_id: {
+            type: 'Text',
+            description: 'The id of the coin to get the price of',            
+        }
+    });
+    
 
     //run the agent as an MCP server
     const mcpUrl = await agent.mcp(MCPTransport.SSE, 3399);

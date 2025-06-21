@@ -128,6 +128,7 @@ export * from './subsystems/LLMManager/ModelsProvider.service/index';
 export * from './subsystems/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 export * from './subsystems/MemoryManager/Cache.service/CacheConnector';
 export * from './subsystems/MemoryManager/Cache.service/index';
+export * from './subsystems/MemoryManager/LLMMemory.service/LLMMemoryConnector';
 export * from './subsystems/Security/AccessControl/AccessCandidate.class';
 export * from './subsystems/Security/AccessControl/AccessRequest.class';
 export * from './subsystems/Security/AccessControl/ACL.class';

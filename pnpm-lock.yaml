@@ -342,6 +342,9 @@ importers:
       '@types/mime-types':
         specifier: ^3.0.1
         version: 3.0.1
+      acorn:
+        specifier: ^8.14.1
+        version: 8.14.1
       chalk:
         specifier: ^5.4.1
         version: 5.4.1

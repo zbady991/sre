@@ -25,8 +25,7 @@ export class LLMContext {
     public contextLength: number;
 
     private _messages: any[] = [];
-    public get messages() {
-        //TODO : check if the store is ready
+    public get messages() {        
         return this._messages;
     }
 
@@ -40,13 +39,13 @@ export class LLMContext {
     constructor(
         private llmInference,
         _systemPrompt: string = '',
-        /*private _messages: any[] = [],*/ llmContextStore?: ILLMContextStore,
+        llmContextStore?: ILLMContextStore,
     ) {
         this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId));
         //this._systemPrompt = _systemPrompt;
         this.systemPrompt = _systemPrompt;
 
-        //TODO:allow configuring a storage service
+        
         if (llmContextStore) {
             this._llmContextStore = llmContextStore;
             this._llmContextStore.load().then((messages) => {
@@ -58,7 +57,7 @@ export class LLMContext {
 
     private push(...message: any[]) {
         this._messages.push(...message);
-        //TODO: persist to storage
+        
         if (this._llmContextStore) {
             this._llmContextStore.save(this._messages);
         }

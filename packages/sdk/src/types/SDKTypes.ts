@@ -38,12 +38,7 @@ export type ChatOptions = {
      */
     persist?: boolean | ILLMContextStore;
 
-    /**
-     * If true, the chat will be shared across all agents in the team
-     *
-     * If false, the chat will be private to the agent
-     */
-    shared?: boolean;
+
 };
 
 export enum Scope {

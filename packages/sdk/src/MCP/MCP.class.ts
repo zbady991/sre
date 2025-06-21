@@ -151,7 +151,7 @@ export class MCP {
         this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
             try {
                 const { name, arguments: args } = request.params;
-                const agent = Agent.import(agentSource);
+                const agent = this.agent;
 
                 const result = await agent.call(name, args);
 
@@ -201,7 +201,7 @@ export class MCP {
             if (!schema) return {};
 
             const properties = {};
-            const required = [];
+            let required = [];
 
             schema.forEach((param) => {
                 if (param.in === 'query') {
@@ -211,6 +211,9 @@ export class MCP {
                     }
                 }
             });
+
+            //deduplicate required
+            required = [...new Set(required)];
 
             return {
                 type: 'object',

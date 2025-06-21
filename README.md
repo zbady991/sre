@@ -41,14 +41,13 @@ This approach makes your AI platform **easy to scale** and incredibly flexible. 
 
 ### Method 1: Using the CLI (Recommended)
 
-Install the CLI globally and create a new project:
+Install the [CLI](packages/cli/) globally and create a new project:
 
 ```bash
 npm i -g @smythos/cli
 sre create
 ```
 
-_Note: "sre create" command is not implemented yet in this release, will be available very soon_
 
 The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs.
 
