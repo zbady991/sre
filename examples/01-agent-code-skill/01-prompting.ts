@@ -1,7 +1,9 @@
-import { Agent } from '@smythos/sdk';
+import { Agent, Scope } from '@smythos/sdk';
 
 async function main() {
     const agent = new Agent({
+        id: 'crypto-market-assistant',
+        teamId: 'the-matrix',
         name: 'CryptoMarket Assistant',
         behavior: 'You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD',
         model: 'gpt-4o',
@@ -17,6 +19,9 @@ async function main() {
             return data.market_data;
         },
     });
+
+    const storage = agent.storage.LocalStorage({ scope: Scope.TEAM });
+    await storage.write('test0001.txt', 'Hello, world!');
 
     //this will prompt the agent and use the agent's LLM to determine which skill to use
     const promptResult = await agent.prompt('What are the current prices of Bitcoin and Ethereum ?');

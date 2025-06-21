@@ -468,7 +468,9 @@ export class Agent extends SDKObject {
                         );
                     }
                     const candidate =
-                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
+                        scope !== Scope.TEAM && this._hasExplicitId
+                            ? AccessCandidate.agent(this._data.id)
+                            : AccessCandidate.team(this._data.teamId);
 
                     return new StorageInstance(provider as TStorageProvider, storageSettings, candidate);
                 };

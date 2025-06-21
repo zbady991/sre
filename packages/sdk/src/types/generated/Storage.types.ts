@@ -8,8 +8,8 @@ import { Scope } from '../SDKTypes';
 
 // Define storage provider settings mapping
 export type TStorageProviderSettings = {
-    LocalStorage: LocalStorageConfig;
-    S3: S3Config;
+    LocalStorage: LocalStorageConfig
+    S3: S3Config
 };
 
 // #region [ Handle extendable Storage Providers ] ================================================
@@ -34,7 +34,7 @@ export type TStorageSettingsFor<T extends keyof TStorageProviderSettings> = TSto
 
 export type TStorageProviderInstances = {
     [K in TStorageProvider]: (
-        settings?: K extends keyof TStorageProviderSettings ? TStorageSettingsFor<K> : any,
+        settings?: TStorageSettingsFor<K>,
         scope?: Scope | AccessCandidate
     ) => StorageInstance;
 };

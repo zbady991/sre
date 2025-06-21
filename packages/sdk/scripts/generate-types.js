@@ -205,7 +205,7 @@ function generateServiceTypes(connectors, template) {
     const builtinProviders = connectors.map((connector) => `    ${connector.providerName}: '${connector.providerName}',`).join('\n');
 
     // Generate type mapping
-    const typeMapping = connectors.map((connector) => `    ${connector.providerName}: ${connector.configType};`).join('\n');
+    const typeMapping = connectors.map((connector) => `    ${connector.providerName}: ${connector.configType}`).join('\n');
 
     return renderTemplate(template, {
         imports,

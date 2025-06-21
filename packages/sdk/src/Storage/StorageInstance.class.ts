@@ -1,4 +1,4 @@
-import { AccessCandidate, ConnectorService, DEFAULT_TEAM_ID, SmythFS, StorageConnector, TAccessRole, TConnectorService } from '@smythos/sre';
+import { AccessCandidate, ConnectorService, DEFAULT_TEAM_ID, SmythFS, StorageConnector, StorageData, TAccessRole, TConnectorService } from '@smythos/sre';
 
 import { SDKObject } from '../Core/SDKObject.class';
 import { TStorageProvider } from '../types/generated/Storage.types';
@@ -71,7 +71,7 @@ export class StorageInstance extends SDKObject {
      * @param resourceName - The name or smythfs:// uri of the resource to read
      * @returns the resource data
      */
-    async read(resourceName: string) {
+    async read(resourceName: string): Promise<Buffer> {
         const uri = resourceName.startsWith('smythfs://') ? resourceName : await this.getResourceUri(resourceName);
         try {
             return await this.fs.read(uri, this._candidate);
@@ -87,7 +87,7 @@ export class StorageInstance extends SDKObject {
      * @param data - The data to write to the resource
      * @returns SmythFS URI of the written resource in the format (smythfs://<candidateId>.<role>/<resourceName>)
      */
-    async write(resourceName: string, data: any) {
+    async write(resourceName: string, data: StorageData) {
         const uri = resourceName.startsWith('smythfs://') ? resourceName : await this.getResourceUri(resourceName);
         try {
             await this.fs.write(uri, data, this._candidate);
