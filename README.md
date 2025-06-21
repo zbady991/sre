@@ -4,7 +4,7 @@
 [![Discord](https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/smythos)
 [![](https://img.shields.io/badge/📄_Code_License-MIT-green)](https://github.com/SmythOS/sre/blob/main/LICENSE)
 
-[SDK Documentation](https://smythos.github.io/sre/sdk/) | [SRE Core Documentation](https://smythos.github.io/sre/core/) | [Code Examples](examples)
+[![Watch Video](https://img.youtube.com/vi/KDFu9s0Nm38/maxresdefault.jpg)](https://www.youtube.com/watch?v=KDFu9s0Nm38)
 
 Everything you need to build, deploy, and manage intelligent AI agents at scale. SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
 
