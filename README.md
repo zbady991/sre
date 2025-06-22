@@ -8,6 +8,8 @@
 
 Everything you need to build, deploy, and manage intelligent AI agents at scale. SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
 
+[SDK Documentation](https://smythos.github.io/sre/sdk/) | [SRE Core Documentation](https://smythos.github.io/sre/core/) | [Code Examples](examples)
+
 ## Why SmythOS exists
 
 1. Shipping production-ready AI agents shouldn’t feel like rocket science.
@@ -48,7 +50,6 @@ npm i -g @smythos/cli
 sre create
 ```
 
-
 The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs.
 
 ### Method 2: Direct SDK Installation
@@ -59,7 +60,7 @@ Add the SDK directly to your existing project:
 npm install @smythos/sdk
 ```
 
-Check the [Examples](examples) and [documentation](https://smythos.github.io/sre/sdk/) to get started.
+Check the [Examples](examples), [documentation](https://smythos.github.io/sre/sdk/) and [Code Templates](https://github.com/SmythOS/sre-project-templates) to get started.
 
 ---
 
@@ -321,12 +322,6 @@ These components can be invoked programmatically or through the symbolic represe
 | **Observable**        | Built-in monitoring, logging, and debugging tools      |
 | **Cloud-Native**      | Runs anywhere - local, cloud, edge, or hybrid          |
 | **Scalable**          | From development to enterprise production              |
-
-## Documentation
-
--   **[Complete Overview](packages/core/doc/overview.md)** - Deep dive into SRE architecture
--   **[SDK Documentation](packages/sdk/README.md)** - SDK API reference and examples
--   **[Component Library](packages/core/doc/components/)** - All available components
 
 ## Contributing
 
