@@ -7,6 +7,7 @@ function normalizeEndpointName(name: string) {
     return name.replace(/[^a-zA-Z0-9]/g, '_');
 }
 
+
 export type TSkillSettings = {
     name: string;
     endpoint?: string;

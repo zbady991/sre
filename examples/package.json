@@ -1,13 +1,13 @@
 {
     "name": "@smythos/examples",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "private": true,
     "description": "SmythOS SDK Examples",
     "type": "module",
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
     "scripts": {
-        "try": "tsx"
+        "start": "tsx"
     },
     "dependencies": {
         "@smythos/sdk": "workspace:*",

@@ -8,16 +8,18 @@ import {
     TLLMModel,
     TLLMProvider,
     DEFAULT_TEAM_ID,
+    BinaryInput,
 } from '@smythos/sre';
 import { EventEmitter } from 'events';
 import { Chat } from './Chat.class';
 import { SDKObject } from '../Core/SDKObject.class';
 import { adaptModelParams } from './utils';
-import { uid } from '../utils/general.utils';
+import { isFile, uid } from '../utils/general.utils';
 import { ChatOptions } from '../types/SDKTypes';
+import * as fs from 'fs';
 
 class LLMCommand {
-    constructor(private _llm: LLMInstance, private _params: any) {}
+    constructor(private _llm: LLMInstance, private _params: any, private _options?: any) {}
 
     /**
      * Run the command and return the result as a promise.
@@ -29,9 +31,29 @@ class LLMCommand {
         return this.run().then(resolve, reject);
     }
 
+    private async getFiles() {
+        let files = [];
+        if (this._options?.files) {
+            files = await Promise.all(this._options.files.map(async (file: string) => {
+                if (isFile(file)) {
+                    // Read local file using Node.js fs API with explicit null encoding to get raw binary data
+                    const buffer = await fs.promises.readFile(file, null);
+                    const binaryInput = BinaryInput.from(buffer);
+                    await binaryInput.ready();
+                    return binaryInput;
+                } else {
+                    return BinaryInput.from(file);
+                }
+            }));
+        }
+        return files.length > 0 ? files : undefined;
+    }
+
     async run(): Promise<string> {
         await this._llm.ready;
-        const params = { ...this._params, ...this._llm.modelSettings }; // update model settings
+
+        let files = await this.getFiles();
+        const params = { ...this._params, ...this._llm.modelSettings, files }; // update model settings
 
         const result = await this._llm.requester.request(params as TLLMConnectorParams);
 
@@ -65,7 +87,8 @@ class LLMCommand {
      */
     async stream(): Promise<EventEmitter> {
         await this._llm.ready;
-        const params = { ...this._params, ...this._llm.modelSettings }; // update model settings
+        const files = await this.getFiles();
+        const params = { ...this._params, ...this._llm.modelSettings, files }; // update model settings
 
         return await this._llm.requester.streamRequest(params as TLLMConnectorParams);
     }
@@ -177,8 +200,8 @@ export class LLMInstance extends SDKObject {
      * stream.on('data', chunk => process.stdout.write(chunk));
      * ```
      */
-    public prompt(prompt: string): LLMCommand {
-        return new LLMCommand(this, { ...this._modelSettings, messages: [{ role: 'user', content: prompt }] });
+    public prompt(prompt: string, options?:any): LLMCommand {
+        return new LLMCommand(this, { ...this._modelSettings, messages: [{ role: 'user', content: prompt }] }, options);
     }
 
     public chat(options?: ChatOptions | string) {

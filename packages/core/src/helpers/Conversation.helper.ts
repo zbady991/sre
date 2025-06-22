@@ -217,7 +217,7 @@ export class Conversation extends EventEmitter {
             model: instance._model,
         };
     })
-    public async prompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
+    public async prompt(message?: string|any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
         const result = await this.streamPrompt(message, toolHeaders, concurrentToolCalls, abortSignal);
         return result;
     }
@@ -232,7 +232,11 @@ export class Conversation extends EventEmitter {
             model: instance._model,
         };
     })
-    public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
+    public async streamPrompt(message?: string|any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
+        let options = typeof message === 'object' ? message : {message};
+        message = options?.message;
+        const files = options?.files;
+
         if (message) {
             //initial call, reset stop flag
 
@@ -287,6 +291,7 @@ export class Conversation extends EventEmitter {
         const eventEmitter: any = await llmInference
             .promptStream({
                 contextWindow,
+                files,
                 params: {
                     model: this.model,
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,

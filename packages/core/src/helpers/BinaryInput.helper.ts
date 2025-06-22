@@ -135,7 +135,7 @@ export class BinaryInput {
                 extension = extension || mime.getExtension(this.mimetype);
                 if (!this._name.endsWith(`.${extension}`)) this._name += `.${extension}`;
             } catch (error) {
-                console.error('Error loading binary data from url:', data.url);
+                console.error('Error loading binary data from url:', data.url, error);
             }
 
             //this._source = data.url;
@@ -194,15 +194,19 @@ export class BinaryInput {
             }
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
+            this._ready = true;
+            return;
         }
 
         if (data instanceof Blob) {
             this._source = Buffer.from(await data.arrayBuffer());
             this.size = data.size;
             this.mimetype = data.type;
+            this._ready = true;
+            return;
         }
 
-        this._ready = true;
+        
     }
 
     private async getUrlInfo(url) {
@@ -234,6 +238,9 @@ export class BinaryInput {
 
                 this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
                 await SmythFS.Instance.write(this.url, this._source, candidate, undefined, ttl);
+                this._uploading = false;
+            }
+            else {
                 this._uploading = false;
             }
         } catch (error) {

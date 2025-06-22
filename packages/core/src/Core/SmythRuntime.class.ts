@@ -21,6 +21,9 @@ export class SmythRuntime {
     private defaultConfig: SREConfig = {
         Vault: {
             Connector: 'JSONFileVault',
+            Settings: {
+                shared: 'default', //default team shares its secrets with all other teams
+            },
         },
         Account: {
             Connector: 'DummyAccount',

@@ -1,4 +1,4 @@
-import { AccessCandidate, AgentProcess, Conversation, DEFAULT_TEAM_ID, TLLMConnectorParams, TLLMEvent, TLLMProvider } from '@smythos/sre';
+import { AccessCandidate, AgentProcess, BinaryInput, Conversation, DEFAULT_TEAM_ID, TLLMConnectorParams, TLLMEvent, TLLMProvider } from '@smythos/sre';
 import EventEmitter from 'events';
 import { Chat, prepareConversation } from '../LLM/Chat.class';
 import { Component } from '../Components/Components.index';
@@ -8,7 +8,7 @@ import { DummyAccountHelper } from '../Security/DummyAccount.helper';
 
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { TStorageProvider, TStorageProviderInstances } from '../types/generated/Storage.types';
-import { uid } from '../utils/general.utils';
+import { isFile, uid } from '../utils/general.utils';
 import { SDKObject } from '../Core/SDKObject.class';
 import fs from 'fs';
 import { SDKLog } from '../utils/console.utils';
@@ -44,7 +44,7 @@ const console = SDKLog;
  * ```
  */
 class AgentCommand {
-    constructor(private prompt: string, private agent: Agent) {}
+    constructor(private prompt: string, private agent: Agent, private _options?: any) {}
 
     /**
      * Execute the command and return the result as a promise.
@@ -57,6 +57,30 @@ class AgentCommand {
     then(resolve: (value: string) => void, reject?: (reason: any) => void) {
         return this.run().then(resolve, reject);
     }
+
+
+    private async getFiles() {
+        let files = [];
+        if (this._options?.files) {
+            files = await Promise.all(this._options.files.map(async (file: string) => {
+                if (isFile(file)) {
+                    // Read local file using Node.js fs API with explicit null encoding to get raw binary data
+                    const buffer = await fs.promises.readFile(file, null);
+                    const binaryInput = BinaryInput.from(buffer);
+                    await binaryInput.ready();
+                    await binaryInput.upload(AccessCandidate.agent(this.agent.data.id));
+                    return binaryInput;
+                } else {
+                    const binaryInput = BinaryInput.from(file);
+                    await binaryInput.ready();
+                    await binaryInput.upload(AccessCandidate.agent(this.agent.data.id));
+                    return binaryInput;
+                }
+            }));
+        }
+        return files.length > 0 ? files : undefined;
+    }
+
 
     /**
      * Execute the agent command and return the complete response.
@@ -71,9 +95,19 @@ class AgentCommand {
      */
     async run(): Promise<string> {
         await this.agent.ready;
+
+        let files = await this.getFiles();         
         const conversation = await prepareConversation(this.agent.data);
 
-        const result = await conversation.streamPrompt(this.prompt).catch((error) => {
+        //does this agent have any skill that is capable of handling binary files ?
+        const hasBinarySkill = this.agent.data.components.find(c => 
+            c.name === 'APIEndpoint' && c.inputs.find(i => i.type === 'Binary')
+        )
+
+        const attachmentsPrompt = !files || files.length === 0 ? '' : `\n\n----\nAttachments: ${files.map((file) => ` - ${file.url}`).join('\n')}`;
+
+        
+        const result = await conversation.streamPrompt({message: this.prompt + attachmentsPrompt, files:hasBinarySkill ? undefined: files}).catch((error) => {
             console.error('Error on streamPrompt: ', error);
             return { error };
         });
@@ -101,6 +135,7 @@ class AgentCommand {
      */
     async stream(): Promise<EventEmitter> {
         await this.agent.ready;
+        const files = await this.getFiles();
         const conversation = await prepareConversation(this.agent.data);
 
         const eventEmitter = new EventEmitter();
@@ -160,7 +195,7 @@ class AgentCommand {
         conversation.on(TLLMEvent.ToolInfo, toolInfoHandler);
         conversation.on(TLLMEvent.Interrupted, interruptedHandler);
 
-        conversation.streamPrompt(this.prompt);
+        conversation.streamPrompt({message: this.prompt, files});
 
         return conversation;
     }
@@ -307,7 +342,7 @@ export class Agent extends SDKObject {
         //when creating a new agent, we make sure to create new unique id
         if (!this._data.id) {
             //console.warn('No id provided for the agent, generating a new one');
-            this._data.id = this._normalizeId(`${this._data.name ? this._data.name + '_' : ''}${uid()}`);
+            this._data.id = this._normalizeId(`${this._data.name ? this._data.name + '-' : ''}${uid()}`);
         } else {
             if (!this._validateId(this._data.id)) {
                 throw new Error(`Invalid agent id: ${this._data.id}\nOnly alphanumeric, hyphens and underscores are allowed`);
@@ -335,7 +370,7 @@ export class Agent extends SDKObject {
         return id.length > 0 && id.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(id);
     }
     private _normalizeId(name: string) {
-        return name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        return name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     }
     /**
      * Import an agent from a file or configuration object.
@@ -622,8 +657,8 @@ export class Agent extends SDKObject {
      * stream.on('end', () => console.log('Complete!'));
      * ```
      */
-    public prompt(prompt: string): AgentCommand {
-        return new AgentCommand(prompt, this);
+    public prompt(prompt: string, options?: any): AgentCommand {
+        return new AgentCommand(prompt, this, options);
     }
 
     /**

@@ -14,7 +14,7 @@ export class AccessCandidate implements IAccessCandidate {
 
     private _validateId(id: string) {
         if (/[^a-zA-Z0-9-]/.test(id))
-            throw new Error('Access Candidate ID can only contain alphanumeric characters and hyphens');
+            throw new Error(`Access Candidate ID can only contain alphanumeric characters and hyphens, invalid id: ${id}`);
         return id;
     }
 

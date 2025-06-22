@@ -82,7 +82,7 @@ export class LocalStorage extends StorageConnector {
         try {
             const filePath = this.getStorageFilePath(acRequest.candidate.id, resourceId);
             if (!fs.existsSync(filePath)) return undefined;
-            const data = fs.readFileSync(filePath, 'utf-8');
+            const data = fs.readFileSync(filePath, null);
             return data;
         } catch (error) {
             console.error(`Error reading object from local storage`, error.name, error.message);
@@ -143,10 +143,10 @@ export class LocalStorage extends StorageConnector {
         }
         const accessCandidate = acRequest.candidate;
 
-        let amzACL = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
+        let localACL = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
         let fileMetadata = {
             ...metadata,
-            acl: amzACL,
+            acl: localACL,
         };
 
         //now we can write the file

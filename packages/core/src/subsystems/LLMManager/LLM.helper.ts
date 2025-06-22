@@ -124,7 +124,7 @@ export class LLMHelper {
                 throw new Error('Please provide a valid image url!');
             }
 
-            const dimensions = imageSize(buffer);
+            const dimensions =  imageSize(buffer);
 
             return {
                 width: dimensions?.width || 0,

@@ -44,6 +44,20 @@ describe('SDK LLM Tests', () => {
         expect(result).toContain('Paris');
     });
 
+    it('LLM - Prompt with attachments', async () => {
+        const llm = LLM.OpenAI('gpt-4o-mini', {
+            temperature: 0.1,
+            maxTokens: 100,
+        });
+
+        const result = await llm.prompt('Describe this image?', {
+            files: ['./packages/sdk/tests/data/images/the-starry-night-mini.png'],
+        });
+
+        expect(result).toBeDefined();
+        expect(result).toContain('Paris');
+    });    
+
     it('LLMProxy - Chat', async () => {
         const llm = LLM.OpenAI({ model: 'gpt-4o' });
 

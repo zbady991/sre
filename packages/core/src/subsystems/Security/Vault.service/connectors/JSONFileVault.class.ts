@@ -20,20 +20,20 @@ const console = Logger('JSONFileVault');
 export type JSONFileVaultConfig = {
     file?: string;
     fileKey?: string;
-    shared?: boolean;
+    shared?: string;
 };
 
-export class JSONFileVault extends VaultConnector {
+export class JSONFileVault extends VaultConnector { 
     public name: string = 'JSONFileVault';
     private vaultData: any;
     private index: any;
-    private sharedVault: boolean;
+    private shared: string;
 
     constructor(protected _settings: JSONFileVaultConfig) {
         super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.sharedVault = _settings.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
+        this.shared = _settings.shared || ''; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
 
         let vaultFile = this.findVaultFile(_settings.file);
         this.vaultData = {};
@@ -124,14 +124,14 @@ export class JSONFileVault extends VaultConnector {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
 
-        return this.vaultData?.[teamId]?.[keyId] || this.vaultData?.['shared']?.[keyId];
+        return this.vaultData?.[teamId]?.[keyId] || this.vaultData?.[this.shared]?.[keyId];
     }
 
     @SecureConnector.AccessControl
     protected async exists(acRequest: AccessRequest, keyId: string) {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-        return !!(this.vaultData?.[teamId]?.[keyId] || this.vaultData?.['shared']?.[keyId]);
+        return !!(this.vaultData?.[teamId]?.[keyId] || this.vaultData?.[this.shared]?.[keyId]);
     }
 
     @SecureConnector.AccessControl
@@ -146,7 +146,7 @@ export class JSONFileVault extends VaultConnector {
         const acl = new ACL();
 
         if (resourceId && typeof this.vaultData?.[teamId]?.[resourceId] !== 'string') {
-            if (this.sharedVault && typeof this.vaultData?.['shared']?.[resourceId] === 'string') {
+            if (this.shared && typeof this.vaultData?.[this.shared]?.[resourceId] === 'string') {
                 acl.addAccess(candidate.role, candidate.id, TAccessLevel.Read);
             }
 
@@ -157,7 +157,7 @@ export class JSONFileVault extends VaultConnector {
             .addAccess(TAccessRole.Team, teamId, TAccessLevel.Read)
             .addAccess(TAccessRole.Team, teamId, TAccessLevel.Write);
 
-        if (this.sharedVault && typeof this.vaultData?.['shared']?.[resourceId] === 'string') {
+        if (this.shared && typeof this.vaultData?.[this.shared]?.[resourceId] === 'string') {
             acl.addAccess(candidate.role, candidate.id, TAccessLevel.Read);
         }
 
