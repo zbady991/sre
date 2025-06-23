@@ -11,6 +11,7 @@ import path from 'path';
 import { banner } from '../../utils/banner';
 import fs from 'fs';
 import { execSync } from 'child_process';
+import extract from 'extract-zip';
 
 const normalizeProjectName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, '-');
 
@@ -73,6 +74,26 @@ function prepareSmythDirectory(baseDir: string = os.homedir()) {
         storageDir,
         vaultFile: vaultExists ? vaultFile : null,
     };
+}
+
+function copyDirectoryRecursiveSync(source: string, target: string) {
+    if (!fs.existsSync(target)) {
+        fs.mkdirSync(target, { recursive: true });
+    }
+
+    const files = fs.readdirSync(source);
+
+    files.forEach((file) => {
+        const sourcePath = path.join(source, file);
+        const targetPath = path.join(target, file);
+        const stat = fs.statSync(sourcePath);
+
+        if (stat.isDirectory()) {
+            copyDirectoryRecursiveSync(sourcePath, targetPath);
+        } else {
+            fs.copyFileSync(sourcePath, targetPath);
+        }
+    });
 }
 
 export default class CreateCmd extends Command {
@@ -301,7 +322,7 @@ async function RunProject(projectNameArg?: string) {
     }
 }
 
-function createProject(config: any) {
+async function createProject(config: any) {
     let folderCreated = false;
     let projectFolder = '';
     try {
@@ -318,11 +339,48 @@ function createProject(config: any) {
             return false;
         }
 
-        const projectId = path.basename(projectFolder);
-        //clone the repo branch into the project folder
-        const cloneCommand = `git clone --branch ${branch} ${gitRepoUrl} ${projectFolder}`;
-        execSync(cloneCommand, { stdio: 'inherit' });
+        if (!fs.existsSync(projectFolder)) {
+            fs.mkdirSync(projectFolder, { recursive: true });
+        }
         folderCreated = true;
+
+        const projectId = path.basename(projectFolder);
+        try {
+            //clone the repo branch into the project folder
+            const cloneCommand = `git clone --depth 1 --branch ${branch} ${gitRepoUrl} ${projectFolder}`;
+            execSync(cloneCommand, { stdio: 'pipe' });
+        } catch (error) {
+            console.log(chalk.yellow('git clone failed, using alternative method.'));
+            const zipUrl = `${gitRepoUrl}/archive/refs/heads/${branch}.zip`;
+            const tempZipPath = path.join(os.tmpdir(), `${branch}.zip`);
+
+            try {
+                // Download the file
+                const response = await fetch(zipUrl);
+                if (!response.ok) throw new Error(`Failed to download zip: ${response.statusText}`);
+
+                const arrayBuffer = await response.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                fs.writeFileSync(tempZipPath, buffer);
+
+                // Unzip the file
+                await extract(tempZipPath, { dir: os.tmpdir() });
+
+                // Move contents from the extracted folder to the target folder
+                const extractedFolder = path.join(os.tmpdir(), `sre-project-templates-${branch}`);
+                copyDirectoryRecursiveSync(extractedFolder, projectFolder);
+
+                // Cleanup
+                fs.unlinkSync(tempZipPath);
+                fs.rmSync(extractedFolder, { recursive: true, force: true });
+            } catch (zipError) {
+                console.error(chalk.red('Error downloading or extracting project zip:'), zipError);
+                if (folderCreated && projectFolder) {
+                    fs.rmSync(projectFolder, { recursive: true, force: true });
+                }
+                return false;
+            }
+        }
 
         //ensure resources folder and .sre folder exists
         //ensure the .sre folder exists
@@ -363,8 +421,9 @@ function createProject(config: any) {
 
         return true;
     } catch (error) {
+        console.error(chalk.red('An unexpected error occurred:'), error);
         if (folderCreated && projectFolder) {
-            fs.rmSync(projectFolder, { recursive: true });
+            fs.rmSync(projectFolder, { recursive: true, force: true });
         }
         return false;
     }
