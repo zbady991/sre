@@ -1,1 +1,1 @@
-npm test
+bash scripts/prevent-secrets.sh
