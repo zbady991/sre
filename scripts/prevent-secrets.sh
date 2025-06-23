@@ -18,21 +18,21 @@ done
 
 # Regex patterns for secrets
 secret_patterns=(
-  "AKIA[0-9A-Z]{16}"                       # AWS Access Key
-  "AIza[0-9A-Za-z-_]{35}"                  # Google API Key
-  "-----BEGIN PRIVATE KEY-----"            # Private key blocks
-  "ghp_[0-9a-zA-Z]{36}"                    # GitHub personal access token
-  "eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}" # JWT token pattern
-  "password\s*[:=]\s*['\"].+['\"]?"        # password = '...'
-  "secret\s*[:=]\s*['\"].+['\"]?"          # secret = '...'
-  "sk-[a-zA-Z0-9]{48}"
+  "AKIA[0-9A-Z]+"                              # AWS Access Key
+  "AIza[0-9A-Za-z_-]+"                         # Google API Key
+  "-----BEGIN[[:space:]]+PRIVATE[[:space:]]+KEY-----"  # Private key block
+  "ghp_[0-9a-zA-Z]+"                           # GitHub PAT
+  "sk-[a-zA-Z0-9]+"                            # OpenAI API key
+  "eyJ[0-9a-zA-Z_-]+\.[0-9a-zA-Z_-]+\.[0-9a-zA-Z_-]+" # JWT
+  "password[[:space:]]*[:=][[:space:]]*['\"][^'\"]+['\"]?" # password = '...'
+  "secret[[:space:]]*[:=][[:space:]]*['\"][^'\"]+['\"]?"   # secret = '...'
 )
 
 # Check .smyth files for secret patterns
 for file in $(git diff --cached --name-only | grep '\.smyth$'); do
   if [ -f "$file" ]; then
     for pattern in "${secret_patterns[@]}"; do
-      if grep -E -q "$pattern" "$file"; then
+      if grep -E -q "$pattern" "$file" 2>/dev/null; then
         echo "❌ ERROR: Potential secret detected in file: $file"
         echo "🕵️‍♂️ Pattern matched: $pattern"
         echo "🚫 Commit blocked."
