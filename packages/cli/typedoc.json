@@ -12,6 +12,6 @@
     "customCss": "./docs/assets/custom.css",
 
     "projectDocuments": ["./docs/**/*.md"],
-    "name": "SmythOS Core",
+    "name": "SmythOS CLI",
     "readme": "./README.md"
 }
