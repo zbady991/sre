@@ -15,9 +15,8 @@
         "emitDecoratorMetadata": true,
         "allowSyntheticDefaultImports": true,
         "skipLibCheck": true,
-        "esModuleInterop": true,
-        "typeRoots": ["./node_modules/@types"]
+        "esModuleInterop": true
     },
-    "include": ["src"],
-    "exclude": ["node_modules", "dist"]
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
