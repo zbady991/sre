@@ -64,6 +64,8 @@ Check the [Examples](examples), [documentation](https://smythos.github.io/sre/sd
 
 ---
 
+**Note:** If you face an issue with the CLI or with your code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
+
 ## Repository Structure
 
 This monorepo contains three main packages:
