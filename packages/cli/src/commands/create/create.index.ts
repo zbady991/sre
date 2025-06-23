@@ -12,6 +12,9 @@ import { banner } from '../../utils/banner';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import extract from 'extract-zip';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const normalizeProjectName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, '-');
 
@@ -32,9 +35,9 @@ const vaultTemplate = {
 
 const detectApiKeys = () => {
     const keys: { [key: string]: string | undefined } = {
-        openai: process.env.OPENAI_API_KEY,
-        anthropic: process.env.ANTHROPIC_API_KEY,
-        google: process.env.GOOGLE_API_KEY,
+        openai: process.env.OPENAI_API_KEY ? '$env(OPENAI_API_KEY)' : undefined,
+        anthropic: process.env.ANTHROPIC_API_KEY ? '$env(ANTHROPIC_API_KEY)' : undefined,
+        google: process.env.GOOGLE_API_KEY ? '$env(GOOGLE_API_KEY)' : undefined,
     };
 
     return Object.entries(keys).reduce((acc, [key, value]) => {
@@ -311,7 +314,18 @@ async function RunProject(projectNameArg?: string) {
             return;
         }
 
-        console.log('\n🎉 Project created successfully! 🎊');
+        console.log('\n🎉 Project created successfully! 🎊\n');
+
+        // Inform user about vault file location
+        const vaultLocation = finalConfig.useSharedVault
+            ? path.join(os.homedir(), '.smyth', '.sre', 'vault.json')
+            : path.join(finalConfig.smythResources, '.sre', 'vault.json');
+        console.log(
+            chalk.magentaBright(
+                `\n🔐 Your vault file is located at: ${chalk.cyan(vaultLocation)}\nYou can edit it later if you want to add more keys.`
+            )
+        );
+
         console.log('\n\n🚀 Next steps :');
         console.log(`\n${chalk.green('cd')} ${chalk.underline(finalConfig.targetFolder)}`);
         console.log(`${chalk.green('npm install')}`);
@@ -392,7 +406,9 @@ async function createProject(config: any) {
         //Write vault file
         if (!config.useSharedVault) {
             const vaultPath = path.join(config.smythResources, '.sre', 'vault.json');
-            if (config.vault && !fs.existsSync(vaultPath)) {
+
+            //always create a default vault even if no key is configured
+            if (!fs.existsSync(vaultPath)) {
                 const vaultData = {
                     default: {
                         ...vaultTemplate.default,

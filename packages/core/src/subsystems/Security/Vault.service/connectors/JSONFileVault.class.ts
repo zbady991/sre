@@ -23,7 +23,7 @@ export type JSONFileVaultConfig = {
     shared?: string;
 };
 
-export class JSONFileVault extends VaultConnector { 
+export class JSONFileVault extends VaultConnector {
     public name: string = 'JSONFileVault';
     private vaultData: any;
     private index: any;
@@ -119,12 +119,39 @@ export class JSONFileVault extends VaultConnector {
         return masterKey;
     }
 
+    /**
+     * Resolves environment variable references in vault values.
+     * Supports syntax: $env(VARIABLE_NAME)
+     * @param value The value to process
+     * @returns The value with environment variables resolved
+     */
+    private resolveEnvironmentVariables(value: any): any {
+        if (typeof value !== 'string') {
+            return value;
+        }
+
+        // Match $env(VARIABLE_NAME) pattern
+        const envVarPattern = /\$env\(([^)]+)\)/g;
+
+        return value.replace(envVarPattern, (match, envVarName) => {
+            const envValue = process.env[envVarName];
+            if (envValue === undefined) {
+                console.warn(`Environment variable ${envVarName} not found, keeping original value: ${match}`);
+                return match;
+            }
+            return envValue;
+        });
+    }
+
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, keyId: string) {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
 
-        return this.vaultData?.[teamId]?.[keyId] || this.vaultData?.[this.shared]?.[keyId];
+        const rawValue = this.vaultData?.[teamId]?.[keyId] || this.vaultData?.[this.shared]?.[keyId];
+
+        // Resolve environment variables if the value contains $env() references
+        return this.resolveEnvironmentVariables(rawValue);
     }
 
     @SecureConnector.AccessControl
