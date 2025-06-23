@@ -1,3 +1,4 @@
 .vscode
 .internals
 launch.json
+oclif.manifest.json
