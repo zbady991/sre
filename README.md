@@ -86,9 +86,9 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 
 -   **Storage**: Local, S3, Google Cloud, Azure
 -   **LLM**: OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity
--   **VectorDB**: Pinecone, Chroma, SmythManaged
--   **Cache**: RAM, Redis, Memcached
--   **Vault**: HashiCorp Vault, AWS Secrets Manager, JSON File
+-   **VectorDB**: Pinecone, Milvus, RAMVec
+-   **Cache**: RAM, Redis
+-   **Vault**: JSON File, AWS Secrets Manager, HashiCorp 
 
 ### SDK - `packages/sdk`
 
