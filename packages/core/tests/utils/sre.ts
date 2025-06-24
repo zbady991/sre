@@ -4,7 +4,7 @@ import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/
 import { testData } from './test-data-manager';
 
 export function setupSRE(extendedConfig?: Record<string, any>) {
-    const SREInstance = SmythRuntime.Instance.init({
+    const completeConfig = {
         Storage: {
             Connector: 'LocalStorage',
         },
@@ -32,17 +32,8 @@ export function setupSRE(extendedConfig?: Record<string, any>) {
         },
 
         ...extendedConfig,
-    });
-
-    const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
-
-    const agentId = 'agent-123456';
-    const MockAgentData = {
-        id: agentId,
-        agentRuntime: { debug: true }, // used inside createComponentLogger()
-        isKilled: () => false,
-        modelsProvider: modelsProvider.agent(agentId),
     };
+    const SREInstance = SmythRuntime.Instance.init(completeConfig);
 
-    return { SREInstance, MockAgentData };
+    return { SREInstance };
 }
