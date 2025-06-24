@@ -41,6 +41,11 @@ This approach makes your AI platform **easy to scale** and incredibly flexible. 
 
 ## Quick Start
 
+We made a great tutorial that's really worth watching:
+
+[![Watch Video](https://img.youtube.com/vi/TRETl7AG-Gc/maxresdefault.jpg)](https://www.youtube.com/watch?v=TRETl7AG-Gc)
+
+
 ### Method 1: Using the CLI (Recommended)
 
 Install the [CLI](packages/cli/) globally and create a new project:
