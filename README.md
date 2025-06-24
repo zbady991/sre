@@ -214,7 +214,9 @@ async function main() {
             const result = await llm.prompt(`Write an article about ${topic} using the following context: ${context}`);
 
             // Storage - Save the article
-            const storage = agent.storage.S3();
+            const storage = agent.storage.S3({
+                /*... S3 Config ...*/
+            });
             const uri = await storage.write('article.txt', result);
 
             return `The article has been generated and stored. Internal URI: ${uri}`;
@@ -307,11 +309,12 @@ main();
 40+ production-ready components for every AI use case.
 These components can be invoked programmatically or through the symbolic representation of the agent workflow (the .smyth file).
 
--   **AI/LLM**: `GenAILLM`, `VisionLLM`, `MultimodalLLM`, `LLMAssistant`
--   **External**: `APICall`, `WebSearch`, `WebScrape`, `ZapierAction`
--   **Data**: `DataSourceIndexer`, `DataSourceLookup`, `JSONFilter`
+-   **AI/LLM**: `GenAILLM`, `ImageGen`, `LLMAssistant`
+-   **External**: `APICall`, `WebSearch`, `WebScrape`, `HuggingFace`
+-   **Data**: `DataSourceIndexer`, `DataSourceLookup` `JSONFilter`
 -   **Logic**: `LogicAND`, `LogicOR`, `Classifier`, `ForEach`
--   **Storage**: `FileStore`, `Code`, `ServerlessCode`
+-   **Storage**: `LocalStorage`, `S3`
+-   **Code**: `ECMAScript`, `ServerlessCode`
 
 ## Key Features
 
