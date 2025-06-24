@@ -1,31 +1,31 @@
 {
-  "name": "sre",
-  "version": "0.0.11",
-  "description": "",
-  "author": "Alaa-eddine KADDOURI",
-  "license": "MIT",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "build": "pnpm -r run build && node scripts/success-banner.js",
-    "lint": "pnpm -r run lint",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "prepare": "husky"
-  },
-  "keywords": [],
-  "packageManager": "pnpm@10.12.1",
-  "workspaces": [
-    "packages/*"
-  ],
-  "devDependencies": {
-    "@vitest/coverage-v8": "^3.1.4",
-    "husky": "^9.1.7",
-    "vite-tsconfig-paths": "^4.3.2",
-    "vitest": "^3.2.3"
-  },
-  "dependencies": {
-    "list": "link:C:/Users/kaddouri/AppData/Local/pnpm/global/5/node_modules/list"
-  }
+    "name": "sre",
+    "version": "0.0.15",
+    "description": "",
+    "author": "Alaa-eddine KADDOURI",
+    "license": "MIT",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "build": "pnpm -r run build && node scripts/success-banner.js",
+        "lint": "pnpm -r run lint",
+        "test": "vitest",
+        "test:run": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepare": "husky"
+    },
+    "keywords": [],
+    "packageManager": "pnpm@10.12.1",
+    "workspaces": [
+        "packages/*"
+    ],
+    "devDependencies": {
+        "@vitest/coverage-v8": "^3.1.4",
+        "vite-tsconfig-paths": "^4.3.2",
+        "vitest": "^3.2.3",
+        "husky": "^9.1.7"
+    },
+    "dependencies": {
+        "list": "link:C:/Users/kaddouri/AppData/Local/pnpm/global/5/node_modules/list"
+    }
 }

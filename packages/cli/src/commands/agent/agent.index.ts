@@ -227,6 +227,10 @@ export default class AgentCmd extends Command {
             await startMcpServer(args.path, serverType, port, flags);
             return;
         }
+
+        //if no mode is specified, run chat mode
+        await runChat(args, { ...allFlags, chat: 'DEFAULT_MODEL' });
+        return;
     }
 }
 

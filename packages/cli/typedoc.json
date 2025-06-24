@@ -1,0 +1,17 @@
+{
+    "out": "../../docs/cli/",
+    "exclude": ["**/node_modules/**", "**/tests/**"],
+    "navigationLinks": {
+        "Discord": "https://discord.gg/smythos",
+        "Core": "https://smythos.github.io/sre/core/",
+        "SDK": "https://smythos.github.io/sre/sdk/",
+        "CLI": "https://smythos.github.io/sre/cli/",
+        "GitHub": "https://github.com/smythos/sre"
+    },
+    "plugin": ["./scripts/typedoc-theme-plugin.cjs"],
+    "customCss": "./docs/assets/custom.css",
+
+    "projectDocuments": ["./docs/**/*.md"],
+    "name": "SmythOS CLI",
+    "readme": "./README.md"
+}

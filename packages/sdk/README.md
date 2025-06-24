@@ -94,6 +94,11 @@ npm start
 
 You should see your agent respond with the author of the book "The Great Gatsby"!
 
+### Reporting Issues
+
+If you face any issues with the CLI or the code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
+You can request help on our [Discord](https://discord.gg/smythos) or by creating an issue on [GitHub](https://github.com/SmythOS/smythos/issues)
+
 ## Core Concepts
 
 ### Agents
