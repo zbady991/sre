@@ -1,8 +1,9 @@
 import { GetBucketLifecycleConfigurationCommandOutput, PutBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
 
 import { GetBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
-
 import { S3Client } from '@aws-sdk/client-s3';
+import { Logger } from '@sre/helpers/Log.helper';
+const console = Logger('S3Cache');
 
 export function generateLifecycleRules() {
     const rules = [];
@@ -58,7 +59,6 @@ export function generateLifecycleRules() {
     return rules;
 }
 
-
 export function generateExpiryMetadata(expiryDays) {
     let metadataValue;
 
@@ -90,6 +90,17 @@ export function ttlToExpiryDays(ttl: number) {
 }
 
 export async function checkAndInstallLifecycleRules(bucketName: string, s3Client: S3Client) {
+    // Validate inputs
+    if (!bucketName || bucketName.trim() === '') {
+        throw new Error('Bucket name is required and cannot be empty');
+    }
+
+    if (!s3Client) {
+        throw new Error('S3Client is required');
+    }
+
+    console.log(`Checking lifecycle rules for bucket: ${bucketName}`);
+
     try {
         // Check existing lifecycle configuration
         const getLifecycleCommand = new GetBucketLifecycleConfigurationCommand({ Bucket: bucketName });
@@ -105,6 +116,7 @@ export async function checkAndInstallLifecycleRules(bucketName: string, s3Client
             const putLifecycleCommand = new PutBucketLifecycleConfigurationCommand(params);
             // Put the new lifecycle configuration
             await s3Client.send(putLifecycleCommand);
+            console.log(`Added ${nonExistingNewRules.length} new lifecycle rules to bucket: ${bucketName}`);
         } else {
             console.log('Lifecycle configuration already exists');
         }
@@ -124,6 +136,12 @@ export async function checkAndInstallLifecycleRules(bucketName: string, s3Client
             console.log('Lifecycle configuration created successfully.');
         } else {
             console.error('Error checking lifecycle configuration:', error);
+            console.error('Bucket name provided:', bucketName);
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+            });
         }
     }
 }
