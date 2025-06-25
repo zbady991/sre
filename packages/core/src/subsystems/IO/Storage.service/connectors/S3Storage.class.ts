@@ -58,10 +58,18 @@ export class S3Storage extends StorageConnector {
     private client: S3Client;
     private bucket: string;
     private isInitialized: boolean = false;
+    private initializationPromise: Promise<void> | null = null;
 
     constructor(protected _settings: S3Config) {
         super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+
+        // Validate required configuration
+        if (!_settings.bucket || _settings.bucket.trim() === '') {
+            console.warn('S3 bucket name is required and cannot be empty, connector not initialized');
+            return;
+        }
+
         this.bucket = _settings.bucket;
         const clientConfig: any = {};
         if (_settings.region) clientConfig.region = _settings.region;
@@ -73,12 +81,41 @@ export class S3Storage extends StorageConnector {
         }
 
         this.client = new S3Client(clientConfig);
-        this.initialize();
+        // Don't call initialize() synchronously in constructor
+        // It will be called when needed by methods that require initialization
     }
 
-    private async initialize() {
-        await checkAndInstallLifecycleRules(this.bucket, this.client);
-        this.isInitialized = true;
+    private async ensureInitialized(): Promise<void> {
+        if (this.isInitialized) {
+            return;
+        }
+
+        if (this.initializationPromise) {
+            return this.initializationPromise;
+        }
+
+        this.initializationPromise = this.initialize();
+        return this.initializationPromise;
+    }
+
+    private async initialize(): Promise<void> {
+        if (!this.client) {
+            console.warn('S3 client not initialized');
+            return;
+        }
+        if (this.isInitialized) {
+            return;
+        }
+
+        try {
+            await checkAndInstallLifecycleRules(this.bucket, this.client);
+            this.isInitialized = true;
+        } catch (error) {
+            console.error('Failed to initialize S3Storage:', error);
+            // Reset the initialization promise so it can be retried
+            this.initializationPromise = null;
+            throw error;
+        }
     }
 
     /**
@@ -90,6 +127,8 @@ export class S3Storage extends StorageConnector {
 
     @SecureConnector.AccessControl
     public async read(acRequest: AccessRequest, resourceId: string) {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
         const params = {
@@ -133,6 +172,8 @@ export class S3Storage extends StorageConnector {
 
     @SecureConnector.AccessControl
     async getMetadata(acRequest: AccessRequest, resourceId: string): Promise<StorageMetadata | undefined> {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -147,6 +188,8 @@ export class S3Storage extends StorageConnector {
 
     @SecureConnector.AccessControl
     async setMetadata(acRequest: AccessRequest, resourceId: string, metadata: StorageMetadata) {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -171,9 +214,10 @@ export class S3Storage extends StorageConnector {
      */
     @SecureConnector.AccessControl
     async write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
-        if (!this.isInitialized) await this.initialize();
         const accessCandidate = acRequest.candidate;
 
         let amzACL = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
@@ -207,6 +251,8 @@ export class S3Storage extends StorageConnector {
      */
     @SecureConnector.AccessControl
     async delete(acRequest: AccessRequest, resourceId: string): Promise<void> {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -225,6 +271,8 @@ export class S3Storage extends StorageConnector {
 
     @SecureConnector.AccessControl
     async exists(acRequest: AccessRequest, resourceId: string): Promise<boolean> {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
         const command = new HeadObjectCommand({
@@ -250,6 +298,8 @@ export class S3Storage extends StorageConnector {
     //if the resource exists we read it's ACL and return it
     //if the resource does not exist we return an write access ACL for the candidate
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
+        await this.ensureInitialized();
+
         const s3Metadata = await this.getS3Metadata(resourceId);
         const exists = s3Metadata !== undefined; //undefined metadata means the resource does not exist
         //let acl: ACL = ACL.from(s3Metadata?.['x-amz-meta-acl'] as IACL);
@@ -263,6 +313,8 @@ export class S3Storage extends StorageConnector {
 
     @SecureConnector.AccessControl
     async getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined> {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -277,6 +329,8 @@ export class S3Storage extends StorageConnector {
 
     @SecureConnector.AccessControl
     async setACL(acRequest: AccessRequest, resourceId: string, acl: IACL) {
+        await this.ensureInitialized();
+
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -294,6 +348,8 @@ export class S3Storage extends StorageConnector {
 
     @SecureConnector.AccessControl
     async expire(acRequest: AccessRequest, resourceId: string, ttl: number) {
+        await this.ensureInitialized();
+
         const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
         const s3PutObjectTaggingCommand = new PutObjectTaggingCommand({
             Bucket: this.bucket,
