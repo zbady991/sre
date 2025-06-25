@@ -90,8 +90,8 @@ The gateway to the outside world. It provides a set of unified connector interfa
 
 | Service      | Purpose                    | Example Connectors   |
 | ------------ | -------------------------- | -------------------- |
-| **Storage**  | File & data persistence    | `Local`, `S3`        |
-| **VectorDB** | Vector storage & retrieval | `Pinecone`, `Chroma` |
+| **Storage**  | File & data persistence    | `LocalStorage`, `S3` |
+| **VectorDB** | Vector storage & retrieval | `Pinecone`, `Milvus` |
 | **Log**      | Activity & debug logging   | `Console`            |
 | **NKV**      | Key-value storage          | `Redis`, `RAM`       |
 
