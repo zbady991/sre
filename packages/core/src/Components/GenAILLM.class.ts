@@ -228,7 +228,8 @@ export class GenAILLM extends Component {
             }
 
             // default to json response format
-            config.data.responseFormat = config.data?.responseFormat || 'json';
+            const hasCustomOutputs = config?.outputs?.some((output) => !output.default);
+            config.data.responseFormat = config.data?.responseFormat || (hasCustomOutputs ? 'json' : '');
 
             // request to LLM
             let response: any;
