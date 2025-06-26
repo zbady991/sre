@@ -803,7 +803,7 @@ export class OpenAIConnector extends LLMConnector {
         if (params?.topP !== undefined) body.top_p = params.topP;
         if (params?.frequencyPenalty !== undefined) body.frequency_penalty = params.frequencyPenalty;
         if (params?.presencePenalty !== undefined) body.presence_penalty = params.presencePenalty;
-        if (params?.responseFormat !== undefined) body.response_format = params.responseFormat;
+        if (params?.responseFormat) body.response_format = params.responseFormat;
         if (params?.stopSequences?.length) body.stop = params.stopSequences;
 
         return body;

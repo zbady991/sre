@@ -339,7 +339,7 @@ export abstract class LLMConnector extends Connector {
             }
 
             // When we have a string that is a number, we need to convert it to a number
-            if (typeof _value === 'string' && !isNaN(Number(_value))) {
+            if (typeof _value === 'string' && _value.trim() !== '' && !isNaN(Number(_value))) {
                 _value = +_value;
             }
 
