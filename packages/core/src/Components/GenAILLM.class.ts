@@ -125,7 +125,7 @@ export class GenAILLM extends Component {
         topK: Joi.number().min(0).max(500).label('Top K'), // max top_k is 100 for togetherAI but 500 for cohere
         frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
         presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
-        responseFormat: Joi.string().valid('json', 'text').optional().label('Response Format'),
+        responseFormat: Joi.string().valid('json', 'text').allow('').optional().label('Response Format'),
         passthrough: Joi.boolean().optional().label('Passthrough'),
         useSystemPrompt: Joi.boolean().optional().label('Use System Prompt'),
         useContextWindow: Joi.boolean().optional().label('Use Context Window'),
