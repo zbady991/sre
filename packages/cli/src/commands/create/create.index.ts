@@ -11,6 +11,10 @@ import path from 'path';
 import { banner } from '../../utils/banner';
 import fs from 'fs';
 import { execSync } from 'child_process';
+import extract from 'extract-zip';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const normalizeProjectName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, '-');
 
@@ -31,9 +35,9 @@ const vaultTemplate = {
 
 const detectApiKeys = () => {
     const keys: { [key: string]: string | undefined } = {
-        openai: process.env.OPENAI_API_KEY,
-        anthropic: process.env.ANTHROPIC_API_KEY,
-        google: process.env.GOOGLE_API_KEY,
+        openai: process.env.OPENAI_API_KEY ? '$env(OPENAI_API_KEY)' : undefined,
+        anthropic: process.env.ANTHROPIC_API_KEY ? '$env(ANTHROPIC_API_KEY)' : undefined,
+        google: process.env.GOOGLE_API_KEY ? '$env(GOOGLE_API_KEY)' : undefined,
     };
 
     return Object.entries(keys).reduce((acc, [key, value]) => {
@@ -73,6 +77,26 @@ function prepareSmythDirectory(baseDir: string = os.homedir()) {
         storageDir,
         vaultFile: vaultExists ? vaultFile : null,
     };
+}
+
+function copyDirectoryRecursiveSync(source: string, target: string) {
+    if (!fs.existsSync(target)) {
+        fs.mkdirSync(target, { recursive: true });
+    }
+
+    const files = fs.readdirSync(source);
+
+    files.forEach((file) => {
+        const sourcePath = path.join(source, file);
+        const targetPath = path.join(target, file);
+        const stat = fs.statSync(sourcePath);
+
+        if (stat.isDirectory()) {
+            copyDirectoryRecursiveSync(sourcePath, targetPath);
+        } else {
+            fs.copyFileSync(sourcePath, targetPath);
+        }
+    });
 }
 
 export default class CreateCmd extends Command {
@@ -290,7 +314,18 @@ async function RunProject(projectNameArg?: string) {
             return;
         }
 
-        console.log('\n🎉 Project created successfully! 🎊');
+        console.log('\n🎉 Project created successfully! 🎊\n');
+
+        // Inform user about vault file location
+        const vaultLocation = finalConfig.useSharedVault
+            ? path.join(os.homedir(), '.smyth', '.sre', 'vault.json')
+            : path.join(finalConfig.smythResources, '.sre', 'vault.json');
+        console.log(
+            chalk.magentaBright(
+                `\n🔐 Your vault file is located at: ${chalk.cyan(vaultLocation)}\nYou can edit it later if you want to add more keys.`
+            )
+        );
+
         console.log('\n\n🚀 Next steps :');
         console.log(`\n${chalk.green('cd')} ${chalk.underline(finalConfig.targetFolder)}`);
         console.log(`${chalk.green('npm install')}`);
@@ -301,7 +336,7 @@ async function RunProject(projectNameArg?: string) {
     }
 }
 
-function createProject(config: any) {
+async function createProject(config: any) {
     let folderCreated = false;
     let projectFolder = '';
     try {
@@ -318,11 +353,48 @@ function createProject(config: any) {
             return false;
         }
 
-        const projectId = path.basename(projectFolder);
-        //clone the repo branch into the project folder
-        const cloneCommand = `git clone --branch ${branch} ${gitRepoUrl} ${projectFolder}`;
-        execSync(cloneCommand, { stdio: 'inherit' });
+        if (!fs.existsSync(projectFolder)) {
+            fs.mkdirSync(projectFolder, { recursive: true });
+        }
         folderCreated = true;
+
+        const projectId = path.basename(projectFolder);
+        try {
+            //clone the repo branch into the project folder
+            const cloneCommand = `git clone --depth 1 --branch ${branch} ${gitRepoUrl} ${projectFolder}`;
+            execSync(cloneCommand, { stdio: 'pipe' });
+        } catch (error) {
+            console.log(chalk.yellow('git clone failed, using alternative method.'));
+            const zipUrl = `${gitRepoUrl}/archive/refs/heads/${branch}.zip`;
+            const tempZipPath = path.join(os.tmpdir(), `${branch}.zip`);
+
+            try {
+                // Download the file
+                const response = await fetch(zipUrl);
+                if (!response.ok) throw new Error(`Failed to download zip: ${response.statusText}`);
+
+                const arrayBuffer = await response.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                fs.writeFileSync(tempZipPath, buffer);
+
+                // Unzip the file
+                await extract(tempZipPath, { dir: os.tmpdir() });
+
+                // Move contents from the extracted folder to the target folder
+                const extractedFolder = path.join(os.tmpdir(), `sre-project-templates-${branch}`);
+                copyDirectoryRecursiveSync(extractedFolder, projectFolder);
+
+                // Cleanup
+                fs.unlinkSync(tempZipPath);
+                fs.rmSync(extractedFolder, { recursive: true, force: true });
+            } catch (zipError) {
+                console.error(chalk.red('Error downloading or extracting project zip:'), zipError);
+                if (folderCreated && projectFolder) {
+                    fs.rmSync(projectFolder, { recursive: true, force: true });
+                }
+                return false;
+            }
+        }
 
         //ensure resources folder and .sre folder exists
         //ensure the .sre folder exists
@@ -334,7 +406,9 @@ function createProject(config: any) {
         //Write vault file
         if (!config.useSharedVault) {
             const vaultPath = path.join(config.smythResources, '.sre', 'vault.json');
-            if (config.vault && !fs.existsSync(vaultPath)) {
+
+            //always create a default vault even if no key is configured
+            if (!fs.existsSync(vaultPath)) {
                 const vaultData = {
                     default: {
                         ...vaultTemplate.default,
@@ -363,8 +437,9 @@ function createProject(config: any) {
 
         return true;
     } catch (error) {
+        console.error(chalk.red('An unexpected error occurred:'), error);
         if (folderCreated && projectFolder) {
-            fs.rmSync(projectFolder, { recursive: true });
+            fs.rmSync(projectFolder, { recursive: true, force: true });
         }
         return false;
     }
