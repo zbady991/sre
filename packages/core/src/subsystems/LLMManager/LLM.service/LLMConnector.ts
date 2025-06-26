@@ -118,7 +118,7 @@ export abstract class LLMConnector extends Connector {
                         modelEntryName: preparedParams.modelEntryName,
                         agentId: preparedParams.agentId,
                         teamId: preparedParams.teamId,
-                        isUserKey: preparedParams.isUserKey,
+                        isUserKey: (preparedParams.credentials as any)?.isUserKey || preparedParams.isUserKey,
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
@@ -327,7 +327,7 @@ export abstract class LLMConnector extends Connector {
     }
 
     // TODO [Forhad]: apply proper typing for _value and return value
-    private formatParamValues(params: Record<string, string | number | TLLMMessageBlock[]>): any {
+    private formatParamValues(params: Record<string, string | number | string[] | TLLMMessageBlock[]>): any {
         let _params = {};
 
         for (const [key, value] of Object.entries(params)) {
@@ -335,7 +335,8 @@ export abstract class LLMConnector extends Connector {
 
             // When we have stopSequences, we need to split it into an array
             if (key === 'stopSequences') {
-                _value = _value ? _value?.split(',') : null;
+                // _value = _value ? _value?.split(',') : null;
+                _value = _value ? (Array.isArray(_value) ? _value : _value?.split(',')) : null;
             }
 
             // When we have a string that is a number, we need to convert it to a number

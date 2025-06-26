@@ -13,10 +13,8 @@ import { JSONContent } from './JsonContent.helper';
 import { OpenAPIParser } from './OpenApiParser.helper';
 import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { delay } from '@sre/utils/date-time.utils';
 import { EventSource, FetchLike } from 'eventsource';
 import { hookAsyncWithContext } from '@sre/Core/HookService';
-import { DEFAULT_TEAM_ID } from '@sre/types/ACL.types';
 import { randomUUID } from 'crypto';
 import * as acorn from 'acorn';
 
@@ -159,7 +157,7 @@ export class Conversation extends EventEmitter {
                         this._spec = spec;
 
                         if (!this._agentId && _settings?.agentId) this._agentId = _settings.agentId;
-                        if (!this._agentId) this._agentId = 'FAKE_AGENT_ID'; //We use a fake agent ID to avoid ACL check errors
+                        if (!this._agentId) this._agentId = 'FAKE-AGENT-ID'; //We use a fake agent ID to avoid ACL check errors
 
                         // teamId is required to load custom LLMs, we must assign it before updateModel()
                         await this.assignTeamIdFromAgentId(this._agentId);
@@ -217,8 +215,19 @@ export class Conversation extends EventEmitter {
             model: instance._model,
         };
     })
-    public async prompt(message?: string|any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
+    public async prompt(message?: string | any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
+        // if an error occured while streaming, we need to propagate it so for this, we register a one time error listener
+        let error = null;
+        const errListener = (err) => (error = err);
+        this.once('error', errListener);
         const result = await this.streamPrompt(message, toolHeaders, concurrentToolCalls, abortSignal);
+
+        // if an error event occured, throw the error
+        if (error) {
+            throw error;
+        }
+
+        this.removeListener('error', errListener);
         return result;
     }
 
@@ -232,8 +241,8 @@ export class Conversation extends EventEmitter {
             model: instance._model,
         };
     })
-    public async streamPrompt(message?: string|any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
-        let options = typeof message === 'object' ? message : {message};
+    public async streamPrompt(message?: string | any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
+        let options = typeof message === 'object' ? message : { message };
         message = options?.message;
         const files = options?.files;
 

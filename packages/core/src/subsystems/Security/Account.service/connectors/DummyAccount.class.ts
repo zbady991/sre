@@ -51,7 +51,7 @@ export class DummyAccount extends AccountConnector {
         if (!this.data[DEFAULT_TEAM_ID]) {
             this.data[DEFAULT_TEAM_ID] = {
                 users: {},
-                agents: { FAKE_AGENT_ID: {} },
+                agents: { 'FAKE-AGENT-ID': {} },
                 settings: {},
             };
         }
