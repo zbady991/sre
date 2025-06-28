@@ -32,6 +32,7 @@ import { TavilyWebSearch } from './TavilyWebSearch.class';
 import { ComponentHost } from './ComponentHost.class';
 import { ImageGenerator } from './ImageGenerator.class'; // Legacy
 import { MCPClient } from './MCPClient.class';
+import { ServerlessCode } from './ServerlessCode.class';
 
 const components = {
     Component: new Component(),
@@ -72,6 +73,7 @@ const components = {
     ComponentHost: new ComponentHost(),
     ImageGenerator: new ImageGenerator(),
     MCPClient: new MCPClient(),
+    ServerlessCode: new ServerlessCode()
 };
 
 export const ComponentInstances = components;
