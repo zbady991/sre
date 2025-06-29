@@ -181,6 +181,11 @@ export class ConnectorService {
     static getRouterConnector(name?: string): RouterConnector {
         return ConnectorService.getInstance<RouterConnector>(TConnectorService.Router, name);
     }
+
+
+    static getCodeConnector(name?: string): RouterConnector {
+        return ConnectorService.getInstance<RouterConnector>(TConnectorService.Code, name);
+    }
 }
 
 export abstract class ConnectorServiceProvider {

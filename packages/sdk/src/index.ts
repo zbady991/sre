@@ -40,6 +40,7 @@ export * from './Components/generated/HuggingFace';
 export * from './Components/generated/ImageGenerator';
 export * from './Components/generated/index.generated';
 export * from './Components/generated/MCPClient';
+export * from './Components/generated/ServerlessCode';
 export * from './Components/generated/TavilyWebSearch';
 export * from './DocParser/parsers/AutoParser.class';
 export * from './DocParser/parsers/DOCXParser.class';

@@ -16,7 +16,6 @@ export interface CodeConfig {
     timeout?: number; // Execution timeout in milliseconds
     memoryLimit?: number; // Memory allocation in MB
     environment?: Record<string, string>; // Environment variables
-
     // Platform-specific settings
     platformConfig?: Record<string, any>;
 }
@@ -38,61 +37,61 @@ export interface CodePreparationResult {
 
 export interface CodeDeployment {
     id: string; // Deployment identifier
-    status: 'deploying' | 'ready' | 'failed';
+    status: string;
     runtime: string;
     createdAt: Date;
     lastUsed?: Date;
+    lastUpdated?: Date;
 }
 
 export interface ICodeRequest {
     // Core workflow
-    prepare(input: CodeInput, config: CodeConfig): Promise<CodePreparationResult>;
-    deploy(deploymentId: string, input: CodeInput, config: CodeConfig): Promise<CodeDeployment>;
-    execute(input: CodeInput, config: CodeConfig): Promise<CodeExecutionResult>;
+    prepare(codeUID: string, input: CodeInput, config: CodeConfig): Promise<CodePreparationResult>;
+    deploy(codeUID: string, input: CodeInput, config: CodeConfig): Promise<CodeDeployment>;
+    execute(codeUID: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult>;
 
     // Execute with existing deployment (for platforms that support it)
-    executeDeployment(deploymentId: string, inputs: Record<string, any>): Promise<CodeExecutionResult>;
+    executeDeployment(codeUID: string, deploymentId: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult>;
 
     // Deployment management
-    listDeployments(): Promise<CodeDeployment[]>;
-    getDeployment(deploymentId: string): Promise<CodeDeployment | null>;
-    deleteDeployment(deploymentId: string): Promise<void>;
+    listDeployments(codeUID: string, config: CodeConfig): Promise<CodeDeployment[]>;
+    getDeployment(codeUID: string, deploymentId: string, config: CodeConfig): Promise<CodeDeployment | null>;
+    deleteDeployment(codeUID: string, deploymentId: string, config: CodeConfig): Promise<void>;
 }
 
 export abstract class CodeConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
-
     // Abstract methods that concrete connectors must implement
-    protected abstract prepare(acRequest: AccessRequest, input: CodeInput, config: CodeConfig): Promise<CodePreparationResult>;
-    protected abstract deploy(acRequest: AccessRequest, deploymentId: string, input: CodeInput, config: CodeConfig): Promise<CodeDeployment>;
-    protected abstract execute(acRequest: AccessRequest, input: CodeInput, config: CodeConfig): Promise<CodeExecutionResult>;
-    protected abstract executeDeployment(acRequest: AccessRequest, deploymentId: string, inputs: Record<string, any>): Promise<CodeExecutionResult>;
-    protected abstract listDeployments(acRequest: AccessRequest): Promise<CodeDeployment[]>;
-    protected abstract getDeployment(acRequest: AccessRequest, deploymentId: string): Promise<CodeDeployment | null>;
-    protected abstract deleteDeployment(acRequest: AccessRequest, deploymentId: string): Promise<void>;
+    protected abstract prepare(acRequest: AccessRequest, codeUID: string, input: CodeInput, config: CodeConfig): Promise<CodePreparationResult>;
+    protected abstract deploy(acRequest: AccessRequest, codeUID: string, input: CodeInput, config: CodeConfig): Promise<CodeDeployment>;
+    protected abstract execute(acRequest: AccessRequest, codeUID: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult>;
+    protected abstract executeDeployment(acRequest: AccessRequest, codeUID: string, deploymentId: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult>;
+    protected abstract listDeployments(acRequest: AccessRequest, codeUID: string, config: CodeConfig): Promise<CodeDeployment[]>;
+    protected abstract getDeployment(acRequest: AccessRequest, codeUID: string, deploymentId: string, config: CodeConfig): Promise<CodeDeployment | null>;
+    protected abstract deleteDeployment(acRequest: AccessRequest, codeUID: string, deploymentId: string, config: CodeConfig): Promise<void>;
 
     public requester(candidate: AccessCandidate): ICodeRequest {
         return {
-            prepare: async (input: CodeInput, config: CodeConfig) => {
-                return await this.prepare(candidate.readRequest, input, config);
+            prepare: async (codeUID: string, input: CodeInput, config: CodeConfig) => {
+                return await this.prepare(candidate.readRequest, codeUID, input, config);
             },
-            deploy: async (deploymentId: string, input: CodeInput, config: CodeConfig) => {
-                return await this.deploy(candidate.writeRequest, deploymentId, input, config);
+            deploy: async (codeUID: string, input: CodeInput, config: CodeConfig) => {
+                return await this.deploy(candidate.writeRequest, codeUID, input, config);
             },
-            execute: async (input: CodeInput, config: CodeConfig) => {
-                return await this.execute(candidate.readRequest, input, config);
+            execute: async (codeUID: string, inputs: Record<string, any>, config: CodeConfig) => {
+                return await this.execute(candidate.readRequest, codeUID, inputs, config);
             },
-            executeDeployment: async (deploymentId: string, inputs: Record<string, any>) => {
-                return await this.executeDeployment(candidate.readRequest, deploymentId, inputs);
+            executeDeployment: async (codeUID: string, deploymentId: string, inputs: Record<string, any>, config: CodeConfig) => {
+                return await this.executeDeployment(candidate.readRequest, codeUID, deploymentId, inputs, config);
             },
-            listDeployments: async () => {
-                return await this.listDeployments(candidate.readRequest);
+            listDeployments: async (codeUID: string, config: CodeConfig) => {
+                return await this.listDeployments(candidate.readRequest, codeUID, config);
             },
-            getDeployment: async (deploymentId: string) => {
-                return await this.getDeployment(candidate.readRequest, deploymentId);
+            getDeployment: async (codeUID: string, deploymentId: string, config: CodeConfig) => {
+                return await this.getDeployment(candidate.readRequest, codeUID, deploymentId, config);
             },
-            deleteDeployment: async (deploymentId: string) => {
-                await this.deleteDeployment(candidate.writeRequest, deploymentId);
+            deleteDeployment: async (codeUID: string, deploymentId: string, config: CodeConfig) => {
+                await this.deleteDeployment(candidate.writeRequest, codeUID, deploymentId, config);
             },
         } as ICodeRequest;
     }
