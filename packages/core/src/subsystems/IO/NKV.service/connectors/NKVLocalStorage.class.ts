@@ -61,10 +61,33 @@ export class NKVLocalStorage extends NKVConnector {
         }
     }
 
+    private normalizeFilename(filename: string): string {
+        // Step 1: Deduplicate successive colons (:: becomes :)
+        let normalized = filename.replace(/:+/g, ':');
+
+        // Step 2: Replace colons with forward slashes for subfolder structure
+        normalized = normalized.replace(/:/g, '/');
+
+        // Step 3: Replace invalid filename characters with dots
+        // Invalid characters for cross-platform compatibility:
+        // - Control characters (0-31 and 127)
+        // - Windows reserved: < > : " | ? * \
+        // - Preserve forward slashes from step 2 for subfolder structure
+        normalized = normalized.replace(/[<>:"|?*\\\x00-\x1f\x7f]/g, '.');
+
+        // Step 4: Handle edge cases - remove leading/trailing dots and spaces
+        normalized = normalized.replace(/^[.\s]+|[.\s]+$/g, '');
+
+        // Step 5: Ensure we don't have empty path components
+        normalized = normalized.replace(/\/+/g, '/').replace(/\/\./g, '/').replace(/\.\//g, './');
+
+        return normalized || 'default';
+    }
+
     private getStoragePath(teamId: string, namespace: string, key?: string): string {
-        const parts = [`team_${teamId}`, namespace];
+        const parts = [`team_${this.normalizeFilename(teamId)}`, this.normalizeFilename(namespace)];
         if (key) {
-            parts.push(key);
+            parts.push(this.normalizeFilename(key));
         }
         return path.join(this.folder, ...parts);
     }

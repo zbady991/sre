@@ -1,22 +1,22 @@
 //==[ SRE: S3Storage ]======================
-import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IAccessCandidate, IACL, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { DeleteTarget, VectorDBConnector } from '../VectorDBConnector';
-import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { Logger } from '@sre/helpers/Log.helper';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import { Logger } from '@sre/helpers/Log.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
-import crypto from 'crypto';
-import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
-import { EmbeddingsFactory, SupportedProviders, SupportedModels } from '../embed';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { SecureConnector } from '@sre/Security/SecureConnector.class';
+import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
+import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
 import { chunkText } from '@sre/utils/string.utils';
-import { jsonrepair } from 'jsonrepair';
 import { CreateIndexSimpleReq, DataType, ErrorCode, FieldType, MilvusClient } from '@zilliz/milvus2-sdk-node';
+import crypto from 'crypto';
+import { jsonrepair } from 'jsonrepair';
+import { EmbeddingsFactory } from '../embed';
+import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
+import { DeleteTarget, VectorDBConnector } from '../VectorDBConnector';
 
 const console = Logger('Milvus');
 

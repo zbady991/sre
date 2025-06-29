@@ -13,7 +13,7 @@ importers:
     dependencies:
       list:
         specifier: link:C:/Users/kaddouri/AppData/Local/pnpm/global/5/node_modules/list
-        version: link:packages/core/C:/Users/kaddouri/AppData/Local/pnpm/global/5/node_modules/list
+        version: link:C:/Users/kaddouri/AppData/Local/pnpm/global/5/node_modules/list
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^3.1.4

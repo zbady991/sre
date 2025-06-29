@@ -34,17 +34,15 @@ export type TServerlessCodeInputs = {
 };
 
 export type TServerlessCodeOutputs = {
-    Output?: any,
-    _error?: any,
-    _debug?: any,
+    [key: string]: any;
 };
 
-export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent) {
+export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
-    const dataObject: any = {
-        name: settings?.name || 'ServerlessCode',
+    const dataObject: any = { 
+        name: settings?.name || 'ServerlessCode', 
         settings: {
-            ...settingsWithoutName
+            ...settingsWithoutName 
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
@@ -52,7 +50,7 @@ export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
-
+    
     const _out: TServerlessCodeOutputs = createSafeAccessor({
         // No outputs defined
     }, component, '');
@@ -68,7 +66,7 @@ export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent
 
     const wrapper = {
         /** Component outputs - access via .out.OutputName */
-        out: _out,
+        out: _out,        
 
         /** 
          * Create or Connect the component inputs 
@@ -76,7 +74,7 @@ export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent
          * @examples 
          *    - component.in({ Input: source.out.data })
          *    - component.in({ Input: { type: 'string', source:source.out.data } })
-         */
+         */        
         in: component.inputs.bind(component) as (inputs: TServerlessCodeInputs) => void,
     };
 

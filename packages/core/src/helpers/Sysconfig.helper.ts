@@ -5,6 +5,12 @@ import os from 'os';
 export function findSmythPath(_path: string = '', callback?: (smythDir: string, success?: boolean, nextDir?: string) => void) {
     //TODO : also search for a local sre configuration file indicating .smyth folder explicitly
 
+    let _smythDir = '';
+
+    if (_path) {
+        _smythDir = findSmythPath('');
+    }
+
     const searchDirectories = [];
 
     // 1. Try to find in local directory (the directory from which the program was run)
@@ -49,7 +55,11 @@ export function findSmythPath(_path: string = '', callback?: (smythDir: string, 
         return dir;
     }
 
-    return localDir;
+    if (_smythDir && _path) {
+        return path.resolve(_smythDir, _path);
+    }
+
+    return homeDir;
 }
 
 function findPackageRoot(startDir = process.cwd()) {
