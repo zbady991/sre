@@ -1,15 +1,11 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 //import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { OAuthConfig, SmythConfigs } from '@sre/types/Security.types';
+import { IAccessCandidate, TAccessLevel } from '@sre/types/ACL.types';
 
-import { getM2MToken } from '@sre/utils/oauth.utils';
-import axios, { AxiosInstance } from 'axios';
 import { ManagedVaultConnector } from '../ManagedVaultConnector';
 
 const console = Logger('NullManagedVault');

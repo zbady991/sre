@@ -39,7 +39,7 @@ export class SmythRuntime {
         },
         //NKV should be loaded before VectorDB
         NKV: {
-            Connector: 'RAM',
+            Connector: 'LocalStorage',
         },
         VectorDB: {
             Connector: 'RAMVec',
@@ -110,18 +110,21 @@ export class SmythRuntime {
 
         for (let connectorType in config) {
             for (let configEntry of config[connectorType]) {
-                ConnectorService.init(
+                const connector = ConnectorService.init(
                     connectorType as TConnectorService,
                     configEntry.Connector,
                     configEntry.Id,
                     configEntry.Settings,
                     configEntry.Default
                 );
+                if (!connector) {
+                    logger.warn(`Failed to initialize connector ${connectorType}:${configEntry.Id || configEntry.Connector}`);
+                }
             }
         }
 
         this._initialized = true;
-        SystemEvents.emit('SRE:Initialized');
+        SystemEvents.emit('SRE:Initialized', SmythRuntime.Instance);
 
         return SmythRuntime.Instance as SmythRuntime;
     }

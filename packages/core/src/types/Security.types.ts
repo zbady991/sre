@@ -12,7 +12,3 @@ export type EncryptionSettings = {
         algorithm?: string;
     };
 };
-
-export type SmythConfigs = {
-    smythAPIBaseUrl: string;
-};

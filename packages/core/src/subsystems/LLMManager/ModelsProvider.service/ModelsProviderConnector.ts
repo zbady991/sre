@@ -10,6 +10,7 @@ import { LocalCache } from '@sre/helpers/LocalCache.helper';
 
 export interface IModelsProviderRequest {
     getModels(): Promise<any>;
+    getCustomModels(): Promise<any>;
     getMaxContextTokens(model: string, hasAPIKey?: boolean): Promise<number>;
     addModels(models: TLLMModelsList): Promise<void>;
     getModelInfo(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<TLLMModel>;
@@ -65,6 +66,9 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         const instance: IModelsProviderRequest = {
             getModels: async () => {
                 return await loadTeamModels();
+            },
+            getCustomModels: async () => {
+                return await this.getCustomModels(candidate);
             },
             addModels: async (models: TLLMModelsList) => {
                 return await this.addModels(candidate.readRequest, models);

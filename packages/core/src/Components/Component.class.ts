@@ -43,15 +43,53 @@ export class Component {
         return logger;
     }
 
+    /**
+     * Filters config data to only include properties that are defined in the schema
+     */
+    private filterConfigBySchema(data: any, schema: any): any {
+        if (!schema || !data) return data;
+
+        const schemaDescription = schema.describe();
+
+        // If it's not an object schema, return data as-is
+        if (schemaDescription.type !== 'object' || !schemaDescription.keys) {
+            return data;
+        }
+
+        const allowedKeys = Object.keys(schemaDescription.keys);
+        const filteredData: any = {};
+
+        // Only include properties that are defined in the schema
+        for (const key of allowedKeys) {
+            if (key in data) {
+                filteredData[key] = data[key];
+            }
+        }
+
+        // Preserve _templateVars if it exists (special case)
+        if (data._templateVars) {
+            filteredData._templateVars = data._templateVars;
+        }
+
+        return filteredData;
+    }
+
     async validateConfig(config) {
         if (!this.configSchema) return {};
+
+        let workingSchema = this.configSchema;
+
         if (config.data._templateVars) {
             //Accept dynamically added template data
             for (let tplVar in config.data._templateVars) {
-                this.configSchema = this.configSchema.append({ [tplVar]: Joi.any() });
+                workingSchema = workingSchema.append({ [tplVar]: Joi.any() });
             }
         }
-        const valid = await this.configSchema.validate(config.data);
+
+        // Filter config.data to only include properties defined in the schema
+        const filteredData = this.filterConfigBySchema(config.data, workingSchema);
+
+        const valid = await workingSchema.validate(filteredData);
         if (valid.error) {
             return {
                 id: config.id,

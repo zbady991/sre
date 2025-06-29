@@ -17,6 +17,9 @@ export interface ISmythAccountRequest {
 }
 
 export abstract class AccountConnector extends Connector {
+    constructor(protected _settings?: any) {
+        super(_settings);
+    }
     public requester(candidate: AccessCandidate): ISmythAccountRequest {
         return {
             getAllUserSettings: async () => this.getAllUserSettings(candidate.readRequest, candidate.id),

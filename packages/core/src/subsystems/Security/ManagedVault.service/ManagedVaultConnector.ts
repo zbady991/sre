@@ -17,6 +17,10 @@ export interface IManagedVaultRequest {
 }
 
 export abstract class ManagedVaultConnector extends SecureConnector {
+    constructor(protected _settings?: any) {
+        super(_settings);
+    }
+
     requester(candidate: AccessCandidate): IManagedVaultRequest {
         return {
             get: async (keyId: string) => this.get(candidate.readRequest, keyId),

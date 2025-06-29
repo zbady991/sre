@@ -24,6 +24,7 @@ export function boot() {
         return;
     }
     _booted = true;
+    SystemEvents.emit('SRE:BootStart');
     console.debug('SRE Boot sequence started');
     const service: TServiceRegistry = {};
     service.NKV = new NKVService();

@@ -2,6 +2,10 @@ packages:
   - packages/*
   - examples
 
+ignoredBuiltDependencies:
+  - node-pty
+  - protobufjs
+
 onlyBuiltDependencies:
   - aws-sdk
   - bufferutil
