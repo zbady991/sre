@@ -53,7 +53,7 @@
         "test": "echo 'Test script not implemented'",
         "oclif:manifest": "oclif manifest",
         "prepack": "pnpm run oclif:manifest",
-        "doc:gen": "typedoc",
+        "gen:docs": "typedoc",
         "knip": "knip"
     },
     "oclif": {

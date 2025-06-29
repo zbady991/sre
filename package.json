@@ -8,6 +8,7 @@
     "type": "module",
     "scripts": {
         "build": "pnpm -r run build && node scripts/success-banner.js",
+        "gen:docs": "pnpm -r run gen:docs",
         "lint": "pnpm -r run lint",
         "test": "vitest",
         "test:run": "vitest run",
