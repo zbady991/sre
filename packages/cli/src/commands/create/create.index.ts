@@ -37,7 +37,7 @@ const detectApiKeys = () => {
     const keys: { [key: string]: string | undefined } = {
         openai: process.env.OPENAI_API_KEY ? '$env(OPENAI_API_KEY)' : undefined,
         anthropic: process.env.ANTHROPIC_API_KEY ? '$env(ANTHROPIC_API_KEY)' : undefined,
-        google: process.env.GOOGLE_API_KEY ? '$env(GOOGLE_API_KEY)' : undefined,
+        googleai: process.env.GOOGLE_API_KEY ? '$env(GOOGLE_API_KEY)' : process.env.GEMINI_API_KEY ? '$env(GEMINI_API_KEY)' : undefined,
     };
 
     return Object.entries(keys).reduce((acc, [key, value]) => {
@@ -153,6 +153,8 @@ async function RunProject(projectNameArg?: string) {
         .map((k) => chalk.cyan(k))
         .join(', ');
 
+    const existingVault = fs.existsSync(vaultFile) ? JSON.parse(fs.readFileSync(vaultFile, 'utf8')) : null;
+
     const initialAnswers = await inquirer.prompt([
         {
             type: 'input',
@@ -204,9 +206,36 @@ async function RunProject(projectNameArg?: string) {
 
     answers.projectName = projectName;
 
+    console.log(chalk.yellowBright(`\n===[ Now let's configure Smyth Resources folder ]===`));
+    console.log(
+        `${chalk.gray(
+            'Some connectors in SmythOS might need to store data locally, in order to keep things clean, we store all SmythOS related data in a single place.\n'
+        )}`
+    );
+
+    const resourcesAnswers = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'smythResources',
+            message: 'Smyth Resources Folder',
+            suffix: `\n${chalk.magenta('Location where we can store data like logs, cache, etc. (Use arrow keys ↑↓)')}\n`,
+            choices: [
+                { name: `Shared folder in the ${chalk.underline('user home directory')} (~/.smyth)`, value: path.join(os.homedir(), '.smyth') },
+                {
+                    name: `Local folder under ${chalk.underline('project root')} (./${path.basename(answers.targetFolder)}/.smyth)`,
+                    value: path.join(answers.targetFolder, '.smyth'),
+                },
+            ],
+            default: 0,
+        },
+    ]);
+
+    const isSharedResources = resourcesAnswers.smythResources === path.join(os.homedir(), '.smyth');
+    let _useSharedVault = isSharedResources;
+
     let vault: { [key: string]: string } = {};
 
-    let _useSharedVault = false;
+    //let _useSharedVault = false;
 
     console.log(chalk.yellowBright(`\n===[ Now let's set your secrets ]===`));
     console.log(
@@ -214,7 +243,26 @@ async function RunProject(projectNameArg?: string) {
             'SmythOS uses a vault to store your secrets. Set your secrets once, they’ll be securely stored and loaded by the SDK only when needed.This keeps LLM API keys out of your code.\n'
         )}`
     );
-
+    if (_useSharedVault && vaultFile) {
+        console.log(chalk.magenta(`  ℹ  We will use Vault file found in your shared folder ${vaultFile}`));
+        const existingProviders = Object.keys(existingVault?.default).filter((p) => existingVault?.default[p]);
+        if (existingProviders.length > 0) {
+            console.log(chalk.magenta(`  ℹ  API keys already present in your shared vault: ${existingProviders.join(', ')}`));
+        }
+        vault = {
+            openai: '#',
+            anthropic: '#',
+            googleai: '#',
+            groq: '#',
+            togetherai: '#',
+            xai: '#',
+            deepseek: '#',
+            tavily: '#',
+            scrapfly: '#',
+            ...(existingVault?.default || {}),
+        };
+    }
+    /*
     if (vaultFile) {
         console.log(chalk.magenta(`  ℹ  I found an existing shared vault file ${vaultFile}`));
         const { useSharedVault } = await inquirer.prompt([
@@ -238,7 +286,9 @@ async function RunProject(projectNameArg?: string) {
             scrapfly: '#',
         };
     }
+        */
 
+    /*
     if (hasDetectedKeys && !_useSharedVault) {
         const { useDetectedKeys } = await inquirer.prompt([
             {
@@ -252,50 +302,37 @@ async function RunProject(projectNameArg?: string) {
             vault = { ...detectedKeys };
         }
     }
+        */
 
-    const allProviders = ['openai', 'anthropic', 'google'];
+    const allProviders = ['openai', 'anthropic', 'googleai'];
     const missingKeyQuestions = allProviders
         .filter((provider) => !vault[provider] || vault[provider] === '#')
-        .map((provider) => ({
-            type: 'input',
-            name: provider,
-            message: `Enter your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key (Enter value, or press Enter to skip)\n`,
-        }));
+        .map((provider) => {
+            if (hasDetectedKeys && detectedKeys[provider]) {
+                return {
+                    type: 'confirm',
+                    name: provider,
+                    message: `We detected that ${provider} API Key is present in your environment variables. Do you want to use the environment variable in your project's vault?`,
+                    default: true,
+                };
+            }
+            return {
+                type: 'input',
+                name: provider,
+                message: `Enter your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key (Enter value, or press Enter to skip)\n`,
+            };
+        });
 
-    if (!_useSharedVault && missingKeyQuestions.length > 0) {
+    if (missingKeyQuestions.length > 0) {
         const keyAnswers = await inquirer.prompt(missingKeyQuestions);
         for (const [provider, key] of Object.entries(keyAnswers)) {
             if (key) {
-                vault[provider] = key as string;
+                vault[provider] = key === true ? detectedKeys[provider] : (key as string);
             }
         }
     }
 
-    console.log(chalk.yellowBright(`\n===[ Now let's configure Smyth Resources folder ]===`));
-    console.log(
-        `${chalk.gray(
-            'Some connectors in SmythOS might need to store data locally, in order to keep things clean, we store all SmythOS related data in a single place.\n'
-        )}`
-    );
-
-    const remainingAnswers = await inquirer.prompt([
-        {
-            type: 'list',
-            name: 'smythResources',
-            message: 'Smyth Resources Folder',
-            suffix: `\n${chalk.magenta('Location where we can store data like logs, cache, etc. (Use arrow keys ↑↓)')}\n`,
-            choices: [
-                { name: `Shared folder in the ${chalk.underline('user home directory')} (~/.smyth)`, value: path.join(os.homedir(), '.smyth') },
-                {
-                    name: `Local folder under ${chalk.underline('project root')} (./${path.basename(answers.targetFolder)}/.smyth)`,
-                    value: path.join(answers.targetFolder, '.smyth'),
-                },
-            ],
-            default: 0,
-        },
-    ]);
-
-    answers = { ...answers, ...remainingAnswers };
+    answers = { ...answers, ...resourcesAnswers };
 
     const finalConfig = {
         projectName: answers.projectName,
@@ -404,20 +441,25 @@ async function createProject(config: any) {
         }
 
         //Write vault file
-        if (!config.useSharedVault) {
-            const vaultPath = path.join(config.smythResources, '.sre', 'vault.json');
+        //if (!config.useSharedVault) {
+        const vaultPath = path.join(config.smythResources, '.sre', 'vault.json');
 
-            //always create a default vault even if no key is configured
-            if (!fs.existsSync(vaultPath)) {
-                const vaultData = {
-                    default: {
-                        ...vaultTemplate.default,
-                        ...config.vault,
-                    },
-                };
-                fs.writeFileSync(vaultPath, JSON.stringify(vaultData, null, 2));
-            }
+        //always create a default vault even if no key is configured
+        if (fs.existsSync(vaultPath)) {
+            //make a backup
+            const backupPath = path.join(config.smythResources, '.sre', 'vault.json.backup');
+            fs.copyFileSync(vaultPath, backupPath);
         }
+
+        const vaultData = {
+            default: {
+                ...vaultTemplate.default,
+                ...config.vault,
+            },
+        };
+        fs.writeFileSync(vaultPath, JSON.stringify(vaultData, null, 2));
+
+        //}
 
         //update package.json with project name
         const packageJsonPath = path.join(projectFolder, 'package.json');
