@@ -5,9 +5,13 @@ import zl from 'zip-lib';
 import { InvokeCommand, Runtime, LambdaClient, UpdateFunctionCodeCommand, CreateFunctionCommand, GetFunctionCommand, GetFunctionCommandOutput, InvokeCommandOutput } from '@aws-sdk/client-lambda';
 import { GetRoleCommand, CreateRoleCommand, IAMClient, GetRoleCommandOutput, CreateRoleCommandOutput } from '@aws-sdk/client-iam';
 import fs from 'fs';
-import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
+import { AWSConfig, AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
+import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import { IAgent } from '@sre/types/Agent.types';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 export const cachePrefix = 'serverless_code';
 export const cacheTTL = 60 * 60 * 24 * 16; // 16 days
+const PER_SECOND_COST = 0.0001;
 
 export function getLambdaFunctionName(agentId: string, componentId: string) {
     return `${agentId}-${componentId}`;
@@ -340,8 +344,45 @@ export async function getDeployedFunction(functionName: string, awsConfigs: AWSC
     }
 }
 
+export async function getLambdaCredentials(agent: IAgent, config: any): Promise<AWSConfig & { isUserProvidedKeys: boolean }> {
+    let awsAccessKeyId = null;
+    let awsSecretAccessKey = null;
+    let awsRegion = null;
+    let userProvidedKeys = false;
+    if (config.data.accessKeyId && config.data.secretAccessKey && config.data.region && config.data.use_own_keys) {
+        userProvidedKeys = true;
+        [awsAccessKeyId, awsSecretAccessKey] = await Promise.all([
+            VaultHelper.getTeamKey(extractKeyFromTemplateVar(config.data.accessKeyId), agent?.teamId),
+            VaultHelper.getTeamKey(extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId),
+        ]);
+        awsRegion = config.data.region;
+    }
+    const awsCredentials = {
+        accessKeyId: awsAccessKeyId,
+        secretAccessKey: awsSecretAccessKey,
+        region: awsRegion,
+        isUserProvidedKeys: userProvidedKeys,
+    };
+    return awsCredentials;
+}
+
+export function calculateExecutionCost(executionTime: number) {
+    // executionTime in milliseconds
+    const cost = (executionTime / 1000) * Number(PER_SECOND_COST);
+    return cost;
+}
+
 export function extractKeyFromTemplateVar(input: string) {
     const regex = /\{\{KEY\((.*?)\)\}\}/;
     const match = input.match(regex);
     return match ? match[1] : input;
+}
+
+export function reportUsage({ cost, agentId, teamId }: { cost: number; agentId: string; teamId: string }) {
+    SystemEvents.emit('USAGE:API', {
+        sourceId: 'api:serverless_code.smyth',
+        cost,
+        agentId,
+        teamId,
+    });
 }
