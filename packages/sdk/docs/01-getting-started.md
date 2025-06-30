@@ -6,10 +6,42 @@ The code in this guide is a more detailed version of the script found in [`examp
 
 ## 1. Installation
 
-First, you need to install the SmythOS SDK. Since this is a `pnpm` workspace, we'll use that. Open your terminal and run:
+### Method 1: Using the CLI (Recommended)
+
+The easiest way to get started is by using the SmythOS CLI to scaffold a new project:
 
 ```bash
-pnpm install @smythos/sdk
+# Install the CLI globally
+npm i -g @smythos/cli
+
+# Create a new project
+sre create "My First Agent"
+```
+
+The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs. Select **Empty Project** template when prompted.
+
+### Method 2: Direct SDK Installation
+
+If you prefer to add the SDK to an existing project, we recommend cloning one of our project templates:
+
+```bash
+# Clone a template (replace 'template-name' with your desired template)
+git clone -b template-name https://github.com/SmythOS/sre-project-templates.git my-agent-project
+cd my-agent-project
+npm install
+```
+
+Available templates:
+
+-   `empty-sdk-template` - Blank SDK project
+-   `minimal-sdk-agent` - Basic agent implementation
+-   `interactive-book-assistant` - Fully functional agent with interactive chat
+-   `interactive-chat-two-agents` - Two different agent implementations
+
+Alternatively, you can install the SDK directly in an existing project:
+
+```bash
+npm install @smythos/sdk
 ```
 
 The SDK is designed for a frictionless start. It automatically initializes the Smyth Runtime Environment (SRE) with in-memory components, so you can start building agents right away without any complex setup.
@@ -69,7 +101,17 @@ main();
 
 ## 3. Run Your Code
 
-Save the file and run it from your terminal:
+If you used the CLI to create your project, build and run it:
+
+```bash
+# Build the project
+npm run build
+
+# Run your agent
+npm start
+```
+
+If you're using direct SDK installation, save the file and run it from your terminal:
 
 ```bash
 ts-node index.ts
