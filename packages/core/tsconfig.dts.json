@@ -13,6 +13,8 @@
         "resolveJsonModule": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
+        "declarationMap": false,
+        "stripInternal": false,
 
         //"noImplicitAny": false,
         //"ignoreDeprecations": "5.0",
