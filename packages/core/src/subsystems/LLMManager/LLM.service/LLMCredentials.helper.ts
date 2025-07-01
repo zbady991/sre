@@ -1,4 +1,3 @@
-import config from '@sre/config';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TBedrockSettings, TCustomLLMModel, TLLMCredentials, TLLMModel, TVertexAISettings } from '@sre/types/LLM.types';
@@ -18,7 +17,11 @@ export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: T
             case TLLMCredentials.None: {
                 return { apiKey: '' };
             }
-            case TLLMCredentials.Internal:
+            case TLLMCredentials.Internal: {
+                const credentials = await getEnvCredentials(candidate, modelInfo as TLLMModel);
+                if (credentials) return credentials;
+                break;
+            }
             case TLLMCredentials.Vault: {
                 const credentials = await getStandardLLMCredentials(candidate, modelInfo as TLLMModel);
                 if (credentials) return credentials;
@@ -38,6 +41,27 @@ export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: T
     }
 
     return {};
+}
+
+/**
+ * Legacy API keys
+ * TODO : move this to a special vault entry
+ */
+const SMYTHOS_API_KEYS = {
+    echo: '',
+    openai: process.env.OPENAI_API_KEY,
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    googleai: process.env.GOOGLE_AI_API_KEY,
+    togetherai: process.env.TOGETHER_AI_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+    xai: process.env.XAI_API_KEY,
+    perplexity: process.env.PERPLEXITY_API_KEY,
+};
+async function getEnvCredentials(candidate: AccessCandidate, modelInfo: TLLMModel): Promise<{ apiKey: string }> {
+    const provider = (modelInfo.provider || modelInfo.llm)?.toLowerCase();
+    const apiKey = SMYTHOS_API_KEYS?.[provider] || '';
+    if (!apiKey) return null;
+    return { apiKey };
 }
 
 /**
