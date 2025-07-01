@@ -47,12 +47,13 @@ export class LocalComponentConnector extends ComponentConnector {
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
         const accountConnector = ConnectorService.getAccountConnector();
 
-        const teamId = await accountConnector.getCandidateTeam(candidate);
+        //const teamId = await accountConnector.getCandidateTeam(candidate);
 
         const acl = new ACL();
 
+        acl.addAccess(candidate.role, candidate.id, TAccessLevel.Read);
         //Grant read access by default
-        acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Read).addAccess(candidate.role, candidate.id, TAccessLevel.Read);
+        //acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Read).addAccess(candidate.role, candidate.id, TAccessLevel.Read);
 
         return acl;
     }
