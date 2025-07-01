@@ -3,6 +3,7 @@ import { APIEndpoint } from './APIEndpoint.class';
 import { APIOutput } from './APIOutput.class';
 import { PromptGenerator } from './PromptGenerator.class';
 import { APICall } from './APICall/APICall.class';
+import { VisionLLM } from './VisionLLM.class';
 import { FSleep } from './FSleep.class';
 import { FHash } from './FHash.class';
 import { FEncDec } from './FEncDec.class';
@@ -22,17 +23,20 @@ import { Async } from './Async.class';
 import { Await } from './Await.class';
 import { ForEach } from './ForEach.class';
 import { HuggingFace } from './HuggingFace.class';
+import { ZapierAction } from './ZapierAction.class';
 import { GPTPlugin } from './GPTPlugin.class';
 import { Classifier } from './Classifier.class';
 import { FSign } from './FSign.class';
+import { MultimodalLLM } from './MultimodalLLM.class';
 import { GenAILLM } from './GenAILLM.class';
 import { FileStore } from './FileStore.class';
 import { ScrapflyWebScrape } from './ScrapflyWebScrape.class';
 import { TavilyWebSearch } from './TavilyWebSearch.class';
 import { ComponentHost } from './ComponentHost.class';
+import { ServerlessCode } from './ServerlessCode.class';
 import { ImageGenerator } from './ImageGenerator.class'; // Legacy
 import { MCPClient } from './MCPClient.class';
-import { ServerlessCode } from './ServerlessCode.class';
+import { OpenAPI } from './OpenAPI.class';
 
 const components = {
     Component: new Component(),
@@ -42,6 +46,7 @@ const components = {
     PromptGenerator: new PromptGenerator(),
     LLMPrompt: new PromptGenerator(),
     APICall: new APICall(),
+    VisionLLM: new VisionLLM(),
     FSleep: new FSleep(),
     FHash: new FHash(),
     FEncDec: new FEncDec(),
@@ -62,8 +67,10 @@ const components = {
     Await: new Await(),
     ForEach: new ForEach(),
     HuggingFace: new HuggingFace(),
+    ZapierAction: new ZapierAction(),
     GPTPlugin: new GPTPlugin(),
     Classifier: new Classifier(),
+    MultimodalLLM: new MultimodalLLM(),
     GenAILLM: new GenAILLM(),
     FileStore: new FileStore(),
     WebSearch: new TavilyWebSearch(),
@@ -71,9 +78,10 @@ const components = {
     TavilyWebSearch: new TavilyWebSearch(),
     ScrapflyWebScrape: new ScrapflyWebScrape(),
     ComponentHost: new ComponentHost(),
+    ServerlessCode: new ServerlessCode(),
     ImageGenerator: new ImageGenerator(),
     MCPClient: new MCPClient(),
-    ServerlessCode: new ServerlessCode()
+    OpenAPI: new OpenAPI(),
 };
 
 export const ComponentInstances = components;
