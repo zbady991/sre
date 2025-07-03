@@ -2,6 +2,8 @@ import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import Joi from 'joi';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
+import { calculateExecutionCost, getLambdaCredentials, reportUsage } from '@sre/helpers/AWSLambdaCode.helper';
 
 export class ServerlessCode extends Component {
 
@@ -56,9 +58,18 @@ export class ServerlessCode extends Component {
             }
 
             logger.debug(`\nInput Variables: \n${JSON.stringify(codeInputs, null, 2)}\n`);
-            
-            let codeConnector = ConnectorService.getCodeConnector();
 
+            let codeConnector = ConnectorService.getCodeConnector();
+            let codeCredentials: AWSCredentials & AWSRegionConfig & { isUserProvidedKeys: boolean } =
+                await getLambdaCredentials(agent, config);
+
+            if (codeCredentials.isUserProvidedKeys) {
+                codeConnector = codeConnector.instance({
+                    region: codeCredentials.region,
+                    accessKeyId: codeCredentials.accessKeyId,
+                    secretAccessKey: codeCredentials.secretAccessKey,
+                })
+            }
             // Deploy lambda function if it doesn't exist or the code hash is different
             await codeConnector.agent(agent.id)
                 .deploy(config.id, {
@@ -77,6 +88,13 @@ export class ServerlessCode extends Component {
                     }\n`,
                 );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
+
+                const cost = calculateExecutionCost(executionTime);
+                if (!codeCredentials.isUserProvidedKeys) {
+                    const accountConnector = ConnectorService.getAccountConnector();
+                    const agentTeam = await accountConnector.getCandidateTeam(agent.id);
+                    reportUsage({ cost, agentId: agent.id, teamId: agentTeam });
+                }
 
                 if (executionResponse.success) {
                     Output = executionResponse.output;
