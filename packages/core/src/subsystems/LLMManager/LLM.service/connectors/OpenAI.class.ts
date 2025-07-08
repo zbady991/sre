@@ -23,11 +23,7 @@ import {
     TOpenAIResponseToolChoice,
     TLLMChatResponse,
     ILLMRequestContext,
-    BasicCredentials,
-    TLLMConnectorParams,
-    TLLMModel,
-    TCustomLLMModel,
-    ILLMConnectorCredentials,
+    BasicCredentials
 } from '@sre/types/LLM.types';
 
 import { LLMConnector } from '../LLMConnector';
