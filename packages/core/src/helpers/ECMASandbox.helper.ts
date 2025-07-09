@@ -30,7 +30,6 @@ async function setupIsolate() {
         const context = await isolate.createContext();
         const jail = context.global;
         await jail.set('global', jail.derefInto());
-
         // Define a SafeBuffer object
         const ___internal = {
             b64decode: (str) => Buffer.from(str, 'base64').toString('utf8'),
@@ -62,45 +61,66 @@ export async function runJs(code: string) {
 
         if (!code.endsWith(';')) code += ';';
 
-        let scriptCode = '';
         const { isolate, context, jail } = await setupIsolate();
         const remoteUrls = await extractFetchUrls(code);
         for (const url of remoteUrls) {
             const remoteCode = await fetchCodeFromCDN(url);
-            context.eval(`${remoteCode}`);
+            await context.eval(`${remoteCode}`);
         }
-        const randomId = Math.random().toString(36).substring(2, 15);
-        const resId = `res${randomId}`;
-        scriptCode = `
-      var ${resId}; 
-      ${code};
 
-      ${resId} = JSON.stringify(_output); 
-      ${resId};
-    `;
-        const script: any = await isolate.compileScript(scriptCode).catch((err) => {
+        const executionCode = `
+    (async () => {
+        ${code}
+        globalThis.__finalResult = result;
+    })();
+        `;
+
+        // Execute the original code
+        const executeScript = await isolate.compileScript(executionCode).catch((err) => {
             console.error(err);
             return { error: 'Compile Error - ' + err.message };
         });
-        if (script?.error) {
-            throw new Error(script.error);
+        if ('error' in executeScript) {
+            throw new Error(executeScript.error);
         }
 
-        const rawResult = await script.run(context).catch((err) => {
+        await executeScript.run(context).catch((err) => {
             console.error(err);
-            return { error: 'Run Error - ' + err.message };
+            throw new Error('Run Error - ' + err.message);
         });
+
+        // Try to get the result from the global variable first, then fallback to 'result'
+        let rawResult = await context.eval('globalThis.__finalResult').catch((err) => {
+            console.error('Failed to get __finalResult:', err);
+            return null;
+        });
+
         if (rawResult?.error) {
             throw new Error(rawResult.error);
         }
-
-        // Transfer the result out of the isolate and parse it
-        //const serializedResult = rawResult.copySync();
-        const Output = JSON.parse(rawResult);
-
-        return Output;
+        return { Output: rawResult };
     } catch (error) {
         console.error(error);
         throw new Error(error.message);
     }
+}
+
+function getParametersString(parameters: string[], inputs: Record<string, any>) {
+    let params = [];
+    for (const parameter of parameters) {
+        if (typeof inputs[parameter] === 'string') {
+            params.push(`'${inputs[parameter]}'`);
+        } else {
+            params.push(`${inputs[parameter]};`);
+        }
+    }
+    return params.join(',');
+}
+
+export function generateExecutableCode(code: string, parameters: string[], inputs: Record<string, any>) {
+    const executableCode = `
+    ${code}
+        const result = await main(${getParametersString(parameters, inputs)});
+    `
+    return executableCode;
 }

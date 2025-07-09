@@ -7,7 +7,7 @@ setupSRE({
     Code: {
         Connector: 'ECMASandbox',
         Settings: {
-            sandboxUrl: 'http://localhost:6100/run-js',
+            sandboxUrl: 'http://localhost:6100/run-js/v2',
         },
     },
     Log: {
@@ -23,16 +23,36 @@ describe('ECMASandbox Tests', () => {
                 id: 'test-user',
                 role: TAccessRole.User,
             };
-            
+
             const codeConnector = ConnectorService.getCodeConnector('ECMASandbox');
             const result = await codeConnector.agent(mockCandidate.id).execute(Date.now().toString(), {
-                code: 'let _output=undefined;\nconsole.log("Hello, world!");\n_output=1;',
-            }, {});
+                code: `async function main(prompt) { return prompt + ' ' + 'Hello World'; }`,
+                inputs: {
+                    prompt: 'Say'
+                }
+            });
 
             const output = result.output;
-
-            expect(output).toBe(1);
+            expect(output).toBe('Say Hello World');
         },
     );
+    it(
+        'Try to run a simple code without main function',
+        async () => {
+            const mockCandidate: IAccessCandidate = {
+                id: 'test-user',
+                role: TAccessRole.User,
+            };
 
+            const codeConnector = ConnectorService.getCodeConnector('ECMASandbox');
+            const result = await codeConnector.agent(mockCandidate.id).execute(Date.now().toString(), {
+                code: `async function testFunction(prompt) { return prompt + ' ' + 'Hello World'; }`,
+                inputs: {
+                    prompt: 'Say'
+                }
+            });
+            const error = result.errors;
+            expect(error).toContain('No main function found at root level');
+        },
+    );
 });

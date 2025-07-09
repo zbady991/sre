@@ -4,7 +4,8 @@ import { CodeConfig, CodePreparationResult, CodeConnector, CodeInput, CodeDeploy
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { Logger } from '@sre/helpers/Log.helper';
 import axios from 'axios';
-import { runJs } from '@sre/helpers/ECMASandbox.helper';
+import { generateExecutableCode, runJs } from '@sre/helpers/ECMASandbox.helper';
+import { validateAsyncMainFunction } from '@sre/helpers/AWSLambdaCode.helper';
 
 const console = Logger('ECMASandbox');
 export class ECMASandbox extends CodeConnector {
@@ -34,10 +35,20 @@ export class ECMASandbox extends CodeConnector {
 
     public async execute(acRequest: AccessRequest, codeUID: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult> {
         try {
+            const { isValid, error, parameters } = validateAsyncMainFunction(inputs.code);
+            if (!isValid) {
+                return {
+                    output: undefined,
+                    executionTime: 0,
+                    success: false,
+                    errors: [error],
+                }
+            }
+            const executableCode = generateExecutableCode(inputs.code, parameters, inputs.inputs);
             if (!this.sandboxUrl) {
                 // run js code in isolated vm
                 console.debug('Running code in isolated vm');
-                const result = await runJs(inputs.code);
+                const result = await runJs(executableCode);
                 console.debug(`Code result: ${result}`);
                 return {
                     output: result?.Output,
@@ -47,7 +58,7 @@ export class ECMASandbox extends CodeConnector {
                 };
             } else {
                 console.debug('Running code in remote sandbox');
-                const result: any = await axios.post(this.sandboxUrl, { code: inputs.code }).catch((error) => ({ error }));
+                const result: any = await axios.post(this.sandboxUrl, { code: executableCode }).catch((error) => ({ error }));
                 if (result.error) {
 
                     const error = result.error?.response?.data || result.error?.message || result.error.toString() || 'Unknown error';
