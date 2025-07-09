@@ -4,16 +4,12 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import {
-    TLLMParams,
     TLLMConnectorParams,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
     ToolData,
     APIKeySource,
     TLLMModel,
-    TLLMCredentials,
-    TBedrockSettings,
-    TVertexAISettings,
     ILLMRequestFuncParams,
     TLLMChatResponse,
     TLLMRequestBody,
@@ -83,7 +79,6 @@ export abstract class LLMConnector extends Connector {
 
     protected abstract request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse>;
     protected abstract streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter>;
-    protected abstract webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter>;
 
     protected abstract reqBodyAdapter(params: TLLMConnectorParams): Promise<TLLMRequestBody>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
@@ -122,6 +117,7 @@ export abstract class LLMConnector extends Connector {
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
+                        webSearchContextSize: preparedParams?.webSearchContextSize || '',
                     },
                 });
 
@@ -141,16 +137,13 @@ export abstract class LLMConnector extends Connector {
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
+                        webSearchContextSize: preparedParams?.webSearchContextSize || '',
                     },
                 };
 
                 let response;
 
-                if (preparedParams.capabilities?.search === true && preparedParams.useWebSearch === true) {
-                    response = await this.webSearchRequest(requestParams);
-                } else {
-                    response = await this.streamRequest(requestParams);
-                }
+                response = await this.streamRequest(requestParams);
 
                 return response;
             },
@@ -286,10 +279,6 @@ export abstract class LLMConnector extends Connector {
                 }
             }
         }
-
-        const isStandardLLM = await modelProviderCandidate.isStandardLLM(model);
-
-        const llmProvider = await modelProviderCandidate.getProvider(model);
 
         _params.credentials = await getLLMCredentials(candidate, modelInfo);
 

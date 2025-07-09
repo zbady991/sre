@@ -106,40 +106,6 @@ export type TLLMParams = {
     abortSignal?: AbortSignal;
 };
 
-export type TLLMParamsV2 = {
-    model: string;
-    modelEntryName: string;
-    messages: any[];
-    toolsConfig?: {
-        tools?: OpenAI.Responses.Tool[];
-        tool_choice?: OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
-    };
-    baseURL?: string;
-    stream?: boolean;
-    responseFormat?: any;
-    credentials?: {
-        apiKey?: string;
-        isUserKey?: boolean;
-    };
-    max_output_tokens?: number;
-    temperature?: number;
-    top_p?: number;
-    top_k?: number;
-    frequency_penalty?: number;
-    presence_penalty?: number;
-    teamId?: string;
-    files?: BinaryInput[];
-
-    // #region Search
-    useWebSearch?: boolean;
-    webSearchContextSize?: 'high' | 'medium' | 'low';
-    webSearchCity?: string;
-    webSearchCountry?: string;
-    webSearchRegion?: string;
-    webSearchTimezone?: string;
-    // #endregion
-};
-
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
     //the LLMConnector accepts a model object that we extract the model info from instead of relying on the internal models list
     model: string | TLLMModel | TCustomLLMModel;
@@ -189,6 +155,7 @@ export type TLLMModel = {
     //models can come with predefined params
     //this can also be used to pass a preconfigured model object
     params?: TLLMParams;
+    interface?: string;
 };
 
 // #region [ Handle extendable LLM Providers ] ================================================
@@ -379,6 +346,7 @@ export interface ILLMRequestContext {
     hasFiles?: boolean;
     modelInfo: TCustomLLMModel | TLLMModel;
     credentials: ILLMConnectorCredentials;
+    webSearchContextSize?: string;
 }
 
 // Generic interface that can be extended by specific providers

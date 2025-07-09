@@ -23,12 +23,14 @@ import {
     TOpenAIResponseToolChoice,
     TLLMChatResponse,
     ILLMRequestContext,
-    BasicCredentials
+    BasicCredentials,
 } from '@sre/types/LLM.types';
 
-import { LLMConnector } from '../LLMConnector';
+import { LLMConnector } from '../../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { IResponseHandler, HandlerDependencies } from './types';
+import { ResponsesHandler, ChatCompletionsHandler } from './handlers';
 
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
@@ -70,24 +72,39 @@ const SEARCH_TOOL = {
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    //private openai: OpenAI;
+    private responseHandlers: Map<string, IResponseHandler>;
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
     private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
-    private async getClient(params: ILLMRequestContext): Promise<OpenAI> {
+    constructor() {
+        super();
+        
+        const deps: HandlerDependencies = {
+            getClient: (context) => this.getClient(context),
+            reportUsage: (usage, metadata) => this.reportUsage(usage, metadata),
+        };
+        
+        this.responseHandlers = new Map<string, IResponseHandler>([
+            ['responses', new ResponsesHandler(deps)],
+            ['chat.completions', new ChatCompletionsHandler(deps)],
+        ]);
+    }
+
+    protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
         const baseURL = params?.modelInfo?.baseURL;
 
         if (!apiKey) throw new Error('Please provide an API key for OpenAI');
 
-        return new OpenAI({ baseURL, apiKey });
+        const openai = new OpenAI({ baseURL, apiKey });
+
+        return openai;
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         const _body = body as OpenAI.ChatCompletionCreateParams;
 
         try {
-            const openai = await this.getClient(context);
             // #region Validate token limit
             const messages = _body?.messages || [];
             const lastMessage = messages[messages.length - 1];
@@ -104,7 +121,8 @@ export class OpenAIConnector extends LLMConnector {
             });
             // #endregion Validate token limit
 
-            const result = (await openai.chat.completions.create(_body)) as OpenAI.ChatCompletion;
+            const responseInterface = context.modelInfo?.interface || 'chat.completions';
+            const result = (await this.responseHandlers.get(responseInterface)?.create(body, context)) as OpenAI.ChatCompletion;
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -147,14 +165,9 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        const _body = body as OpenAI.ChatCompletionCreateParams;
-
-        const emitter = new EventEmitter();
-        const usage_data: any[] = [];
-        const reportedUsage: any[] = [];
+        let _body = body as OpenAI.ChatCompletionCreateParams;
 
         try {
-            const openai = await this.getClient(context);
             // #region Validate token limit
             const messages = _body?.messages || [];
             const lastMessage = messages[messages.length - 1];
@@ -171,167 +184,12 @@ export class OpenAIConnector extends LLMConnector {
             });
             // #endregion Validate token limit
 
-            let finishReason = 'stop';
+            const responseInterface = context.modelInfo?.interface || 'chat.completions';
+            _body = { ..._body, stream: true, stream_options: { include_usage: true } };
 
-            const stream = await openai.chat.completions.create({ ..._body, stream: true, stream_options: { include_usage: true } });
+            const stream = await this.responseHandlers.get(responseInterface)?.create(_body, context);
 
-            // Process stream asynchronously while as we need to return emitter immediately
-            (async () => {
-                let delta: Record<string, any> = {};
-
-                let toolsData: any = [];
-
-                for await (const part of stream) {
-                    delta = part.choices[0]?.delta;
-                    const usage = part.usage;
-
-                    if (usage) {
-                        usage_data.push(usage);
-                    }
-                    emitter.emit('data', delta);
-
-                    if (!delta?.tool_calls && delta?.content) {
-                        emitter.emit('content', delta?.content, delta?.role);
-                    }
-                    //_stream = toolCallsStream;
-                    if (delta?.tool_calls) {
-                        const toolCall = delta?.tool_calls?.[0];
-                        const index = toolCall?.index;
-
-                        toolsData[index] = {
-                            index,
-                            role: 'tool',
-                            id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
-                            type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
-                            name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
-                            arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
-                        };
-
-                        continue;
-                    }
-                    if (part.choices[0]?.finish_reason) {
-                        finishReason = part.choices[0]?.finish_reason;
-                    }
-                }
-                if (toolsData?.length > 0) {
-                    for (let tool of toolsData) {
-                        if (tool.type.includes('functionfunction')) {
-                            tool.type = 'function'; //path wrong tool call generated by LM Studio
-                            //FIXME: use cleaner method to fix wrong tool call formats
-                        }
-                    }
-                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                }
-
-                usage_data.forEach((usage) => {
-                    // probably we can acc them and send them as one event
-                    const _reported = this.reportUsage(usage, {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
-                    });
-
-                    reportedUsage.push(_reported);
-                });
-                if (finishReason !== 'stop') {
-                    emitter.emit('interrupted', finishReason);
-                }
-
-                setTimeout(() => {
-                    emitter.emit('end', toolsData, reportedUsage, finishReason);
-                }, 100);
-            })();
-            return emitter;
-        } catch (error: any) {
-            throw error;
-        }
-    }
-
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        const _body = body as OpenAI.Responses.ResponseCreateParams;
-
-        const emitter = new EventEmitter();
-        const usage_data = [];
-        const reportedUsage = [];
-
-        try {
-            const openai = await this.getClient(context);
-            let finishReason = 'stop';
-            const stream = (await openai.responses.create(_body)) as Stream<OpenAI.Responses.ResponseStreamEvent>;
-
-            // Process stream asynchronously while we need to return emitter immediately
-            (async () => {
-                let toolsData: any = [];
-                let currentToolCall = null;
-
-                for await (const part of stream) {
-                    // Handle different event types from the stream
-                    if ('type' in part) {
-                        const event = part.type;
-
-                        switch (event) {
-                            case 'response.output_text.delta': {
-                                if (part?.delta) {
-                                    // Emit content in delta format for compatibility
-                                    const deltaMsg = {
-                                        role: 'assistant',
-                                        content: part.delta,
-                                    };
-                                    emitter.emit('data', deltaMsg);
-                                    emitter.emit('content', part.delta, 'assistant');
-                                }
-                                break;
-                            }
-                            // TODO: Handle other events
-                            default: {
-                                break;
-                            }
-                        }
-                    }
-
-                    if ('response' in part) {
-                        // Handle usage statistics
-                        if (part.response?.usage) {
-                            usage_data.push(part.response.usage);
-                        }
-                    }
-                }
-
-                // Report usage statistics
-                const modelName = context.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
-
-                const searchTool = _body.tools?.[0] as OpenAI.Responses.WebSearchTool;
-                const cost = SEARCH_TOOL.cost?.[modelName]?.[searchTool?.search_context_size] || 0;
-
-                this.reportUsage(
-                    {
-                        cost,
-
-                        // 👇 Just to avoid a TypeScript error.
-                        completion_tokens: 0,
-                        prompt_tokens: 0,
-                        total_tokens: 0,
-                        // 👆 Just to avoid a TypeScript error.
-                    },
-                    {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
-                    }
-                );
-
-                // Emit interrupted event if finishReason is not 'stop'
-                if (finishReason !== 'stop') {
-                    emitter.emit('interrupted', finishReason);
-                }
-
-                // Emit end event with same data structure as v1
-                setTimeout(() => {
-                    emitter.emit('end', toolsData, reportedUsage, finishReason);
-                }, 100);
-            })();
+            const emitter = this.responseHandlers.get(responseInterface)?.process(stream, context);
 
             return emitter;
         } catch (error: any) {
@@ -841,4 +699,4 @@ export class OpenAIConnector extends LLMConnector {
 
         return messages;
     }
-}
+} 
