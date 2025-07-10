@@ -2,9 +2,12 @@ import EventEmitter from 'events';
 import OpenAI from 'openai';
 import { ILLMRequestContext, APIKeySource } from '@sre/types/LLM.types';
 
+export enum TToolType {
+    WebSearch = 'web_search_preview'
+}
 export interface IResponseHandler {
-    create(body: any, context: ILLMRequestContext): Promise<any>;
-    process(stream: any, context: ILLMRequestContext): EventEmitter;
+    createStream(body: any, context: ILLMRequestContext): Promise<any>;
+    handleStream(stream: any, context: ILLMRequestContext): EventEmitter;
 }
 
 export type HandlerDependencies = {

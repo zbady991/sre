@@ -117,7 +117,7 @@ export abstract class LLMConnector extends Connector {
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
-                        webSearchContextSize: preparedParams?.webSearchContextSize || '',
+                        toolsInfo: preparedParams.toolsInfo,
                     },
                 });
 
@@ -137,13 +137,11 @@ export abstract class LLMConnector extends Connector {
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
-                        webSearchContextSize: preparedParams?.webSearchContextSize || '',
+                        toolsInfo: preparedParams.toolsInfo,
                     },
                 };
 
-                let response;
-
-                response = await this.streamRequest(requestParams);
+                const response = await this.streamRequest(requestParams);
 
                 return response;
             },
@@ -306,6 +304,14 @@ export abstract class LLMConnector extends Connector {
             search: features.includes('search'),
             reasoning: features.includes('reasoning'),
             imageGeneration: features.includes('image-generation'),
+        };
+
+        // * We may have other tools info like file search, image generation, etc.
+        _params.toolsInfo = {
+            webSearch: {
+                enabled: _params?.useWebSearch && _params.capabilities.search === true,
+                contextSize: _params?.webSearchContextSize || '',
+            },
         };
 
         // The input adapter transforms the standardized parameters into the specific format required by the target LLM provider

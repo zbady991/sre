@@ -17,7 +17,6 @@ import {
     TLLMToolResultMessageBlock,
     TLLMMessageRole,
     APIKeySource,
-    TLLMEvent,
     ILLMRequestFuncParams,
     TOpenAIRequestBody,
     TOpenAIResponseToolChoice,
@@ -29,12 +28,11 @@ import {
 import { LLMConnector } from '../../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { IResponseHandler, HandlerDependencies } from './types';
+import { IResponseHandler, HandlerDependencies, TToolType } from './types';
 import { ResponsesHandler, ChatCompletionsHandler } from './handlers';
 
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
-type TSearchTool = 'web_search_preview';
 type TSearchContextSize = 'low' | 'medium' | 'high';
 type TSearchLocation = {
     type: 'approximate';
@@ -42,31 +40,6 @@ type TSearchLocation = {
     country?: string;
     region?: string;
     timezone?: string;
-};
-
-// per 1k requests
-const costForNormalModels = {
-    low: 30 / 1000,
-    medium: 35 / 1000,
-    high: 50 / 1000,
-};
-const costForMiniModels = {
-    low: 25 / 1000,
-    medium: 27.5 / 1000,
-    high: 30 / 1000,
-};
-
-const SEARCH_TOOL = {
-    type: 'web_search_preview' as TSearchTool,
-    cost: {
-        'gpt-4.1': costForNormalModels,
-        'gpt-4o': costForNormalModels,
-        'gpt-4o-search': costForNormalModels,
-
-        'gpt-4.1-mini': costForMiniModels,
-        'gpt-4o-mini': costForMiniModels,
-        'gpt-4o-mini-search': costForMiniModels,
-    },
 };
 
 export class OpenAIConnector extends LLMConnector {
@@ -78,12 +51,12 @@ export class OpenAIConnector extends LLMConnector {
 
     constructor() {
         super();
-        
+
         const deps: HandlerDependencies = {
             getClient: (context) => this.getClient(context),
             reportUsage: (usage, metadata) => this.reportUsage(usage, metadata),
         };
-        
+
         this.responseHandlers = new Map<string, IResponseHandler>([
             ['responses', new ResponsesHandler(deps)],
             ['chat.completions', new ChatCompletionsHandler(deps)],
@@ -122,7 +95,8 @@ export class OpenAIConnector extends LLMConnector {
             // #endregion Validate token limit
 
             const responseInterface = context.modelInfo?.interface || 'chat.completions';
-            const result = (await this.responseHandlers.get(responseInterface)?.create(body, context)) as OpenAI.ChatCompletion;
+            const responseHandler = this.responseHandlers.get(responseInterface);
+            const result = await responseHandler?.createStream(body, context);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -165,11 +139,9 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        let _body = body as OpenAI.ChatCompletionCreateParams;
-
         try {
             // #region Validate token limit
-            const messages = _body?.messages || [];
+            const messages = body?.messages || body?.input || [];
             const lastMessage = messages[messages.length - 1];
 
             const promptTokens = context?.hasFiles
@@ -180,16 +152,14 @@ export class OpenAIConnector extends LLMConnector {
                 acRequest,
                 promptTokens,
                 context,
-                maxTokens: _body.max_completion_tokens,
+                maxTokens: body.max_completion_tokens,
             });
             // #endregion Validate token limit
 
             const responseInterface = context.modelInfo?.interface || 'chat.completions';
-            _body = { ..._body, stream: true, stream_options: { include_usage: true } };
-
-            const stream = await this.responseHandlers.get(responseInterface)?.create(_body, context);
-
-            const emitter = this.responseHandlers.get(responseInterface)?.process(stream, context);
+            const responseHandler = this.responseHandlers.get(responseInterface);
+            const stream = await responseHandler?.createStream(body, context);
+            const emitter = responseHandler?.handleStream(stream, context);
 
             return emitter;
         } catch (error: any) {
@@ -227,7 +197,7 @@ export class OpenAIConnector extends LLMConnector {
         if (validSources.length === 0) {
             return [];
         }
-        return await this.getImageData(validSources, agentId);
+        return await this.getImageDataForInterface(validSources, agentId, 'chat.completions');
     }
 
     private getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
@@ -246,28 +216,38 @@ export class OpenAIConnector extends LLMConnector {
         if (validSources.length === 0) {
             return [];
         }
-        return await this.getDocumentData(validSources, agentId);
+        return await this.getDocumentDataForInterface(validSources, agentId, 'chat.completions');
     }
 
     protected async reqBodyAdapter(params: TLLMParams): Promise<TOpenAIRequestBody> {
-        // if it's web search request and the model has search capability, then we need to prepare the request body for the web search request
-        if (params?.useWebSearch && params.capabilities?.search === true) {
-            return this.prepareBodyForWebSearchRequest(params);
-        }
+        // Determine the API interface to use for body preparation
+        const responseInterface = params.modelInfo?.interface || 'chat.completions';
 
+        // Handle special capabilities first (these override interface type)
         if (params.capabilities?.imageGeneration === true) {
-            if (params?.files?.length > 0) {
-                return this.prepareBodyForImageEditRequest(params);
-            } else {
-                return this.prepareBodyForImageGenRequest(params);
-            }
+            const capabilityType = params?.files?.length > 0 ? 'image-edit' : 'image-generation';
+            return this.prepareRequestBody(params, capabilityType);
         }
 
-        if (params.capabilities?.imageEditing === true) {
+        // Use standard interface preparation
+        return this.prepareRequestBody(params, responseInterface);
+    }
+
+    private async prepareRequestBody(params: TLLMParams, preparationType: string): Promise<TOpenAIRequestBody> {
+        const preparers = {
+            'chat.completions': () => this.prepareChatCompletionsBody(params),
+            responses: () => this.prepareResponsesBody(params),
+            'image-generation': () => this.prepareImageGenerationBody(params),
+            'image-edit': () => this.prepareImageEditBody(params),
+            // Future interfaces can be added here
+        };
+
+        const preparer = preparers[preparationType];
+        if (!preparer) {
+            throw new Error(`Unsupported preparation type: ${preparationType}`);
         }
 
-        // In default, we will prepare the request body
-        return this.prepareBody(params);
+        return preparer();
     }
 
     protected reportUsage(
@@ -402,15 +382,33 @@ export class OpenAIConnector extends LLMConnector {
         return validSources;
     }
 
-    private async getImageData(
-        files: BinaryInput[],
-        agentId: string
-    ): Promise<
-        {
-            type: string;
-            image_url: { url: string };
-        }[]
-    > {
+    private async getImageDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
+        const coreImageData = await this.getCoreImageData(files, agentId);
+        return coreImageData.map(({ url }) => this.formatImageData(url, interfaceType));
+    }
+
+    private formatImageData(url: string, interfaceType: string): any {
+        const formatters = {
+            'chat.completions': () => ({
+                type: 'image_url',
+                image_url: { url },
+            }),
+            responses: () => ({
+                type: 'input_image',
+                image_url: url,
+            }),
+            // Future interfaces can be added here
+        };
+
+        const formatter = formatters[interfaceType];
+        if (!formatter) {
+            throw new Error(`Unsupported interface type for image data: ${interfaceType}`);
+        }
+
+        return formatter();
+    }
+
+    private async getCoreImageData(files: BinaryInput[], agentId: string): Promise<{ url: string; filename: string; mimetype: string }[]> {
         try {
             const imageData = [];
 
@@ -420,8 +418,9 @@ export class OpenAIConnector extends LLMConnector {
                 const url = `data:${file.mimetype};base64,${base64Data}`;
 
                 imageData.push({
-                    type: 'image_url',
-                    image_url: { url },
+                    url,
+                    filename: await file.getName(),
+                    mimetype: file.mimetype,
                 });
             }
 
@@ -431,18 +430,39 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    private async getDocumentData(
-        files: BinaryInput[],
-        agentId: string
-    ): Promise<
-        {
-            type: string;
-            file: {
-                filename: string;
-                file_data: string;
-            };
-        }[]
-    > {
+    private async getDocumentDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
+        const coreDocumentData = await this.getCoreDocumentData(files, agentId);
+        return coreDocumentData.map(({ fileData, filename }) => this.formatDocumentData(fileData, filename, interfaceType));
+    }
+
+    private formatDocumentData(fileData: string, filename: string, interfaceType: string): any {
+        const formatters = {
+            'chat.completions': () => ({
+                type: 'file',
+                file: {
+                    file_data: fileData,
+                    filename,
+                },
+            }),
+            responses: () => ({
+                type: 'input_file',
+                file: {
+                    file_data: fileData,
+                    filename,
+                },
+            }),
+            // Future interfaces can be added here
+        };
+
+        const formatter = formatters[interfaceType];
+        if (!formatter) {
+            throw new Error(`Unsupported interface type for document data: ${interfaceType}`);
+        }
+
+        return formatter();
+    }
+
+    private async getCoreDocumentData(files: BinaryInput[], agentId: string): Promise<{ fileData: string; filename: string; mimetype: string }[]> {
         try {
             const documentData = [];
 
@@ -454,11 +474,9 @@ export class OpenAIConnector extends LLMConnector {
                 const fileData = `data:${file.mimetype};base64,${base64Data}`;
 
                 documentData.push({
-                    type: 'file',
-                    file: {
-                        file_data: fileData,
-                        filename: await file.getName(),
-                    },
+                    fileData,
+                    filename: await file.getName(),
+                    mimetype: file.mimetype,
                 });
             }
 
@@ -490,11 +508,11 @@ export class OpenAIConnector extends LLMConnector {
         if (searchTimezone) location.timezone = searchTimezone;
 
         const searchTool: {
-            type: TSearchTool;
+            type: TToolType.WebSearch;
             search_context_size: TSearchContextSize;
             user_location?: TSearchLocation;
         } = {
-            type: SEARCH_TOOL.type,
+            type: TToolType.WebSearch,
             search_context_size: params?.webSearchContextSize || 'medium',
         };
 
@@ -534,11 +552,12 @@ export class OpenAIConnector extends LLMConnector {
         return modelsProvider;
     }
 
-    private async prepareBodyForWebSearchRequest(params: TLLMParams): Promise<OpenAI.Responses.ResponseCreateParams> {
+    private async prepareResponsesBody(params: TLLMParams): Promise<OpenAI.Responses.ResponseCreateParams> {
+        const input = await this.prepareInputsForResponsesAPI(params);
+
         const body: OpenAI.Responses.ResponseCreateParams = {
             model: params.model as string,
-            input: params.messages,
-            stream: true,
+            input,
         };
 
         if (params?.max_output_tokens !== undefined) {
@@ -547,17 +566,19 @@ export class OpenAIConnector extends LLMConnector {
 
         // #region Handle tools configuration
 
-        const searchTool = this.getWebSearchTool(params);
-        body.tools = [searchTool];
+        if (params?.toolsInfo?.webSearch?.enabled) {
+            const searchTool = this.getWebSearchTool(params);
+            body.tools = [searchTool];
 
-        if (params?.toolsConfig?.tool_choice) {
-            body.tool_choice = params.toolsConfig.tool_choice as TOpenAIResponseToolChoice;
+            if (params?.toolsConfig?.tool_choice) {
+                body.tool_choice = params.toolsConfig.tool_choice as TOpenAIResponseToolChoice;
+            }
         }
 
         return body;
     }
 
-    private async prepareBodyForImageGenRequest(params: TLLMParams): Promise<OpenAI.Images.ImageGenerateParams> {
+    private async prepareImageGenerationBody(params: TLLMParams): Promise<OpenAI.Images.ImageGenerateParams> {
         const { model, size, quality, n, responseFormat, style } = params;
 
         const body: OpenAI.Images.ImageGenerateParams = {
@@ -583,7 +604,7 @@ export class OpenAIConnector extends LLMConnector {
         return body;
     }
 
-    private async prepareBodyForImageEditRequest(params: TLLMParams): Promise<OpenAI.Images.ImageEditParams> {
+    private async prepareImageEditBody(params: TLLMParams): Promise<OpenAI.Images.ImageEditParams> {
         const { model, size, n, responseFormat } = params;
 
         const body: OpenAI.Images.ImageEditParams = {
@@ -617,7 +638,7 @@ export class OpenAIConnector extends LLMConnector {
         return body;
     }
 
-    private async prepareBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
+    private async prepareChatCompletionsBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
         const messages = await this.prepareMessages(params);
 
         //#region Handle JSON response format
@@ -699,4 +720,40 @@ export class OpenAIConnector extends LLMConnector {
 
         return messages;
     }
-} 
+
+    private async prepareInputsForResponsesAPI(params: TLLMParams) {
+        const messages = params?.messages || [];
+        const files: BinaryInput[] = params?.files || [];
+
+        if (files.length > 0) {
+            // #region Upload files
+            const promises = [];
+            const _files = [];
+
+            for (let file of files) {
+                const binaryInput = BinaryInput.from(file);
+                promises.push(binaryInput.upload(AccessCandidate.agent(params.agentId)));
+                _files.push(binaryInput);
+            }
+
+            await Promise.all(promises);
+            // #endregion Upload files
+
+            const validImageFiles = this.getValidImageFiles(_files);
+            const validDocumentFiles = this.getValidDocumentFiles(_files);
+
+            const imageData = validImageFiles.length > 0 ? await this.getImageDataForInterface(validImageFiles, params.agentId, 'responses') : [];
+            const documentData =
+                validDocumentFiles.length > 0 ? await this.getDocumentDataForInterface(validDocumentFiles, params.agentId, 'responses') : [];
+
+            const userMessage = Array.isArray(messages) ? messages.pop() : {};
+            const prompt = userMessage?.content || '';
+
+            const promptData = [{ type: 'input_text', text: prompt || '' }, ...imageData, ...documentData];
+
+            messages.push({ role: 'user', content: promptData });
+        }
+
+        return messages;
+    }
+}

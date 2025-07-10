@@ -45,6 +45,13 @@ export type ILLMConnectorCredentials = BasicCredentials | BedrockCredentials | V
 export type TOpenAIResponseToolChoice = OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
 export type TLLMToolChoice = OpenAI.ChatCompletionToolChoiceOption;
 
+type TLLMToolsInfo = {
+    webSearch?: {
+        enabled: boolean;
+        contextSize: string;
+    };
+};
+
 export type TLLMParams = {
     model: TLLMModel | string;
     modelEntryName?: string; // for usage reporting
@@ -104,6 +111,8 @@ export type TLLMParams = {
     max_output_tokens?: number;
 
     abortSignal?: AbortSignal;
+
+    toolsInfo?: TLLMToolsInfo;
 };
 
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
@@ -346,7 +355,7 @@ export interface ILLMRequestContext {
     hasFiles?: boolean;
     modelInfo: TCustomLLMModel | TLLMModel;
     credentials: ILLMConnectorCredentials;
-    webSearchContextSize?: string;
+    toolsInfo?: TLLMToolsInfo;
 }
 
 // Generic interface that can be extended by specific providers
