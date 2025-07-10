@@ -43,7 +43,7 @@ type TUsage = {
     reasoning_tokens?: number;
 };
 
-export class GrokConnector extends LLMConnector {
+export class xAIConnector extends LLMConnector {
     public name = 'LLM:Grok';
 
     private async getClient(params: ILLMRequestContext): Promise<AxiosInstance> {
