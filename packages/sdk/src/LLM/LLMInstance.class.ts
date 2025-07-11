@@ -133,6 +133,12 @@ export type TLLMInstanceParams = {
     /** The dimensions parameter for text embeddings models */
     dimensions?: number;
 
+    /** the maximum input tokens that the model should accept (Context window size) */
+    inputTokens?: number;
+
+    /** the maximum output tokens that the model should generate */
+    outputTokens?: number;
+
     [key: string]: any;
 };
 
