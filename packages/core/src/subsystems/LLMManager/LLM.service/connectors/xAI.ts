@@ -31,16 +31,49 @@ type ChatCompletionParams = {
     stop?: string | string[];
     response_format?: { type: string };
     stream?: boolean;
+    stream_options?: { include_usage: boolean };
     tools?: any[];
     tool_choice?: any;
+    // xAI search parameters - nested structure
+    search_parameters?: {
+        mode?: 'auto' | 'on' | 'off';
+        return_citations?: boolean;
+        max_search_results?: number;
+        sources?: Array<{
+            type: 'web' | 'x' | 'news' | 'rss';
+            country?: string;
+            excluded_websites?: string[];
+            allowed_websites?: string[];
+            safe_search?: boolean;
+            included_x_handles?: string[];
+            excluded_x_handles?: string[];
+            post_favorite_count?: number;
+            post_view_count?: number;
+            links?: string[];
+        }>;
+        from_date?: string;
+        to_date?: string;
+    };
 };
 
 type TUsage = {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
-    prompt_tokens_details?: { cached_tokens?: number };
-    reasoning_tokens?: number;
+    prompt_tokens_details?: {
+        text_tokens?: number;
+        audio_tokens?: number;
+        image_tokens?: number;
+        cached_tokens?: number;
+    };
+    completion_tokens_details?: {
+        reasoning_tokens?: number;
+        audio_tokens?: number;
+        accepted_prediction_tokens?: number;
+        rejected_prediction_tokens?: number;
+    };
+    reasoning_tokens?: number; // for backward compatibility
+    num_sources_used?: number;
 };
 
 export class xAIConnector extends LLMConnector {
@@ -69,6 +102,7 @@ export class xAIConnector extends LLMConnector {
             const message = response?.data?.choices?.[0]?.message;
             const finishReason = response?.data?.choices?.[0]?.finish_reason;
             const usage = response?.data?.usage as TUsage;
+            const citations = response?.data?.citations;
 
             let toolsData: ToolData[] = [];
             let useTool = false;
@@ -87,6 +121,13 @@ export class xAIConnector extends LLMConnector {
                 useTool = true;
             }
 
+            // Handle citations from live search
+            let content = message?.content ?? '';
+            if (citations && citations.length > 0) {
+                const citationsText = '\n\n**Sources:**\n' + citations.map((url, index) => `${index + 1}. ${url}`).join('\n');
+                content += citationsText;
+            }
+
             this.reportUsage(usage, {
                 modelEntryName: context.modelEntryName,
                 keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -95,7 +136,7 @@ export class xAIConnector extends LLMConnector {
             });
 
             return {
-                content: message?.content ?? '',
+                content,
                 finishReason,
                 useTool,
                 toolsData,
@@ -114,16 +155,17 @@ export class xAIConnector extends LLMConnector {
             const grok = await this.getClient(context);
             const response = await grok.post(
                 '/chat/completions',
-                { ...body, stream: true },
+                { ...body, stream: true, stream_options: { include_usage: true } },
                 {
                     responseType: 'stream',
                 }
             );
 
-            const usage_data: any[] = [];
             const reportedUsage: any[] = [];
             let finishReason = 'stop';
             let toolsData: any[] = [];
+            let usage: any = {};
+            let citations: any[] = [];
 
             response.data.on('data', (chunk) => {
                 const lines = chunk.toString().split('\n');
@@ -139,10 +181,15 @@ export class xAIConnector extends LLMConnector {
                         try {
                             const parsed = JSON.parse(data);
                             const delta = parsed.choices?.[0]?.delta;
-                            const usage = parsed.usage;
 
-                            if (usage) {
-                                usage_data.push(usage);
+                            // Usage data comes in final chunk when stream_options.include_usage is true
+                            if (parsed?.usage) {
+                                usage = parsed.usage;
+                            }
+
+                            // Handle citations from xAI - they come at the top level as an array of URLs
+                            if (parsed.citations) {
+                                citations = parsed.citations;
                             }
 
                             if (delta) {
@@ -178,11 +225,19 @@ export class xAIConnector extends LLMConnector {
             });
 
             response.data.on('end', () => {
+                // Include citations in content if available
+                if (citations && citations.length > 0) {
+                    const citationsText = '\n\n**Sources:**\n' + citations.map((url, index) => `${index + 1}. ${url}`).join('\n');
+
+                    emitter.emit('content', citationsText, 'assistant');
+                }
+
                 if (toolsData.length > 0) {
                     emitter.emit('toolInfo', toolsData);
                 }
 
-                usage_data.forEach((usage) => {
+                // Report usage if available
+                if (Object.keys(usage).length > 0) {
                     const _reported = this.reportUsage(usage, {
                         modelEntryName: context.modelEntryName,
                         keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -190,7 +245,7 @@ export class xAIConnector extends LLMConnector {
                         teamId: context.teamId,
                     });
                     reportedUsage.push(_reported);
-                });
+                }
 
                 if (finishReason !== 'stop') {
                     emitter.emit('interrupted', finishReason);
@@ -211,31 +266,9 @@ export class xAIConnector extends LLMConnector {
         return emitter;
     }
 
+    // TODO: will be removed when we merge with interface support of OpenAI
     protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        const emitter = new EventEmitter();
-
-        try {
-            // For Grok, live search is built into the model - no need for explicit tools
-            // The model has access to real-time information from X/Twitter and web search
-            const searchBody = {
-                ...body,
-                // Enable live search by using a search-enabled model
-                // and possibly adding search-specific system message
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You have access to real-time information via live search. Use current information when answering questions.',
-                    },
-                    ...(body.messages || []),
-                ],
-            };
-
-            // Use the stream request for web search to handle real-time results
-            return this.streamRequest({ acRequest, body: searchBody, context });
-        } catch (error) {
-            emitter.emit('error', error);
-            return emitter;
-        }
+        throw new Error('Not implemented');
     }
 
     protected async reqBodyAdapter(params: TLLMParams): Promise<ChatCompletionParams> {
@@ -277,6 +310,68 @@ export class xAIConnector extends LLMConnector {
             body.tool_choice = params.toolsConfig.tool_choice;
         }
 
+        // Add xAI search configuration if useSearch is enabled
+        if (params?.useSearch) {
+            body.search_parameters = {};
+
+            // Basic search parameters
+            if (params.searchMode) body.search_parameters.mode = params.searchMode;
+            if (params.returnCitations !== undefined) body.search_parameters.return_citations = params.returnCitations;
+            if (params.maxSearchResults !== undefined) body.search_parameters.max_search_results = params.maxSearchResults;
+
+            // Date filtering
+            if (params.fromDate) body.search_parameters.from_date = params.fromDate;
+            if (params.toDate) body.search_parameters.to_date = params.toDate;
+
+            // Create sources array
+            const sources: any[] = [];
+
+            // If searchDataSources is provided, use it as source types
+            if (params.searchDataSources && params.searchDataSources.length > 0) {
+                params.searchDataSources.forEach((sourceType) => {
+                    const source: any = { type: sourceType };
+
+                    // Add parameters based on source type
+                    if (sourceType === 'web' || sourceType === 'news') {
+                        if (params.searchCountry) source.country = params.searchCountry;
+
+                        // Website filtering (mutually exclusive)
+                        if (params.excludedWebsites && params.excludedWebsites.length > 0) {
+                            source.excluded_websites = params.excludedWebsites;
+                        } else if (params.allowedWebsites && params.allowedWebsites.length > 0) {
+                            source.allowed_websites = params.allowedWebsites;
+                        }
+
+                        if (params.safeSearch !== undefined) source.safe_search = params.safeSearch;
+                    }
+
+                    if (sourceType === 'x') {
+                        if (params.includedXHandles && params.includedXHandles.length > 0) {
+                            source.included_x_handles = params.includedXHandles;
+                        } else if (params.excludedXHandles && params.excludedXHandles.length > 0) {
+                            source.excluded_x_handles = params.excludedXHandles;
+                        }
+                        if (params.postFavoriteCount !== undefined && params.postFavoriteCount > 0) {
+                            source.post_favorite_count = params.postFavoriteCount;
+                        }
+                        if (params.postViewCount !== undefined && params.postViewCount > 0) {
+                            source.post_view_count = params.postViewCount;
+                        }
+                    }
+
+                    if (sourceType === 'rss') {
+                        if (params.rssLinks) source.links = params.rssLinks;
+                    }
+
+                    sources.push(source);
+                });
+            }
+
+            if (sources.length > 0) {
+                body.search_parameters.sources = sources;
+            }
+        }
+
         return body;
     }
 
@@ -290,7 +385,7 @@ export class xAIConnector extends LLMConnector {
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            reasoning_tokens: usage?.reasoning_tokens || 0,
+            reasoning_tokens: usage?.completion_tokens_details?.reasoning_tokens || usage?.reasoning_tokens || 0,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
