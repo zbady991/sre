@@ -193,10 +193,6 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any> {
-        throw new Error('Web search is not supported for Google AI');
-    }
-
     protected async reqBodyAdapter(params: TLLMParams): Promise<TGoogleAIRequestBody> {
         const model = params?.model;
 

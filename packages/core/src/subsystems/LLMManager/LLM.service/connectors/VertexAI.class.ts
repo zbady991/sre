@@ -97,10 +97,6 @@ export class VertexAIConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Web search is not supported for Vertex AI');
-    }
-
     protected async reqBodyAdapter(params: TLLMParams): Promise<TGoogleAIRequestBody> {
         let messages = params?.messages || [];
 

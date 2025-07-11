@@ -52,10 +52,6 @@ export class EchoConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Web search is not supported for Echo');
-    }
-
     protected async reqBodyAdapter(params: TLLMParams): Promise<any> {
         return params;
     }

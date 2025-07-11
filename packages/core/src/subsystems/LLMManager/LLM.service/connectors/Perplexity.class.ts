@@ -113,10 +113,6 @@ export class PerplexityConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Web search is not supported for Perplexity');
-    }
-
     protected async reqBodyAdapter(params: TLLMParams): Promise<ChatCompletionParams> {
         const messages = params?.messages || [];
 

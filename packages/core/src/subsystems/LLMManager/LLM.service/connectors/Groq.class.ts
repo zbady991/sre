@@ -153,10 +153,6 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Web search is not supported for Groq');
-    }
-
     protected async reqBodyAdapter(params: TLLMParams): Promise<ChatCompletionCreateParams> {
         const messages = params?.messages || [];
 

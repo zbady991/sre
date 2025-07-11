@@ -195,10 +195,6 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Web search is not supported for Bedrock');
-    }
-
     protected async reqBodyAdapter(params: TLLMParams): Promise<ConverseCommandInput> {
         const customModelInfo = params.modelInfo;
 
