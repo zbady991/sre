@@ -276,8 +276,8 @@ export class GenAILLM extends Component {
         useSearch: Joi.boolean().optional().label('Use Search'),
         searchMode: Joi.string().valid('auto', 'on', 'off').optional().label('Search Mode'),
         returnCitations: Joi.boolean().optional().label('Return Citations'),
-        maxSearchResults: Joi.number().min(1).max(50).optional().label('Max Search Results'),
-        searchDataSources: Joi.array().items(Joi.string().valid('web', 'x', 'news', 'rss_feeds')).max(4).optional().label('Search Data Sources'),
+        maxSearchResults: Joi.number().min(1).max(100).optional().label('Max Search Results'),
+        searchDataSources: Joi.array().items(Joi.string().valid('web', 'x', 'news', 'rss')).max(4).optional().label('Search Data Sources'),
         searchCountry: Joi.string().length(2).optional().allow('').label('Search Country'),
         excludedWebsites: Joi.string().max(10000).optional().allow('').label('Excluded Websites'),
         allowedWebsites: Joi.string().max(10000).optional().allow('').label('Allowed Websites'),
@@ -285,7 +285,7 @@ export class GenAILLM extends Component {
         excludedXHandles: Joi.string().max(1000).optional().allow('').label('Excluded X Handles'),
         postFavoriteCount: Joi.number().min(0).max(1000000000).optional().label('Post Favorite Count'),
         postViewCount: Joi.number().min(0).max(1000000000).optional().label('Post View Count'),
-        link: Joi.string().max(5000).optional().allow('').label('RSS Link'),
+        rssLinks: Joi.string().max(10000).optional().allow('').label('RSS Link'),
         safeSearch: Joi.boolean().optional().label('Safe Search'),
         fromDate: Joi.string()
             .pattern(/^\d{4}-\d{2}-\d{2}$/)

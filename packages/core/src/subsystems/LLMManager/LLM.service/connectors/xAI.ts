@@ -334,11 +334,14 @@ export class xAIConnector extends LLMConnector {
                     // Add parameters based on source type
                     if (sourceType === 'web' || sourceType === 'news') {
                         if (params.searchCountry) source.country = params.searchCountry;
+
+                        // Website filtering (mutually exclusive)
                         if (params.excludedWebsites && params.excludedWebsites.length > 0) {
                             source.excluded_websites = params.excludedWebsites;
                         } else if (params.allowedWebsites && params.allowedWebsites.length > 0) {
                             source.allowed_websites = params.allowedWebsites;
                         }
+
                         if (params.safeSearch !== undefined) source.safe_search = params.safeSearch;
                     }
 
@@ -357,24 +360,11 @@ export class xAIConnector extends LLMConnector {
                     }
 
                     if (sourceType === 'rss') {
-                        if (params.link) source.links = [params.link];
+                        if (params.rssLinks) source.links = params.rssLinks;
                     }
 
                     sources.push(source);
                 });
-            } else {
-                // Default to web source if no sources specified
-                const webSource: any = { type: 'web' };
-
-                if (params.searchCountry) webSource.country = params.searchCountry;
-                if (params.excludedWebsites && params.excludedWebsites.length > 0) {
-                    webSource.excluded_websites = params.excludedWebsites;
-                } else if (params.allowedWebsites && params.allowedWebsites.length > 0) {
-                    webSource.allowed_websites = params.allowedWebsites;
-                }
-                if (params.safeSearch !== undefined) webSource.safe_search = params.safeSearch;
-
-                sources.push(webSource);
             }
 
             if (sources.length > 0) {

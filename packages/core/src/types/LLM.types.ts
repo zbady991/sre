@@ -104,7 +104,7 @@ export type TLLMParams = {
     excludedXHandles?: string[];
     postFavoriteCount?: number;
     postViewCount?: number;
-    link?: string;
+    rssLinks?: string;
     safeSearch?: boolean;
     fromDate?: string;
     toDate?: string;

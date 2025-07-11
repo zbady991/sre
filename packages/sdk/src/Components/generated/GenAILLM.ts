@@ -57,7 +57,7 @@ export interface TGenAILLMSettings {
     /** Max Search Results */
     maxSearchResults?: number;
     /** Search Data Sources */
-    searchDataSources?: 'web' | 'x' | 'news' | 'rss_feeds';
+    searchDataSources?: 'web' | 'x' | 'news' | 'rss';
     /** Search Country */
     searchCountry?: string;
     /** Excluded Websites */
@@ -80,6 +80,8 @@ export interface TGenAILLMSettings {
     fromDate?: string;
     /** To Date */
     toDate?: string;
+    /** RSS Link */
+    rssLinks?: string;
     /** Use Reasoning */
     useReasoning?: boolean;
 }

@@ -146,7 +146,12 @@ export abstract class LLMConnector extends Connector {
 
                 let response;
 
-                if (preparedParams.capabilities?.search === true && preparedParams.useWebSearch === true) {
+                if (
+                    preparedParams.capabilities?.search === true &&
+                    preparedParams.useWebSearch === true &&
+                    preparedParams.modelInfo.provider === 'OpenAI'
+                ) {
+                    // ! webSearchRequest will be removed in next update
                     response = await this.webSearchRequest(requestParams);
                 } else {
                     response = await this.streamRequest(requestParams);
@@ -334,7 +339,7 @@ export abstract class LLMConnector extends Connector {
             let _value: any = value;
 
             // Array parameters that can be separated by comma or newline
-            const arrayParams = ['stopSequences', 'excludedWebsites', 'allowedWebsites', 'includedXHandles', 'excludedXHandles'];
+            const arrayParams = ['stopSequences', 'excludedWebsites', 'allowedWebsites', 'includedXHandles', 'excludedXHandles', 'rssLinks'];
 
             if (arrayParams.includes(key)) {
                 if (_value && typeof _value === 'string') {
