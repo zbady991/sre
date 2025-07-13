@@ -1,6 +1,5 @@
 import EventEmitter from 'events';
 import OpenAI, { toFile } from 'openai';
-import type { Stream } from 'openai/streaming';
 import { encodeChat } from 'gpt-tokenizer';
 
 import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -8,7 +7,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import {
     TLLMParams,
@@ -19,7 +18,6 @@ import {
     APIKeySource,
     ILLMRequestFuncParams,
     TOpenAIRequestBody,
-    TOpenAIResponseToolChoice,
     TLLMChatResponse,
     ILLMRequestContext,
     BasicCredentials,
@@ -28,10 +26,8 @@ import {
 import { LLMConnector } from '../../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { IResponseHandler, HandlerDependencies, TToolType } from './types';
-import { ResponsesHandler, ChatCompletionsHandler } from './handlers';
-
-const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+import { HandlerDependencies, TToolType } from './types';
+import { OpenAIApiInterfaceFactory, OpenAIApiInterface, OpenAIApiContext } from './apiInterfaces';
 
 type TSearchContextSize = 'low' | 'medium' | 'high';
 type TSearchLocation = {
@@ -45,7 +41,7 @@ type TSearchLocation = {
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    private responseHandlers: Map<string, IResponseHandler>;
+    private interfaceFactory: OpenAIApiInterfaceFactory;
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
     private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
@@ -57,10 +53,19 @@ export class OpenAIConnector extends LLMConnector {
             reportUsage: (usage, metadata) => this.reportUsage(usage, metadata),
         };
 
-        this.responseHandlers = new Map<string, IResponseHandler>([
-            ['responses', new ResponsesHandler(deps)],
-            ['chat.completions', new ChatCompletionsHandler(deps)],
-        ]);
+        this.interfaceFactory = new OpenAIApiInterfaceFactory(deps);
+    }
+
+    /**
+     * Get the appropriate API interface for the given interface type and context
+     */
+    private getApiInterface(interfaceType: string, context: ILLMRequestContext): OpenAIApiInterface {
+        const apiContext: OpenAIApiContext = {
+            ...context,
+            client: null, // Will be set by the interface when needed
+            connector: this as any, // Type assertion to avoid circular dependency
+        };
+        return this.interfaceFactory.createInterface(interfaceType, apiContext);
     }
 
     protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
@@ -94,9 +99,9 @@ export class OpenAIConnector extends LLMConnector {
             });
             // #endregion Validate token limit
 
-            const responseInterface = context.modelInfo?.interface || 'chat.completions';
-            const responseHandler = this.responseHandlers.get(responseInterface);
-            const result = await responseHandler?.createStream(body, context);
+            const responseInterface = this.interfaceFactory.getInterfaceTypeFromModelInfo(context.modelInfo);
+            const apiInterface = this.getApiInterface(responseInterface, context);
+            const result = await apiInterface.createRequest(body, context);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -156,10 +161,10 @@ export class OpenAIConnector extends LLMConnector {
             });
             // #endregion Validate token limit
 
-            const responseInterface = context.modelInfo?.interface || 'chat.completions';
-            const responseHandler = this.responseHandlers.get(responseInterface);
-            const stream = await responseHandler?.createStream(body, context);
-            const emitter = responseHandler?.handleStream(stream, context);
+            const responseInterface = this.interfaceFactory.getInterfaceTypeFromModelInfo(context.modelInfo);
+            const apiInterface = this.getApiInterface(responseInterface, context);
+            const stream = await apiInterface.createStream(body, context);
+            const emitter = apiInterface.handleStream(stream, context);
 
             return emitter;
         } catch (error: any) {
@@ -200,7 +205,7 @@ export class OpenAIConnector extends LLMConnector {
         return await this.getImageDataForInterface(validSources, agentId, 'chat.completions');
     }
 
-    private getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
+    public getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
         const validSources = [];
         for (let file of files) {
             if (this.validDocumentMimeTypes.includes(file?.mimetype)) {
@@ -209,6 +214,20 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         return validSources;
+    }
+
+    public async uploadFiles(files: BinaryInput[], agentId: string): Promise<BinaryInput[]> {
+        const promises = [];
+        const _files = [];
+
+        for (let file of files) {
+            const binaryInput = BinaryInput.from(file);
+            promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
+            _files.push(binaryInput);
+        }
+
+        await Promise.all(promises);
+        return _files;
     }
 
     private async processDocumentData(files: BinaryInput[], agentId: string): Promise<any[]> {
@@ -234,9 +253,27 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     private async prepareRequestBody(params: TLLMParams, preparationType: string): Promise<TOpenAIRequestBody> {
+        // Create a minimal context for body preparation - the interface may need access to model info
+        const minimalContext: ILLMRequestContext = {
+            modelInfo: params.modelInfo,
+            modelEntryName: params.modelEntryName,
+            agentId: params.agentId,
+            teamId: params.teamId,
+            isUserKey: params.isUserKey,
+            credentials: params.credentials,
+            hasFiles: params.files && params.files.length > 0,
+            toolsInfo: params.toolsInfo,
+        };
+
         const preparers = {
-            'chat.completions': () => this.prepareChatCompletionsBody(params),
-            responses: () => this.prepareResponsesBody(params),
+            'chat.completions': async () => {
+                const apiInterface = this.getApiInterface('chat.completions', minimalContext);
+                return apiInterface.prepareRequestBody(params);
+            },
+            responses: async () => {
+                const apiInterface = this.getApiInterface('responses', minimalContext);
+                return apiInterface.prepareRequestBody(params);
+            },
             'image-generation': () => this.prepareImageGenerationBody(params),
             'image-edit': () => this.prepareImageEditBody(params),
             // Future interfaces can be added here
@@ -291,25 +328,28 @@ export class OpenAIConnector extends LLMConnector {
         return usageData;
     }
 
-    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
-        let tools: OpenAI.ChatCompletionTool[] = [];
+    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto', modelInfo = null }) {
+        let tools: any[] = [];
 
         if (type === 'function') {
-            tools = toolDefinitions.map((tool) => {
-                const { name, description, properties, requiredFields } = tool;
+            // Get API interface type from model info
+            const interfaceType = this.interfaceFactory.getInterfaceTypeFromModelInfo(modelInfo);
 
-                return {
-                    type: 'function',
-                    function: {
-                        name,
-                        description,
-                        parameters: {
-                            type: 'object',
-                            properties,
-                            required: requiredFields,
-                        },
-                    },
-                };
+            // Create a temporary context to get the interface
+            const tempContext: OpenAIApiContext = {
+                modelInfo,
+                client: null,
+                connector: this as any,
+            } as OpenAIApiContext;
+
+            const apiInterface = this.interfaceFactory.createInterface(interfaceType, tempContext);
+
+            // Transform tools using the interface
+            tools = apiInterface.transformToolsConfig({
+                type,
+                toolDefinitions,
+                toolChoice,
+                modelInfo,
             });
         }
 
@@ -349,6 +389,21 @@ export class OpenAIConnector extends LLMConnector {
         return [...messageBlocks, ...transformedToolsData];
     }
 
+    /**
+     * Transform messages for different API types
+     * Uses the new interface pattern following the same pattern as formatToolsConfig
+     */
+    public transformMessagesForApiType(messages: any[], apiType: string): any[] {
+        // Create a temporary context to get the interface
+        const tempContext: OpenAIApiContext = {
+            client: null,
+            connector: this as any,
+        } as OpenAIApiContext;
+
+        const apiInterface = this.interfaceFactory.createInterface(apiType, tempContext);
+        return apiInterface.transformMessages(messages);
+    }
+
     public getConsistentMessages(messages) {
         const _messages = LLMHelper.removeDuplicateUserMessages(messages);
 
@@ -370,7 +425,7 @@ export class OpenAIConnector extends LLMConnector {
         });
     }
 
-    private getValidImageFiles(files: BinaryInput[]) {
+    public getValidImageFiles(files: BinaryInput[]) {
         const validSources = [];
 
         for (let file of files) {
@@ -382,7 +437,7 @@ export class OpenAIConnector extends LLMConnector {
         return validSources;
     }
 
-    private async getImageDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
+    public async getImageDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
         const coreImageData = await this.getCoreImageData(files, agentId);
         return coreImageData.map(({ url }) => this.formatImageData(url, interfaceType));
     }
@@ -430,7 +485,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    private async getDocumentDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
+    public async getDocumentDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
         const coreDocumentData = await this.getCoreDocumentData(files, agentId);
         return coreDocumentData.map(({ fileData, filename }) => this.formatDocumentData(fileData, filename, interfaceType));
     }
@@ -486,7 +541,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    private getWebSearchTool(params: TLLMParams) {
+    public getWebSearchTool(params: TLLMParams) {
         const searchCity = params?.webSearchCity;
         const searchCountry = params?.webSearchCountry;
         const searchRegion = params?.webSearchRegion;
@@ -552,31 +607,10 @@ export class OpenAIConnector extends LLMConnector {
         return modelsProvider;
     }
 
-    private async prepareResponsesBody(params: TLLMParams): Promise<OpenAI.Responses.ResponseCreateParams> {
-        const input = await this.prepareInputsForResponsesAPI(params);
-
-        const body: OpenAI.Responses.ResponseCreateParams = {
-            model: params.model as string,
-            input,
-        };
-
-        if (params?.max_output_tokens !== undefined) {
-            body.max_output_tokens = params.max_output_tokens;
-        }
-
-        // #region Handle tools configuration
-
-        if (params?.toolsInfo?.webSearch?.enabled) {
-            const searchTool = this.getWebSearchTool(params);
-            body.tools = [searchTool];
-
-            if (params?.toolsConfig?.tool_choice) {
-                body.tool_choice = params.toolsConfig.tool_choice as TOpenAIResponseToolChoice;
-            }
-        }
-
-        return body;
-    }
+    /**
+     * Prepare request body for OpenAI Responses API
+     * Uses MessageTransformer and ToolsTransformer for clean interface transformations
+     */
 
     private async prepareImageGenerationBody(params: TLLMParams): Promise<OpenAI.Images.ImageGenerateParams> {
         const { model, size, quality, n, responseFormat, style } = params;
@@ -636,124 +670,5 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         return body;
-    }
-
-    private async prepareChatCompletionsBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
-        const messages = await this.prepareMessages(params);
-
-        //#region Handle JSON response format
-        // TODO: We have better parameter to have structured response, need to implement it.
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (messages?.[0]?.role === TLLMMessageRole.System) {
-                messages[0].content += JSON_RESPONSE_INSTRUCTION;
-            } else {
-                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-            }
-
-            if (MODELS_WITH_JSON_RESPONSE.includes(params.model as string)) {
-                params.responseFormat = { type: 'json_object' };
-            } else {
-                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
-            }
-        }
-        //#endregion Handle JSON response format
-
-        const body: OpenAI.ChatCompletionCreateParams = {
-            model: params.model as string,
-            messages,
-        };
-
-        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            body.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
-        }
-
-        if (params?.toolsConfig?.tool_choice) {
-            body.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
-        }
-
-        if (params?.maxTokens !== undefined) body.max_completion_tokens = params.maxTokens;
-        if (params?.temperature !== undefined) body.temperature = params.temperature;
-        if (params?.topP !== undefined) body.top_p = params.topP;
-        if (params?.frequencyPenalty !== undefined) body.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) body.presence_penalty = params.presencePenalty;
-        if (params?.responseFormat) body.response_format = params.responseFormat;
-        if (params?.stopSequences?.length) body.stop = params.stopSequences;
-
-        return body;
-    }
-
-    private async prepareMessages(params: TLLMParams) {
-        const messages = params?.messages || [];
-
-        const files: BinaryInput[] = params?.files || []; // Assign file from the original parameters to avoid overwriting the original constructor
-
-        if (files.length > 0) {
-            // #region Upload files
-            const promises = [];
-            const _files = [];
-
-            for (let image of files) {
-                const binaryInput = BinaryInput.from(image);
-                promises.push(binaryInput.upload(AccessCandidate.agent(params.agentId)));
-
-                _files.push(binaryInput);
-            }
-
-            await Promise.all(promises);
-            // #endregion Upload files
-
-            const validImageFiles = this.getValidImageFiles(_files);
-            const validDocumentFiles = this.getValidDocumentFiles(_files);
-
-            const imageData = validImageFiles.length > 0 ? await this.processImageData(validImageFiles, params.agentId) : [];
-            const documentData = validDocumentFiles.length > 0 ? await this.processDocumentData(validDocumentFiles, params.agentId) : [];
-
-            const userMessage = Array.isArray(messages) ? messages.pop() : {};
-            const prompt = userMessage?.content || '';
-
-            const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
-
-            messages.push({ role: 'user', content: promptData });
-        }
-
-        return messages;
-    }
-
-    private async prepareInputsForResponsesAPI(params: TLLMParams) {
-        const messages = params?.messages || [];
-        const files: BinaryInput[] = params?.files || [];
-
-        if (files.length > 0) {
-            // #region Upload files
-            const promises = [];
-            const _files = [];
-
-            for (let file of files) {
-                const binaryInput = BinaryInput.from(file);
-                promises.push(binaryInput.upload(AccessCandidate.agent(params.agentId)));
-                _files.push(binaryInput);
-            }
-
-            await Promise.all(promises);
-            // #endregion Upload files
-
-            const validImageFiles = this.getValidImageFiles(_files);
-            const validDocumentFiles = this.getValidDocumentFiles(_files);
-
-            const imageData = validImageFiles.length > 0 ? await this.getImageDataForInterface(validImageFiles, params.agentId, 'responses') : [];
-            const documentData =
-                validDocumentFiles.length > 0 ? await this.getDocumentDataForInterface(validDocumentFiles, params.agentId, 'responses') : [];
-
-            const userMessage = Array.isArray(messages) ? messages.pop() : {};
-            const prompt = userMessage?.content || '';
-
-            const promptData = [{ type: 'input_text', text: prompt || '' }, ...imageData, ...documentData];
-
-            messages.push({ role: 'user', content: promptData });
-        }
-
-        return messages;
     }
 }

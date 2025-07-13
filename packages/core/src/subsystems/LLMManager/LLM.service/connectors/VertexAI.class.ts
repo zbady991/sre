@@ -9,7 +9,6 @@ import {
     TVertexAISettings,
     ILLMRequestFuncParams,
     TGoogleAIRequestBody,
-    TLLMConnectorParams,
     ILLMRequestContext,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';

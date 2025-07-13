@@ -230,7 +230,7 @@ export abstract class LLMConnector extends Connector {
             };
         }
     }
-    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
+    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto', modelInfo = null }) {
         throw new Error('This model does not support tools');
     }
 
