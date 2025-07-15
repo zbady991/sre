@@ -6,7 +6,7 @@ import { Component } from './Component.class';
 export class LogicAtMost extends Component {
     protected configSchema = Joi.object({
         // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
-        maxSetInputs: Joi.string()
+        maxSetInputs: Joi.alternatives([Joi.string(), Joi.number()]) // Value is now a number; keep string fallback for backward compatibility.
             .custom(validateInteger({ min: 0, max: 9 }), 'custom range validation')
             .label('Maximum Inputs'),
     });
@@ -20,7 +20,7 @@ export class LogicAtMost extends Component {
         await super.process(input, config, agent);
         const result: any = { Output: undefined };
 
-        if (typeof config.data.maxSetInputs !== 'string' || config.data.maxSetInputs.trim() === '' || isNaN(Number(config.data.maxSetInputs))) {
+        if (config.data.maxSetInputs === '' || isNaN(Number(config.data.maxSetInputs))) {
             return result;
         }
 
