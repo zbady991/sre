@@ -29,15 +29,6 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { HandlerDependencies, TToolType } from './types';
 import { OpenAIApiInterfaceFactory, OpenAIApiInterface, OpenAIApiContext } from './apiInterfaces';
 
-type TSearchContextSize = 'low' | 'medium' | 'high';
-type TSearchLocation = {
-    type: 'approximate';
-    city?: string;
-    country?: string;
-    region?: string;
-    timezone?: string;
-};
-
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
@@ -539,44 +530,6 @@ export class OpenAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
-    }
-
-    public getWebSearchTool(params: TLLMParams) {
-        const searchCity = params?.webSearchCity;
-        const searchCountry = params?.webSearchCountry;
-        const searchRegion = params?.webSearchRegion;
-        const searchTimezone = params?.webSearchTimezone;
-
-        const location: {
-            type: 'approximate';
-            city?: string;
-            country?: string;
-            region?: string;
-            timezone?: string;
-        } = {
-            type: 'approximate', // Required, always be 'approximate' when we implement location
-        };
-
-        if (searchCity) location.city = searchCity;
-        if (searchCountry) location.country = searchCountry;
-        if (searchRegion) location.region = searchRegion;
-        if (searchTimezone) location.timezone = searchTimezone;
-
-        const searchTool: {
-            type: TToolType.WebSearch;
-            search_context_size: TSearchContextSize;
-            user_location?: TSearchLocation;
-        } = {
-            type: TToolType.WebSearch,
-            search_context_size: params?.webSearchContextSize || 'medium',
-        };
-
-        // Add location only if any location field is provided. Since 'type' is always present, we check if the number of keys in the location object is greater than 1.
-        if (Object.keys(location).length > 1) {
-            searchTool.user_location = location;
-        }
-
-        return searchTool;
     }
 
     private async validateTokenLimit({

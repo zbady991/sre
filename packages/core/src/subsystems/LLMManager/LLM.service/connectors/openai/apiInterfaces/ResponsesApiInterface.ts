@@ -13,7 +13,16 @@ import {
     APIKeySource,
 } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, OpenAIApiContext, ToolConfig } from './OpenAIApiInterface';
-import { HandlerDependencies } from '../types';
+import { HandlerDependencies, TToolType } from '../types';
+
+type TSearchContextSize = 'low' | 'medium' | 'high';
+type TSearchLocation = {
+    type: 'approximate';
+    city?: string;
+    country?: string;
+    region?: string;
+    timezone?: string;
+};
 
 /**
  * OpenAI Responses API interface implementation
@@ -256,12 +265,23 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.top_p = params.topP;
         }
 
+        let tools = [];
+
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            body.tools = await this.prepareToolsForRequest(params);
+            tools = await this.prepareFunctionTools(params);
         }
 
-        if (params?.toolsConfig?.tool_choice) {
-            body.tool_choice = params?.toolsConfig?.tool_choice as TOpenAIResponseToolChoice;
+        if (params.toolsInfo.webSearch.enabled) {
+            const searchTool = this.prepareWebSearchTool(params);
+            tools.push(searchTool);
+        }
+
+        if (tools.length > 0) {
+            body.tools = tools;
+
+            if (params?.toolsConfig?.tool_choice) {
+                body.tool_choice = params?.toolsConfig?.tool_choice as TOpenAIResponseToolChoice;
+            }
         }
 
         return body;
@@ -358,6 +378,12 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         // Find the last user message and add files to it
         for (let i = messages.length - 1; i >= 0; i--) {
             if (messages[i].role === 'user') {
+                // Ensure content is an array before pushing files
+                if (typeof messages[i].content === 'string') {
+                    messages[i].content = [{ type: 'input_text', text: messages[i].content }];
+                } else if (!Array.isArray(messages[i].content)) {
+                    messages[i].content = [];
+                }
                 messages[i].content.push(...imageData, ...documentData);
                 break;
             }
@@ -404,7 +430,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Prepare tools for request
      */
-    private async prepareToolsForRequest(params: TLLMParams): Promise<any[]> {
+    private async prepareFunctionTools(params: TLLMParams): Promise<any[]> {
         const tools: any[] = [];
 
         // Add regular function tools
@@ -423,19 +449,48 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             tools.push(...toolsConfig);
         }
 
-        // Add web search tool if enabled
-        if (params?.toolsInfo?.webSearch?.enabled) {
-            const searchTool = this.getWebSearchTool(params);
-            // Transform web search tool to Responses API format
-            tools.push({
-                type: searchTool.type,
-                name: searchTool.function.name,
-                description: searchTool.function.description,
-                parameters: searchTool.function.parameters,
-            });
+        return tools;
+    }
+
+    /**
+     * Get web search tool configuration for OpenAI Responses API
+     */
+    private prepareWebSearchTool(params: TLLMParams) {
+        const searchCity = params?.webSearchCity;
+        const searchCountry = params?.webSearchCountry;
+        const searchRegion = params?.webSearchRegion;
+        const searchTimezone = params?.webSearchTimezone;
+
+        const location: {
+            type: 'approximate';
+            city?: string;
+            country?: string;
+            region?: string;
+            timezone?: string;
+        } = {
+            type: 'approximate', // Required, always be 'approximate' when we implement location
+        };
+
+        if (searchCity) location.city = searchCity;
+        if (searchCountry) location.country = searchCountry;
+        if (searchRegion) location.region = searchRegion;
+        if (searchTimezone) location.timezone = searchTimezone;
+
+        const searchTool: {
+            type: TToolType.WebSearch;
+            search_context_size: TSearchContextSize;
+            user_location?: TSearchLocation;
+        } = {
+            type: TToolType.WebSearch,
+            search_context_size: params?.webSearchContextSize || 'medium',
+        };
+
+        // Add location only if any location field is provided. Since 'type' is always present, we check if the number of keys in the location object is greater than 1.
+        if (Object.keys(location).length > 1) {
+            searchTool.user_location = location;
         }
 
-        return tools;
+        return searchTool;
     }
 
     /**

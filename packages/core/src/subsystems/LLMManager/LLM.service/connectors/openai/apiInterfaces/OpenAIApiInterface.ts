@@ -100,11 +100,6 @@ export abstract class OpenAIApiInterface {
      */
     abstract validateParameters(params: TLLMParams): boolean;
 
-    // Shared utility methods that can be used by implementations
-    protected getWebSearchTool(params: TLLMParams): any {
-        return this.context.connector.getWebSearchTool(params);
-    }
-
     protected async getImageDataForInterface(files: BinaryInput[], agentId: string): Promise<any[]> {
         return this.context.connector.getImageDataForInterface(files, agentId, this.getInterfaceName());
     }
@@ -145,7 +140,6 @@ export interface OpenAIApiInterfaceFactory {
 
 // Forward declaration to avoid circular dependency
 export interface OpenAIConnector {
-    getWebSearchTool(params: TLLMParams): any;
     getImageDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string): Promise<any[]>;
     getDocumentDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string): Promise<any[]>;
     getValidImageFiles(files: BinaryInput[]): BinaryInput[];
