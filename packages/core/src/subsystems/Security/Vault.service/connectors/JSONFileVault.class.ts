@@ -163,7 +163,9 @@ export class JSONFileVault extends VaultConnector {
 
     @SecureConnector.AccessControl
     protected async listKeys(acRequest: AccessRequest) {
-        return Object.keys(this.vaultData);
+        const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+        return Object.keys(this.vaultData?.[teamId] || this.vaultData?.[this.shared] || {});
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {

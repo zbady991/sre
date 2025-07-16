@@ -17,7 +17,8 @@ class LLMInference {
 
 export class DataSourceLookup extends Component {
     protected configSchema = Joi.object({
-        topK: Joi.string()
+        topK: Joi.alternatives([Joi.string(), Joi.number()]) // Value is now a number; keep string fallback for backward compatibility.
+
             .custom(validateInteger({ min: 0 }), 'custom range validation')
             .label('Result Count'),
         model: Joi.string().valid('gpt-4o-mini', 'gpt-4', 'gpt-3.5-turbo', 'gpt-4', 'gpt-3.5-turbo-16k').optional(),
