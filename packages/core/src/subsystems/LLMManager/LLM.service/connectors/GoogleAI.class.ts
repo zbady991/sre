@@ -27,6 +27,7 @@ import {
     TGoogleAIRequestBody,
     TLLMConnectorParams,
     ILLMRequestContext,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -193,7 +194,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<TGoogleAIRequestBody> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TGoogleAIRequestBody> {
         const model = params?.model;
 
         const messages = await this.prepareMessages(params);
@@ -405,7 +406,7 @@ export class GoogleAIConnector extends LLMConnector {
         });
     }
 
-    private async prepareMessages(params: TLLMParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
+    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
         let messages: string | TLLMMessageBlock[] | GenerateContentRequest = params?.messages || '';
 
         const files: BinaryInput[] = params?.files || [];
@@ -421,7 +422,7 @@ export class GoogleAIConnector extends LLMConnector {
         return messages;
     }
 
-    private async prepareMessagesWithFiles(params: TLLMParams): Promise<string> {
+    private async prepareMessagesWithFiles(params: TLLMPreparedParams): Promise<string> {
         const model = params.model;
 
         let messages: string | TLLMMessageBlock[] = params?.messages || '';
@@ -490,7 +491,7 @@ export class GoogleAIConnector extends LLMConnector {
         return messages as string;
     }
 
-    private async prepareMessagesWithTools(params: TLLMParams): Promise<GenerateContentRequest> {
+    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<GenerateContentRequest> {
         let formattedMessages: TLLMMessageBlock[];
         let systemInstruction = '';
 
@@ -525,7 +526,7 @@ export class GoogleAIConnector extends LLMConnector {
         return toolsPrompt;
     }
 
-    private async prepareMessagesWithTextQuery(params: TLLMParams): Promise<string> {
+    private async prepareMessagesWithTextQuery(params: TLLMPreparedParams): Promise<string> {
         const model = params.model;
         let systemInstruction = '';
         let prompt = '';

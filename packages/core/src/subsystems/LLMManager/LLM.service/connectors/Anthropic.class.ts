@@ -5,7 +5,6 @@ import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import {
-    TLLMParams,
     ToolData,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
@@ -404,7 +403,7 @@ export class AnthropicConnector extends LLMConnector {
         return _messages;
     }
 
-    private async prepareBody(params: TLLMParams): Promise<Anthropic.MessageCreateParamsNonStreaming> {
+    private async prepareBody(params: TLLMPreparedParams): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         let messages = await this.prepareMessages(params);
 
         let body: Anthropic.MessageCreateParamsNonStreaming = {
@@ -520,7 +519,7 @@ export class AnthropicConnector extends LLMConnector {
         return thinkingBody;
     }
 
-    private async prepareMessages(params: TLLMParams) {
+    private async prepareMessages(params: TLLMPreparedParams) {
         const messages = params?.messages || [];
 
         const files: BinaryInput[] = params?.files || [];
@@ -553,7 +552,10 @@ export class AnthropicConnector extends LLMConnector {
         return messages;
     }
 
-    private async prepareSystemPrompt(systemMessage: TLLMMessageBlock, params: TLLMParams): Promise<string | Array<Anthropic.TextBlockParam>> {
+    private async prepareSystemPrompt(
+        systemMessage: TLLMMessageBlock,
+        params: TLLMPreparedParams
+    ): Promise<string | Array<Anthropic.TextBlockParam>> {
         let systemPrompt = systemMessage?.content;
 
         if (typeof systemPrompt === 'string') {

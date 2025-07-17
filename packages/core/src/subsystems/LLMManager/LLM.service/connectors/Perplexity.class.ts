@@ -4,7 +4,6 @@ import axios, { AxiosInstance } from 'axios';
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 
 import {
-    TLLMParams,
     ToolData,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
@@ -13,8 +12,8 @@ import {
     BasicCredentials,
     ILLMRequestFuncParams,
     TLLMChatResponse,
-    TLLMConnectorParams,
     ILLMRequestContext,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -113,7 +112,7 @@ export class PerplexityConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<ChatCompletionParams> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<ChatCompletionParams> {
         const messages = params?.messages || [];
 
         //#region Handle JSON response format

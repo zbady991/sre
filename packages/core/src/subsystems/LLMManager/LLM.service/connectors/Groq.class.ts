@@ -11,9 +11,8 @@ import {
     BasicCredentials,
     ILLMRequestFuncParams,
     TLLMChatResponse,
-    TLLMParams,
-    TLLMConnectorParams,
     ILLMRequestContext,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -153,7 +152,7 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<ChatCompletionCreateParams> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<ChatCompletionCreateParams> {
         const messages = params?.messages || [];
 
         const body: ChatCompletionCreateParams = {

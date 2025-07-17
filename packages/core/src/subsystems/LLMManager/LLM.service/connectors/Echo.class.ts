@@ -1,7 +1,7 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
-import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMConnectorParams, TLLMParams } from '@sre/types/LLM.types';
+import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMPreparedParams } from '@sre/types/LLM.types';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
@@ -52,7 +52,7 @@ export class EchoConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<any> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<any> {
         return params;
     }
 

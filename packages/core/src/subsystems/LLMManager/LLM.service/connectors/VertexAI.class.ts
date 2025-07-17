@@ -3,13 +3,13 @@ import EventEmitter from 'events';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import {
-    TLLMParams,
     TCustomLLMModel,
     APIKeySource,
     TVertexAISettings,
     ILLMRequestFuncParams,
     TGoogleAIRequestBody,
     ILLMRequestContext,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -96,7 +96,7 @@ export class VertexAIConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<TGoogleAIRequestBody> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TGoogleAIRequestBody> {
         let messages = params?.messages || [];
 
         //#region Separate system message and add JSON response instruction if needed
