@@ -8,7 +8,6 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import {
     TLLMParams,
@@ -29,42 +28,30 @@ import { LLMConnector } from '../../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { HandlerDependencies, TToolType } from './types';
-import { OpenAIApiInterfaceFactory, OpenAIApiInterface, OpenAIApiContext } from './apiInterfaces';
-import { IOpenAIConnectorOperations } from './types';
+import { OpenAIApiInterfaceFactory, OpenAIApiInterface } from './apiInterfaces';
 
-// File size limits in bytes
-const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
-const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
-
-export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOperations {
+export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
     private interfaceFactory: OpenAIApiInterfaceFactory;
-    private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
-    private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
+    private interface: OpenAIApiInterface;
 
     constructor() {
         super();
 
-        const deps: HandlerDependencies = {
-            getClient: (context) => this.getClient(context),
-            reportUsage: (usage, metadata) => this.reportUsage(usage, metadata),
-        };
-
-        this.interfaceFactory = new OpenAIApiInterfaceFactory(deps);
+        this.interfaceFactory = new OpenAIApiInterfaceFactory();
     }
 
     /**
      * Get the appropriate API interface for the given interface type and context
      */
     private getApiInterface(interfaceType: string, context: ILLMRequestContext): OpenAIApiInterface {
-        const tempContext: OpenAIApiContext = {
-            ...context,
-            client: null,
-            connector: this,
-        } as OpenAIApiContext;
+        const deps: HandlerDependencies = {
+            getClient: (context) => this.getClient(context),
+            reportUsage: (usage, metadata) => this.reportUsage(usage, metadata),
+        };
 
-        return this.interfaceFactory.createInterface(interfaceType, tempContext);
+        return this.interfaceFactory.createInterface(interfaceType, context, deps);
     }
 
     protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
@@ -100,7 +87,9 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
 
             const responseInterface = this.interfaceFactory.getInterfaceTypeFromModelInfo(context.modelInfo);
             const apiInterface = this.getApiInterface(responseInterface, context);
+
             const result = await apiInterface.createRequest(body, context);
+
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -162,7 +151,9 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
 
             const responseInterface = this.interfaceFactory.getInterfaceTypeFromModelInfo(context.modelInfo);
             const apiInterface = this.getApiInterface(responseInterface, context);
+
             const stream = await apiInterface.createStream(body, context);
+
             const emitter = apiInterface.handleStream(stream, context);
 
             return emitter;
@@ -195,137 +186,7 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
             throw error;
         }
     }
-
-    private async processImageData(files: BinaryInput[], agentId: string): Promise<any[]> {
-        const validSources = this.getValidImageFiles(files);
-        if (validSources.length === 0) {
-            return [];
-        }
-        return await this.getImageDataForInterface(validSources, agentId, 'chat.completions');
-    }
-
-    public getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
-        const validSources = [];
-        for (let file of files) {
-            if (this.validDocumentMimeTypes.includes(file?.mimetype)) {
-                validSources.push(file);
-            }
-        }
-
-        return validSources;
-    }
-
-    public async uploadFiles(files: BinaryInput[], agentId: string): Promise<BinaryInput[]> {
-        const promises = [];
-        const _files = [];
-
-        for (let file of files) {
-            const binaryInput = BinaryInput.from(file);
-            promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
-            _files.push(binaryInput);
-        }
-
-        await Promise.all(promises);
-        return _files;
-    }
-
-    private async processDocumentData(files: BinaryInput[], agentId: string): Promise<any[]> {
-        const validSources = this.getValidDocumentFiles(files);
-        if (validSources.length === 0) {
-            return [];
-        }
-        return await this.getDocumentDataForInterface(validSources, agentId, 'chat.completions');
-    }
-
-    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TOpenAIRequestBody> {
-        // Determine the API interface to use for body preparation
-        const responseInterface = params.modelInfo?.interface || 'chat.completions';
-
-        // Handle special capabilities first (these override interface type)
-        if (params.capabilities?.imageGeneration === true) {
-            const capabilityType = params?.files?.length > 0 ? 'image-edit' : 'image-generation';
-            return this.prepareRequestBody(params, capabilityType);
-        }
-
-        // Use standard interface preparation
-        return this.prepareRequestBody(params, responseInterface);
-    }
-
-    private async prepareRequestBody(params: TLLMPreparedParams, preparationType: string): Promise<TOpenAIRequestBody> {
-        // Create a minimal context for body preparation - the interface may need access to model info
-        const minimalContext: ILLMRequestContext = {
-            modelInfo: params.modelInfo,
-            modelEntryName: params.modelEntryName,
-            agentId: params.agentId,
-            teamId: params.teamId,
-            isUserKey: params.isUserKey,
-            credentials: params.credentials,
-            hasFiles: params.files && params.files.length > 0,
-            toolsInfo: params.toolsInfo,
-        };
-
-        const preparers = {
-            'chat.completions': async () => {
-                const apiInterface = this.getApiInterface('chat.completions', minimalContext);
-                return apiInterface.prepareRequestBody(params);
-            },
-            responses: async () => {
-                const apiInterface = this.getApiInterface('responses', minimalContext);
-                return apiInterface.prepareRequestBody(params);
-            },
-            'image-generation': () => this.prepareImageGenerationBody(params),
-            'image-edit': () => this.prepareImageEditBody(params),
-            // Future interfaces can be added here
-        };
-
-        const preparer = preparers[preparationType];
-        if (!preparer) {
-            throw new Error(`Unsupported preparation type: ${preparationType}`);
-        }
-
-        return preparer();
-    }
-
-    protected reportUsage(
-        usage: OpenAI.Completions.CompletionUsage & {
-            input_tokens?: number;
-            output_tokens?: number;
-            input_tokens_details?: { cached_tokens?: number };
-            prompt_tokens_details?: { cached_tokens?: number };
-            cost?: number; // for web search tool
-        },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
-        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-
-        const inputTokens = usage?.input_tokens || usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0); // Returned by the search tool
-
-        const outputTokens =
-            usage?.output_tokens || // Returned by the search tool
-            usage?.completion_tokens ||
-            0;
-
-        const cachedInputTokens =
-            usage?.input_tokens_details?.cached_tokens || // Returned by the search tool
-            usage?.prompt_tokens_details?.cached_tokens ||
-            0;
-
-        const usageData = {
-            sourceId: `llm:${modelName}`,
-            input_tokens: inputTokens,
-            output_tokens: outputTokens,
-            input_tokens_cache_write: 0,
-            input_tokens_cache_read: cachedInputTokens,
-            cost: usage?.cost || 0, // for web search tool
-            keySource: metadata.keySource,
-            agentId: metadata.agentId,
-            teamId: metadata.teamId,
-        };
-        SystemEvents.emit('USAGE:LLM', usageData);
-
-        return usageData;
-    }
+    // #endregion
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto', modelInfo = null }) {
         let tools = [];
@@ -333,7 +194,7 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
         if (toolDefinitions && toolDefinitions.length > 0) {
             const interfaceType = modelInfo?.interface || 'chat.completions';
 
-            const tempContext: OpenAIApiContext = {
+            const tempContext: ILLMRequestContext = {
                 modelEntryName: '',
                 agentId: '',
                 teamId: '',
@@ -341,16 +202,20 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
                 modelInfo,
                 credentials: null,
                 client: null,
-                connector: this,
-            } as OpenAIApiContext;
+            } as ILLMRequestContext;
 
-            const apiInterface = this.interfaceFactory.createInterface(interfaceType, tempContext);
+            const deps: HandlerDependencies = {
+                getClient: (context) => this.getClient(context),
+                reportUsage: (usage, metadata) => this.reportUsage(usage, metadata),
+            };
+
+            const apiInterface = this.interfaceFactory.createInterface(interfaceType, tempContext, deps);
 
             // Transform tools using the interface
             tools = apiInterface.transformToolsConfig({
                 type,
                 toolDefinitions,
-                toolChoice,
+                toolChoice: toolChoice as OpenAI.ChatCompletionToolChoiceOption,
                 modelInfo,
             });
         }
@@ -391,27 +256,6 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
         return [...messageBlocks, ...transformedToolsData];
     }
 
-    /**
-     * Transform messages for different API types
-     * Uses the new interface pattern following the same pattern as formatToolsConfig
-     */
-    public transformMessagesForApiType(messages: any[], apiType: string): any[] {
-        // Create a temporary context to get the interface
-        const tempContext: OpenAIApiContext = {
-            modelEntryName: '',
-            agentId: '',
-            teamId: '',
-            isUserKey: false,
-            modelInfo: null,
-            credentials: null,
-            client: null,
-            connector: this,
-        } as OpenAIApiContext;
-
-        const apiInterface = this.interfaceFactory.createInterface(apiType, tempContext);
-        return apiInterface.transformMessages(messages);
-    }
-
     public getConsistentMessages(messages) {
         const _messages = LLMHelper.removeDuplicateUserMessages(messages);
 
@@ -431,128 +275,6 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
 
             return _message;
         });
-    }
-
-    public getValidImageFiles(files: BinaryInput[]) {
-        const validSources = [];
-
-        for (let file of files) {
-            if (this.validImageMimeTypes.includes(file?.mimetype)) {
-                validSources.push(file);
-            }
-        }
-
-        return validSources;
-    }
-
-    public async getImageDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
-        const coreImageData = await this.getCoreImageData(files, agentId);
-        return coreImageData.map(({ url }) => this.formatImageData(url, interfaceType));
-    }
-
-    private formatImageData(url: string, interfaceType: string): any {
-        const formatters = {
-            'chat.completions': () => ({
-                type: 'image_url',
-                image_url: { url },
-            }),
-            responses: () => ({
-                type: 'input_image',
-                image_url: url,
-            }),
-            // Future interfaces can be added here
-        };
-
-        const formatter = formatters[interfaceType];
-        if (!formatter) {
-            throw new Error(`Unsupported interface type for image data: ${interfaceType}`);
-        }
-
-        return formatter();
-    }
-
-    private async getCoreImageData(files: BinaryInput[], agentId: string): Promise<{ url: string; filename: string; mimetype: string }[]> {
-        try {
-            const imageData = [];
-
-            for (let file of files) {
-                // Validate file size before processing
-                await this.validateFileSize(file, MAX_IMAGE_SIZE, 'Image');
-
-                const bufferData = await file.readData(AccessCandidate.agent(agentId));
-                const base64Data = bufferData.toString('base64');
-                const url = `data:${file.mimetype};base64,${base64Data}`;
-
-                imageData.push({
-                    url,
-                    filename: await file.getName(),
-                    mimetype: file.mimetype,
-                });
-            }
-
-            return imageData;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    public async getDocumentDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string = 'chat.completions'): Promise<any[]> {
-        const coreDocumentData = await this.getCoreDocumentData(files, agentId);
-        return coreDocumentData.map(({ fileData, filename }) => this.formatDocumentData(fileData, filename, interfaceType));
-    }
-
-    private formatDocumentData(fileData: string, filename: string, interfaceType: string): any {
-        const formatters = {
-            'chat.completions': () => ({
-                type: 'file',
-                file: {
-                    file_data: fileData,
-                    filename,
-                },
-            }),
-            responses: () => ({
-                type: 'input_file',
-                file: {
-                    file_data: fileData,
-                    filename,
-                },
-            }),
-            // Future interfaces can be added here
-        };
-
-        const formatter = formatters[interfaceType];
-        if (!formatter) {
-            throw new Error(`Unsupported interface type for document data: ${interfaceType}`);
-        }
-
-        return formatter();
-    }
-
-    private async getCoreDocumentData(files: BinaryInput[], agentId: string): Promise<{ fileData: string; filename: string; mimetype: string }[]> {
-        try {
-            const documentData = [];
-
-            // Note: We're embedding the file data in the prompt, but we should ideally be uploading the files to OpenAI first
-            // in case we start to support bigger files. Refer to this guide: https://platform.openai.com/docs/guides/pdf-files?api-mode=chat
-            for (let file of files) {
-                // Validate file size before processing
-                await this.validateFileSize(file, MAX_DOCUMENT_SIZE, 'Document');
-
-                const bufferData = await file.readData(AccessCandidate.agent(agentId));
-                const base64Data = bufferData.toString('base64');
-                const fileData = `data:${file.mimetype};base64,${base64Data}`;
-
-                documentData.push({
-                    fileData,
-                    filename: await file.getName(),
-                    mimetype: file.mimetype,
-                });
-            }
-
-            return documentData;
-        } catch (error) {
-            throw error;
-        }
     }
 
     private async validateTokenLimit({
@@ -649,14 +371,93 @@ export class OpenAIConnector extends LLMConnector implements IOpenAIConnectorOpe
         return body;
     }
 
-    /**
-     * Validate file size before processing
-     */
-    private async validateFileSize(file: BinaryInput, maxSize: number, fileType: string): Promise<void> {
-        await file.ready();
-        const fileInfo = await file.getJsonData(AccessCandidate.agent('temp'));
-        if (fileInfo.size > maxSize) {
-            throw new Error(`${fileType} file size (${fileInfo.size} bytes) exceeds maximum allowed size of ${maxSize} bytes`);
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TOpenAIRequestBody> {
+        // Determine the API interface to use for body preparation
+        const responseInterface = params.modelInfo?.interface || 'chat.completions';
+
+        // Handle special capabilities first (these override interface type)
+        if (params.capabilities?.imageGeneration === true) {
+            const capabilityType = params?.files?.length > 0 ? 'image-edit' : 'image-generation';
+            return this.prepareRequestBody(params, capabilityType);
         }
+
+        // Use standard interface preparation
+        return this.prepareRequestBody(params, responseInterface);
+    }
+
+    private async prepareRequestBody(params: TLLMPreparedParams, preparationType: string): Promise<TOpenAIRequestBody> {
+        // Create a minimal context for body preparation - the interface may need access to model info
+        const minimalContext: ILLMRequestContext = {
+            modelInfo: params.modelInfo,
+            modelEntryName: params.modelEntryName,
+            agentId: params.agentId,
+            teamId: params.teamId,
+            isUserKey: params.isUserKey,
+            credentials: params.credentials,
+            hasFiles: params.files && params.files.length > 0,
+            toolsInfo: params.toolsInfo,
+        };
+
+        const preparers = {
+            'chat.completions': async () => {
+                const apiInterface = this.getApiInterface('chat.completions', minimalContext);
+                return apiInterface.prepareRequestBody(params);
+            },
+            responses: async () => {
+                const apiInterface = this.getApiInterface('responses', minimalContext);
+                return apiInterface.prepareRequestBody(params);
+            },
+            'image-generation': () => this.prepareImageGenerationBody(params),
+            'image-edit': () => this.prepareImageEditBody(params),
+            // Future interfaces can be added here
+        };
+
+        const preparer = preparers[preparationType];
+        if (!preparer) {
+            throw new Error(`Unsupported preparation type: ${preparationType}`);
+        }
+
+        return preparer();
+    }
+
+    protected reportUsage(
+        usage: OpenAI.Completions.CompletionUsage & {
+            input_tokens?: number;
+            output_tokens?: number;
+            input_tokens_details?: { cached_tokens?: number };
+            prompt_tokens_details?: { cached_tokens?: number };
+            cost?: number; // for web search tool
+        },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
+
+        const inputTokens = usage?.input_tokens || usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0); // Returned by the search tool
+
+        const outputTokens =
+            usage?.output_tokens || // Returned by the search tool
+            usage?.completion_tokens ||
+            0;
+
+        const cachedInputTokens =
+            usage?.input_tokens_details?.cached_tokens || // Returned by the search tool
+            usage?.prompt_tokens_details?.cached_tokens ||
+            0;
+
+        const usageData = {
+            sourceId: `llm:${modelName}`,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            input_tokens_cache_write: 0,
+            input_tokens_cache_read: cachedInputTokens,
+            cost: usage?.cost || 0, // for web search tool
+            keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }

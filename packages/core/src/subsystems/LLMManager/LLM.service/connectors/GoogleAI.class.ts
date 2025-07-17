@@ -20,12 +20,10 @@ import {
     TLLMToolResultMessageBlock,
     APIKeySource,
     TLLMEvent,
-    TLLMParams,
     BasicCredentials,
     ILLMRequestFuncParams,
     TLLMChatResponse,
     TGoogleAIRequestBody,
-    TLLMConnectorParams,
     ILLMRequestContext,
     TLLMPreparedParams,
 } from '@sre/types/LLM.types';

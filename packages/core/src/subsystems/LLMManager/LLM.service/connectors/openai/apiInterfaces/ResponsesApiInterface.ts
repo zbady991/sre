@@ -1,20 +1,26 @@
 import EventEmitter from 'events';
 import OpenAI from 'openai';
+
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import {
     TLLMParams,
+    TLLMPreparedParams,
     ILLMRequestContext,
     TLLMMessageBlock,
     ToolData,
     TLLMToolResultMessageBlock,
     TLLMMessageRole,
     APIKeySource,
-    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
-import { OpenAIApiInterface, OpenAIApiContext, ToolConfig } from './OpenAIApiInterface';
+import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies, TToolType } from '../types';
 import { getSearchToolCost } from '../config/costs';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+
+// File size limits in bytes
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
 
 type TSearchContextSize = 'low' | 'medium' | 'high';
 type TSearchLocation = {
@@ -35,8 +41,10 @@ type TSearchLocation = {
  */
 export class ResponsesApiInterface extends OpenAIApiInterface {
     private deps: HandlerDependencies;
+    private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
+    private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
-    constructor(context: OpenAIApiContext, deps: HandlerDependencies) {
+    constructor(context: ILLMRequestContext, deps: HandlerDependencies) {
         super(context);
         this.deps = deps;
     }
@@ -57,7 +65,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         });
     }
 
-    handleStream(stream: AsyncIterable<any>, context: ILLMRequestContext): EventEmitter {
+    public handleStream(stream: AsyncIterable<any>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
         const usage_data: any[] = [];
         const reportedUsage: any[] = [];
@@ -236,16 +244,18 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         };
     }
 
-    async prepareRequestBody(params: TLLMPreparedParams): Promise<OpenAI.Responses.ResponseCreateParams> {
-        const input = await this.prepareInputMessages(params);
+    public async prepareRequestBody(params: TLLMPreparedParams): Promise<OpenAI.Responses.ResponseCreateParams> {
+        let input = await this.prepareInputMessages(params);
+
+        // Apply tool message transformation to input messages
+        // There's a difference in the tools message data structures between `Chat Completions` and the `Response` interface.
+        // Since we don't have enough context for the interface in `transformToolMessageBlocks`, we need to perform the transformation here so it's compatible with the `Responses` interface.
+        input = this.applyToolMessageTransformation(input);
 
         const body: OpenAI.Responses.ResponseCreateParams = {
             model: params.model as string,
             input,
         };
-
-        // Note: max_tokens is handled differently in the Responses API
-        // It may not be available in the current version
 
         // Handle max tokens
         if (params?.maxTokens !== undefined) {
@@ -283,7 +293,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         return body;
     }
 
-    transformToolsConfig(config: ToolConfig): OpenAI.Responses.Tool[] {
+    public transformToolsConfig(config: ToolConfig): OpenAI.Responses.Tool[] {
         return config.toolDefinitions.map((tool) => ({
             type: tool.type || 'function',
             name: tool.name,
@@ -296,69 +306,209 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         }));
     }
 
-    transformMessages(messages: OpenAI.ChatCompletionMessageParam[]): any[] {
-        const transformedMessages: any[] = [];
+    /**
+     * Transform assistant message block with tool calls for Responses API
+     */
+    private transformAssistantMessageBlock(messageBlock: TLLMMessageBlock): TLLMToolResultMessageBlock {
+        const transformedMessageBlock: TLLMToolResultMessageBlock = {
+            ...messageBlock,
+            content: this.normalizeContent(messageBlock.content),
+        };
 
-        messages.forEach((message) => {
-            if (message.role === 'assistant' && message.tool_calls) {
-                // Split assistant message with tool_calls into separate items
-                if (message.content) {
-                    transformedMessages.push({
-                        role: 'assistant',
-                        content: message.content,
-                    });
-                }
-
-                message.tool_calls.forEach((toolCall) => {
-                    transformedMessages.push({
-                        type: 'function_call',
-                        name: toolCall.function.name,
-                        arguments: toolCall.function.arguments,
-                        call_id: toolCall.id,
-                    });
-                });
-            } else if (message.role === 'tool') {
-                // Transform tool message to function_call_output
-                transformedMessages.push({
-                    type: 'function_call_output',
-                    call_id: message.tool_call_id,
-                    output: message.content,
-                });
-            } else {
-                // Transform regular messages
-                transformedMessages.push(this.transformRegularMessage(message));
-            }
-        });
-
-        return transformedMessages;
-    }
-
-    transformToolMessageBlocks(messageBlock: TLLMMessageBlock, toolsData: ToolData[]): TLLMToolResultMessageBlock[] {
-        const messageBlocks: TLLMToolResultMessageBlock[] = [];
-
-        if (messageBlock) {
-            const transformedMessageBlock = {
-                ...messageBlock,
-                content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
-            };
-
-            if (transformedMessageBlock.tool_calls) {
-                for (let toolCall of transformedMessageBlock.tool_calls) {
-                    toolCall.function.arguments =
-                        typeof toolCall.function.arguments === 'object' ? JSON.stringify(toolCall.function.arguments) : toolCall.function.arguments;
-                }
-            }
-            messageBlocks.push(transformedMessageBlock);
+        // Transform tool calls if present
+        if (transformedMessageBlock.tool_calls) {
+            transformedMessageBlock.tool_calls = this.transformToolCalls(transformedMessageBlock.tool_calls);
         }
 
-        const transformedToolsData = toolsData.map((toolData) => ({
+        return transformedMessageBlock;
+    }
+
+    /**
+     * Transform individual tool calls to ensure proper formatting
+     */
+    private transformToolCalls(toolCalls: ToolData[]): ToolData[] {
+        return toolCalls.map((toolCall) => ({
+            ...toolCall,
+            // Ensure function arguments are properly stringified for Responses API
+            function: {
+                ...toolCall.function,
+                arguments: this.normalizeToolArguments(toolCall.function?.arguments || toolCall.arguments),
+            },
+            // Ensure arguments at root level are also normalized (for backward compatibility)
+            arguments: this.normalizeToolArguments(toolCall.arguments),
+        }));
+    }
+
+    /**
+     * Transform tool results with comprehensive error handling and type support
+     */
+    private transformToolResults(toolsData: ToolData[]): TLLMToolResultMessageBlock[] {
+        return toolsData.filter((toolData) => this.isValidToolData(toolData)).map((toolData) => this.createToolResultMessage(toolData));
+    }
+
+    /**
+     * Create a tool result message for the Responses API format
+     */
+    private createToolResultMessage(toolData: ToolData): TLLMToolResultMessageBlock {
+        const baseMessage: TLLMToolResultMessageBlock = {
             tool_call_id: toolData.id,
             role: TLLMMessageRole.Tool,
             name: toolData.name,
-            content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
-        }));
+            content: this.formatToolResult(toolData),
+        };
 
-        return [...messageBlocks, ...transformedToolsData];
+        // Handle tool errors specifically
+        if (toolData.error) {
+            baseMessage.content = this.formatToolError(toolData);
+        }
+
+        return baseMessage;
+    }
+
+    /**
+     * Format tool result content based on type and handle special cases
+     */
+    private formatToolResult(toolData: ToolData): string {
+        const result = toolData.result;
+
+        // Handle different result types
+        if (typeof result === 'string') {
+            return result;
+        }
+
+        if (typeof result === 'object' && result !== null) {
+            try {
+                return JSON.stringify(result, null, 2);
+            } catch (error) {
+                return `[Error serializing result: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+            }
+        }
+
+        // Handle special tool types
+        if (this.isWebSearchTool(toolData)) {
+            return this.formatWebSearchResult(result);
+        }
+
+        // Handle undefined/null results
+        if (result === undefined || result === null) {
+            return `[Tool ${toolData.name} completed with no result]`;
+        }
+
+        // Fallback to string conversion
+        return String(result);
+    }
+
+    /**
+     * Format tool error messages with context
+     */
+    private formatToolError(toolData: ToolData): string {
+        const errorMessage = toolData.error || 'Unknown error occurred';
+        return `[Tool Error in ${toolData.name}]: ${errorMessage}`;
+    }
+
+    /**
+     * Normalize content to string format for Responses API
+     */
+    private normalizeContent(content: any): string {
+        if (typeof content === 'string') {
+            return content;
+        }
+
+        if (Array.isArray(content)) {
+            // Handle array content by extracting text parts
+            return content
+                .map((item) => {
+                    if (typeof item === 'string') return item;
+                    if (item?.text) return item.text;
+                    if (item?.type === 'text' && item?.text) return item.text;
+                    return JSON.stringify(item);
+                })
+                .join(' ');
+        }
+
+        if (typeof content === 'object' && content !== null) {
+            try {
+                return JSON.stringify(content);
+            } catch (error) {
+                return '[Error serializing content]';
+            }
+        }
+
+        return String(content || '');
+    }
+
+    /**
+     * Normalize tool arguments to string format for Responses API
+     */
+    private normalizeToolArguments(args: any): string {
+        if (typeof args === 'string') {
+            // If it's already a string, validate it's proper JSON
+            try {
+                JSON.parse(args);
+                return args;
+            } catch {
+                // If not valid JSON, wrap it in quotes to make it valid
+                return JSON.stringify(args);
+            }
+        }
+
+        if (typeof args === 'object' && args !== null) {
+            try {
+                return JSON.stringify(args);
+            } catch (error) {
+                return '{}'; // Fallback to empty object
+            }
+        }
+
+        if (args === undefined || args === null) {
+            return '{}';
+        }
+
+        // For primitive types, convert to JSON
+        return JSON.stringify(args);
+    }
+
+    /**
+     * Validate if tool data is complete and valid for transformation
+     */
+    private isValidToolData(toolData: ToolData): boolean {
+        return !!(toolData && toolData.id && toolData.name && (toolData.result !== undefined || toolData.error !== undefined));
+    }
+
+    /**
+     * Check if the tool is a web search tool based on type or name
+     */
+    private isWebSearchTool(toolData: ToolData): boolean {
+        return (
+            toolData.type === TToolType.WebSearch || toolData.name?.toLowerCase().includes('search') || toolData.name?.toLowerCase().includes('web')
+        );
+    }
+
+    /**
+     * Format web search results with better structure
+     */
+    private formatWebSearchResult(result: any): string {
+        if (!result) return '[Web search completed with no results]';
+
+        // If result is already a well-formatted string, use it
+        if (typeof result === 'string') {
+            return result;
+        }
+
+        // If result is an object with search-specific structure, format it nicely
+        if (typeof result === 'object') {
+            try {
+                // Check for common web search result structures
+                if (result.results || result.items || result.data) {
+                    return JSON.stringify(result, null, 2);
+                }
+                return JSON.stringify(result, null, 2);
+            } catch (error) {
+                return '[Error formatting web search results]';
+            }
+        }
+
+        return String(result);
     }
 
     async handleFileAttachments(files: BinaryInput[], agentId: string, messages: any[]): Promise<any[]> {
@@ -368,8 +518,9 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         const validImageFiles = this.getValidImageFiles(uploadedFiles);
         const validDocumentFiles = this.getValidDocumentFiles(uploadedFiles);
 
-        const imageData = validImageFiles.length > 0 ? await this.getImageDataForInterface(validImageFiles, agentId) : [];
-        const documentData = validDocumentFiles.length > 0 ? await this.getDocumentDataForInterface(validDocumentFiles, agentId) : [];
+        // Process images and documents with Responses API specific formatting
+        const imageData = await this.processImageData(validImageFiles, agentId);
+        const documentData = await this.processDocumentData(validDocumentFiles, agentId);
 
         // Find the last user message and add files to it
         for (let i = messages.length - 1; i >= 0; i--) {
@@ -396,14 +547,100 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         return messages;
     }
 
+    /**
+     * Get valid image files based on supported MIME types
+     */
+    private getValidImageFiles(files: BinaryInput[]): BinaryInput[] {
+        return files.filter((file) => this.validImageMimeTypes.includes(file?.mimetype));
+    }
+
+    /**
+     * Get valid document files based on supported MIME types
+     */
+    private getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
+        return files.filter((file) => this.validDocumentMimeTypes.includes(file?.mimetype));
+    }
+
+    /**
+     * Upload files to storage
+     */
+    private async uploadFiles(files: BinaryInput[], agentId: string): Promise<BinaryInput[]> {
+        const promises = files.map((file) => {
+            const binaryInput = BinaryInput.from(file);
+            return binaryInput.upload(AccessCandidate.agent(agentId)).then(() => binaryInput);
+        });
+
+        return Promise.all(promises);
+    }
+
+    /**
+     * Process image files with Responses API specific formatting
+     */
+    private async processImageData(files: BinaryInput[], agentId: string): Promise<any[]> {
+        if (files.length === 0) return [];
+
+        const imageData = [];
+        for (const file of files) {
+            await this.validateFileSize(file, MAX_IMAGE_SIZE, 'Image');
+
+            const bufferData = await file.readData(AccessCandidate.agent(agentId));
+            const base64Data = bufferData.toString('base64');
+            const url = `data:${file.mimetype};base64,${base64Data}`;
+
+            imageData.push({
+                type: 'input_image',
+                image_url: url,
+            });
+        }
+
+        return imageData;
+    }
+
+    /**
+     * Process document files with Responses API specific formatting
+     */
+    private async processDocumentData(files: BinaryInput[], agentId: string): Promise<any[]> {
+        if (files.length === 0) return [];
+
+        const documentData = [];
+        for (const file of files) {
+            await this.validateFileSize(file, MAX_DOCUMENT_SIZE, 'Document');
+
+            const bufferData = await file.readData(AccessCandidate.agent(agentId));
+            const base64Data = bufferData.toString('base64');
+            const fileData = `data:${file.mimetype};base64,${base64Data}`;
+            const filename = await file.getName();
+
+            documentData.push({
+                type: 'input_file',
+                file: {
+                    file_data: fileData,
+                    filename,
+                },
+            });
+        }
+
+        return documentData;
+    }
+
+    /**
+     * Validate file size before processing
+     */
+    private async validateFileSize(file: BinaryInput, maxSize: number, fileType: string): Promise<void> {
+        await file.ready();
+        const fileInfo = await file.getJsonData(AccessCandidate.agent('temp'));
+        if (fileInfo.size > maxSize) {
+            throw new Error(`${fileType} file size (${fileInfo.size} bytes) exceeds maximum allowed size of ${maxSize} bytes`);
+        }
+    }
+
     getInterfaceName(): string {
         return 'responses';
     }
 
     validateParameters(params: TLLMParams): boolean {
-        // Add any Responses API specific validation
-        // Currently no specific validation is required for this API
-        return true;
+        // Basic validation for Responses API parameters
+        return !!params.model;
     }
 
     /**
@@ -413,8 +650,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         const messages = params?.messages || [];
         const files: BinaryInput[] = params?.files || [];
 
-        // Transform messages from Chat Completions format to Responses API format
-        let input = this.transformMessages(messages);
+        // Start with raw messages - transformation now happens in applyToolMessageTransformation
+        let input = [...messages];
 
         // Handle files if present
         if (files.length > 0) {
@@ -482,41 +719,42 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         return searchTool;
     }
 
-    /**
-     * Transform a regular message for Responses API format
-     */
-    private transformRegularMessage(message: OpenAI.ChatCompletionMessageParam): any {
-        const transformedMessage: any = {
-            role: message.role,
-        };
+    private applyToolMessageTransformation(input: any[]): any[] {
+        const transformedMessages: any[] = [];
 
-        if (typeof message.content === 'string') {
-            // For plain text messages, use content directly without type wrapper
-            transformedMessage.content = message.content;
-        } else if (Array.isArray(message.content)) {
-            // Handle multimodal content - check if it has any file attachments
-            const hasFileAttachments = message.content.some(
-                (item) => item.type && item.type !== 'text' && item.type !== 'input_text' && item.type !== 'output_text'
-            );
-
-            if (hasFileAttachments) {
-                // Keep structured array format for multimodal content with files
-                transformedMessage.content = message.content;
-            } else {
-                // If it's just text items, extract as plain text
-                const textItems = message.content.filter((item) => item.type === 'text' || item.type === 'input_text' || item.type === 'output_text');
-                if (textItems.length === 1) {
-                    transformedMessage.content = (textItems[0] as any).text || '';
-                } else {
-                    // Multiple text items - concatenate them
-                    transformedMessage.content = textItems.map((item) => (item as any).text || '').join(' ');
+        input.forEach((message) => {
+            if (message.role === 'assistant' && message.tool_calls) {
+                // Split assistant message with tool_calls into separate items (Responses API format)
+                if (message.content) {
+                    transformedMessages.push({
+                        role: 'assistant',
+                        content: typeof message.content === 'object' ? JSON.stringify(message.content) : message.content,
+                    });
                 }
-            }
-        } else if (message.content) {
-            // Fallback for other content types
-            transformedMessage.content = String(message.content);
-        }
 
-        return transformedMessage;
+                message.tool_calls.forEach((toolCall) => {
+                    transformedMessages.push({
+                        type: 'function_call',
+                        name: toolCall.function.name,
+                        arguments:
+                            typeof toolCall.function.arguments === 'object'
+                                ? JSON.stringify(toolCall.function.arguments)
+                                : toolCall.function.arguments,
+                        call_id: toolCall.id,
+                    });
+                });
+            } else if (message.role === 'tool') {
+                // Transform tool message to function_call_output (Responses API format)
+                transformedMessages.push({
+                    type: 'function_call_output',
+                    call_id: message.tool_call_id,
+                    output: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
+                });
+            } else {
+                transformedMessages.push(message);
+            }
+        });
+
+        return transformedMessages;
     }
 }

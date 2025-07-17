@@ -1,16 +1,7 @@
 import EventEmitter from 'events';
-import OpenAI from 'openai';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { TLLMParams, ILLMRequestContext, TLLMMessageBlock, ToolData, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
-import { IOpenAIConnectorOperations } from '../types';
-
-/**
- * Context interface for OpenAI API operations
- */
-export interface OpenAIApiContext extends ILLMRequestContext {
-    client: OpenAI;
-    connector: IOpenAIConnectorOperations;
-}
+import { TLLMParams, ILLMRequestContext, TLLMToolChoice } from '@sre/types/LLM.types';
+import { HandlerDependencies } from '../types';
 
 /**
  * Tool configuration interface
@@ -18,7 +9,7 @@ export interface OpenAIApiContext extends ILLMRequestContext {
 export interface ToolConfig {
     type?: string;
     toolDefinitions: any[];
-    toolChoice?: string;
+    toolChoice?: TLLMToolChoice;
     modelInfo?: any;
 }
 
@@ -30,9 +21,9 @@ export interface ToolConfig {
  * implements this interface with its own specific behavior
  */
 export abstract class OpenAIApiInterface {
-    protected context: OpenAIApiContext;
+    protected context: ILLMRequestContext;
 
-    constructor(context: OpenAIApiContext) {
+    constructor(context: ILLMRequestContext) {
         this.context = context;
     }
 
@@ -70,19 +61,6 @@ export abstract class OpenAIApiInterface {
     abstract transformToolsConfig(config: ToolConfig): any[];
 
     /**
-     * Transform messages for this API interface
-     * @param messages - The messages to transform
-     */
-    abstract transformMessages(messages: any[]): any[];
-
-    /**
-     * Transform tool message blocks for this API interface
-     * @param messageBlock - The message block containing tool calls
-     * @param toolsData - The tools data
-     */
-    abstract transformToolMessageBlocks(messageBlock: TLLMMessageBlock, toolsData: ToolData[]): TLLMToolResultMessageBlock[];
-
-    /**
      * Handle file attachments for this API interface
      * @param files - The files to attach
      * @param agentId - The agent ID
@@ -100,26 +78,6 @@ export abstract class OpenAIApiInterface {
      * @param params - The parameters to validate
      */
     abstract validateParameters(params: TLLMParams): boolean;
-
-    protected async getImageDataForInterface(files: BinaryInput[], agentId: string): Promise<any[]> {
-        return this.context.connector.getImageDataForInterface(files, agentId, this.getInterfaceName());
-    }
-
-    protected async getDocumentDataForInterface(files: BinaryInput[], agentId: string): Promise<any[]> {
-        return this.context.connector.getDocumentDataForInterface(files, agentId, this.getInterfaceName());
-    }
-
-    protected getValidImageFiles(files: BinaryInput[]): BinaryInput[] {
-        return this.context.connector.getValidImageFiles(files);
-    }
-
-    protected getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
-        return this.context.connector.getValidDocumentFiles(files);
-    }
-
-    protected async uploadFiles(files: BinaryInput[], agentId: string): Promise<BinaryInput[]> {
-        return this.context.connector.uploadFiles(files, agentId);
-    }
 }
 
 /**
@@ -130,8 +88,9 @@ export interface OpenAIApiInterfaceFactory {
      * Create an API interface instance for the specified type
      * @param interfaceType - The type of interface to create
      * @param context - The context for the interface
+     * @param deps - The handler dependencies for the interface
      */
-    createInterface(interfaceType: string, context: OpenAIApiContext): OpenAIApiInterface;
+    createInterface(interfaceType: string, context: ILLMRequestContext, deps: HandlerDependencies): OpenAIApiInterface;
 
     /**
      * Get supported interface types

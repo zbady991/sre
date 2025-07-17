@@ -11,11 +11,16 @@ import {
     TLLMMessageRole,
     APIKeySource,
 } from '@sre/types/LLM.types';
-import { OpenAIApiInterface, OpenAIApiContext, ToolConfig } from './OpenAIApiInterface';
+import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { getSearchToolCost } from '../config/costs';
 import { supportsJsonResponse } from '../config/models';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+
+// File size limits in bytes
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
 
 /**
  * OpenAI Chat Completions API interface implementation
@@ -27,13 +32,15 @@ import { supportsJsonResponse } from '../config/models';
  */
 export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     private deps: HandlerDependencies;
+    private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
+    private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
-    constructor(context: OpenAIApiContext, deps: HandlerDependencies) {
+    constructor(context: ILLMRequestContext, deps: HandlerDependencies) {
         super(context);
         this.deps = deps;
     }
 
-    async createRequest(body: OpenAI.ChatCompletionCreateParams, context: ILLMRequestContext): Promise<OpenAI.ChatCompletion> {
+    public async createRequest(body: OpenAI.ChatCompletionCreateParams, context: ILLMRequestContext): Promise<OpenAI.ChatCompletion> {
         const openai = await this.deps.getClient(context);
         return await openai.chat.completions.create({
             ...body,
@@ -41,7 +48,10 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         });
     }
 
-    async createStream(body: OpenAI.ChatCompletionCreateParams, context: ILLMRequestContext): Promise<AsyncIterable<OpenAI.ChatCompletionChunk>> {
+    public async createStream(
+        body: OpenAI.ChatCompletionCreateParams,
+        context: ILLMRequestContext
+    ): Promise<AsyncIterable<OpenAI.ChatCompletionChunk>> {
         const openai = await this.deps.getClient(context);
         return await openai.chat.completions.create({
             ...body,
@@ -50,7 +60,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         });
     }
 
-    handleStream(stream: AsyncIterable<OpenAI.ChatCompletionChunk>, context: ILLMRequestContext): EventEmitter {
+    public handleStream(stream: AsyncIterable<OpenAI.ChatCompletionChunk>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
         const usage_data: OpenAI.Completions.CompletionUsage[] = [];
         const reportedUsage: any[] = [];
@@ -77,6 +87,77 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         })();
 
         return emitter;
+    }
+
+    public async prepareRequestBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
+        const messages = await this.prepareMessages(params);
+
+        // Handle JSON response format
+        const { messages: preparedMessages } = this.handleJsonResponseFormat(messages, params);
+
+        const body: OpenAI.ChatCompletionCreateParams = {
+            model: params.model as string,
+            messages: preparedMessages,
+        };
+
+        // Handle max tokens
+        if (params?.maxTokens !== undefined) {
+            body.max_completion_tokens = params.maxTokens;
+        }
+
+        // Handle tools configuration
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            body.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
+            body.tool_choice = params?.toolsConfig?.tool_choice;
+        }
+
+        // Handle temperature
+        if (params?.temperature !== undefined) {
+            body.temperature = params.temperature;
+        }
+
+        return body;
+    }
+
+    public transformToolsConfig(config: ToolConfig): OpenAI.ChatCompletionTool[] {
+        return config.toolDefinitions.map((tool) => ({
+            type: tool.type || 'function',
+            function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters || {
+                    type: 'object',
+                    properties: tool.properties,
+                    required: tool.requiredFields,
+                },
+            },
+        }));
+    }
+
+    public async handleFileAttachments(
+        files: BinaryInput[],
+        agentId: string,
+        messages: OpenAI.ChatCompletionMessageParam[]
+    ): Promise<OpenAI.ChatCompletionMessageParam[]> {
+        if (files.length === 0) return messages;
+
+        const uploadedFiles = await this.uploadFiles(files, agentId);
+        const validImageFiles = this.getValidImageFiles(uploadedFiles);
+        const validDocumentFiles = this.getValidDocumentFiles(uploadedFiles);
+
+        // Process images and documents with Chat Completions specific formatting
+        const imageData = await this.processImageData(validImageFiles, agentId);
+        const documentData = await this.processDocumentData(validDocumentFiles, agentId);
+
+        // For Chat Completions, we modify the last user message
+        const userMessage = Array.isArray(messages) ? messages.pop() : { role: 'user', content: '' };
+        const prompt = userMessage?.content || '';
+
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
+
+        messages.push({ role: 'user', content: promptData });
+
+        return messages;
     }
 
     /**
@@ -222,107 +303,91 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         };
     }
 
-    async prepareRequestBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
-        const messages = await this.prepareMessages(params);
-
-        // Handle JSON response format
-        const { messages: preparedMessages, responseFormat } = this.handleJsonResponseFormat(messages, params);
-
-        const body: OpenAI.ChatCompletionCreateParams = {
-            model: params.model as string,
-            messages: preparedMessages,
-        };
-
-        // Handle max tokens
-        if (params?.maxTokens !== undefined) {
-            body.max_completion_tokens = params.maxTokens;
-        }
-
-        // Handle tools configuration
-        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            body.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
-            body.tool_choice = params?.toolsConfig?.tool_choice;
-        }
-
-        // Handle temperature
-        if (params?.temperature !== undefined) {
-            body.temperature = params.temperature;
-        }
-
-        return body;
+    /**
+     * Get valid image files based on supported MIME types
+     */
+    private getValidImageFiles(files: BinaryInput[]): BinaryInput[] {
+        return files.filter((file) => this.validImageMimeTypes.includes(file?.mimetype));
     }
 
-    transformToolsConfig(config: ToolConfig): OpenAI.ChatCompletionTool[] {
-        return config.toolDefinitions.map((tool) => ({
-            type: tool.type || 'function',
-            function: {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters || {
-                    type: 'object',
-                    properties: tool.properties,
-                    required: tool.requiredFields,
+    /**
+     * Get valid document files based on supported MIME types
+     */
+    private getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
+        return files.filter((file) => this.validDocumentMimeTypes.includes(file?.mimetype));
+    }
+
+    /**
+     * Upload files to storage
+     */
+    private async uploadFiles(files: BinaryInput[], agentId: string): Promise<BinaryInput[]> {
+        const promises = files.map((file) => {
+            const binaryInput = BinaryInput.from(file);
+            return binaryInput.upload(AccessCandidate.agent(agentId)).then(() => binaryInput);
+        });
+
+        return Promise.all(promises);
+    }
+
+    /**
+     * Process image files with Chat Completions specific formatting
+     */
+    private async processImageData(files: BinaryInput[], agentId: string): Promise<any[]> {
+        if (files.length === 0) return [];
+
+        const imageData = [];
+        for (const file of files) {
+            await this.validateFileSize(file, MAX_IMAGE_SIZE, 'Image', agentId);
+
+            const bufferData = await file.readData(AccessCandidate.agent(agentId));
+            const base64Data = bufferData.toString('base64');
+            const url = `data:${file.mimetype};base64,${base64Data}`;
+
+            imageData.push({
+                type: 'image_url',
+                image_url: { url },
+            });
+        }
+
+        return imageData;
+    }
+
+    /**
+     * Process document files with Chat Completions specific formatting
+     */
+    private async processDocumentData(files: BinaryInput[], agentId: string): Promise<any[]> {
+        if (files.length === 0) return [];
+
+        const documentData = [];
+        for (const file of files) {
+            await this.validateFileSize(file, MAX_DOCUMENT_SIZE, 'Document', agentId);
+
+            const bufferData = await file.readData(AccessCandidate.agent(agentId));
+            const base64Data = bufferData.toString('base64');
+            const fileData = `data:${file.mimetype};base64,${base64Data}`;
+            const filename = await file.getName();
+
+            documentData.push({
+                type: 'file',
+                file: {
+                    file_data: fileData,
+                    filename,
                 },
-            },
-        }));
-    }
-
-    transformMessages(messages: OpenAI.ChatCompletionMessageParam[]): OpenAI.ChatCompletionMessageParam[] {
-        // Chat Completions API uses messages as-is, no transformation needed
-        return messages;
-    }
-
-    transformToolMessageBlocks(messageBlock: TLLMMessageBlock, toolsData: ToolData[]): TLLMToolResultMessageBlock[] {
-        const messageBlocks: TLLMToolResultMessageBlock[] = [];
-
-        if (messageBlock) {
-            const transformedMessageBlock = {
-                ...messageBlock,
-                content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
-            };
-
-            if (transformedMessageBlock.tool_calls) {
-                for (let toolCall of transformedMessageBlock.tool_calls) {
-                    toolCall.function.arguments =
-                        typeof toolCall.function.arguments === 'object' ? JSON.stringify(toolCall.function.arguments) : toolCall.function.arguments;
-                }
-            }
-            messageBlocks.push(transformedMessageBlock);
+            });
         }
 
-        const transformedToolsData = toolsData.map((toolData) => ({
-            tool_call_id: toolData.id,
-            role: TLLMMessageRole.Tool,
-            name: toolData.name,
-            content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
-        }));
-
-        return [...messageBlocks, ...transformedToolsData];
+        return documentData;
     }
 
-    async handleFileAttachments(
-        files: BinaryInput[],
-        agentId: string,
-        messages: OpenAI.ChatCompletionMessageParam[]
-    ): Promise<OpenAI.ChatCompletionMessageParam[]> {
-        if (files.length === 0) return messages;
-
-        const uploadedFiles = await this.uploadFiles(files, agentId);
-        const validImageFiles = this.getValidImageFiles(uploadedFiles);
-        const validDocumentFiles = this.getValidDocumentFiles(uploadedFiles);
-
-        const imageData = validImageFiles.length > 0 ? await this.getImageDataForInterface(validImageFiles, agentId) : [];
-        const documentData = validDocumentFiles.length > 0 ? await this.getDocumentDataForInterface(validDocumentFiles, agentId) : [];
-
-        // For Chat Completions, we modify the last user message
-        const userMessage = Array.isArray(messages) ? messages.pop() : { role: 'user', content: '' };
-        const prompt = userMessage?.content || '';
-
-        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
-
-        messages.push({ role: 'user', content: promptData });
-
-        return messages;
+    /**
+     * Validate file size before processing
+     */
+    private async validateFileSize(file: BinaryInput, maxSize: number, fileType: string, agentId: string): Promise<void> {
+        await file.ready();
+        const fileInfo = await file.getJsonData(AccessCandidate.agent(agentId));
+        if (fileInfo.size > maxSize) {
+            throw new Error(`${fileType} file size (${fileInfo.size} bytes) exceeds maximum allowed size of ${maxSize} bytes`);
+        }
     }
 
     getInterfaceName(): string {
@@ -330,8 +395,8 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     }
 
     validateParameters(params: TLLMParams): boolean {
-        // Add any Chat Completions API specific validation
-        return true;
+        // Basic validation for Chat Completions parameters
+        return !!params.model && Array.isArray(params.messages);
     }
 
     /**

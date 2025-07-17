@@ -1,7 +1,8 @@
-import { OpenAIApiInterface, OpenAIApiContext, OpenAIApiInterfaceFactory as IOpenAIApiInterfaceFactory } from './OpenAIApiInterface';
+import { OpenAIApiInterface, OpenAIApiInterfaceFactory as IOpenAIApiInterfaceFactory } from './OpenAIApiInterface';
 import { ResponsesApiInterface } from './ResponsesApiInterface';
 import { ChatCompletionsApiInterface } from './ChatCompletionsApiInterface';
 import { HandlerDependencies } from '../types';
+import { ILLMRequestContext } from '@sre/types/LLM.types';
 
 /**
  * Factory for creating OpenAI API interfaces
@@ -10,29 +11,28 @@ import { HandlerDependencies } from '../types';
  *
  * Usage:
  * ```typescript
- * const factory = new OpenAIApiInterfaceFactory(deps);
- * const apiInterface = factory.createInterface('responses', context);
+ * const factory = new OpenAIApiInterfaceFactory();
+ * const apiInterface = factory.createInterface('responses', context, deps);
  * ```
  */
 export class OpenAIApiInterfaceFactory implements IOpenAIApiInterfaceFactory {
-    private deps: HandlerDependencies;
-
-    constructor(deps: HandlerDependencies) {
-        this.deps = deps;
+    constructor() {
+        // No dependencies needed at factory level anymore
     }
 
     /**
      * Create an API interface instance for the specified type
      * @param interfaceType - The type of interface to create ('responses', 'chat.completions')
      * @param context - The context for the interface
+     * @param deps - The handler dependencies for the interface
      * @returns The appropriate OpenAI API interface instance
      */
-    createInterface(interfaceType: string, context: OpenAIApiContext): OpenAIApiInterface {
+    createInterface(interfaceType: string, context: ILLMRequestContext, deps: HandlerDependencies): OpenAIApiInterface {
         switch (interfaceType) {
             case 'responses':
-                return new ResponsesApiInterface(context, this.deps);
+                return new ResponsesApiInterface(context, deps);
             case 'chat.completions':
-                return new ChatCompletionsApiInterface(context, this.deps);
+                return new ChatCompletionsApiInterface(context, deps);
             default:
                 throw new Error(`Unsupported OpenAI API interface type: ${interfaceType}`);
         }
