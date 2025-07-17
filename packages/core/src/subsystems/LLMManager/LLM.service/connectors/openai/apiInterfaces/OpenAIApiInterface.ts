@@ -2,13 +2,14 @@ import EventEmitter from 'events';
 import OpenAI from 'openai';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { TLLMParams, ILLMRequestContext, TLLMMessageBlock, ToolData, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
+import { IOpenAIConnectorOperations } from '../types';
 
 /**
  * Context interface for OpenAI API operations
  */
 export interface OpenAIApiContext extends ILLMRequestContext {
     client: OpenAI;
-    connector: OpenAIConnector;
+    connector: IOpenAIConnectorOperations;
 }
 
 /**
@@ -136,13 +137,4 @@ export interface OpenAIApiInterfaceFactory {
      * Get supported interface types
      */
     getSupportedInterfaces(): string[];
-}
-
-// Forward declaration to avoid circular dependency
-export interface OpenAIConnector {
-    getImageDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string): Promise<any[]>;
-    getDocumentDataForInterface(files: BinaryInput[], agentId: string, interfaceType: string): Promise<any[]>;
-    getValidImageFiles(files: BinaryInput[]): BinaryInput[];
-    getValidDocumentFiles(files: BinaryInput[]): BinaryInput[];
-    uploadFiles(files: BinaryInput[], agentId: string): Promise<BinaryInput[]>;
 }

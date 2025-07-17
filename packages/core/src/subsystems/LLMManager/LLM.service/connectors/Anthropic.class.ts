@@ -17,6 +17,7 @@ import {
     BasicCredentials,
     TAnthropicRequestBody,
     ILLMRequestContext,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
@@ -203,7 +204,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<TAnthropicRequestBody> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TAnthropicRequestBody> {
         const body = await this.prepareBody(params);
 
         const shouldUseThinking = await this.shouldUseThinkingMode(params);
@@ -580,7 +581,7 @@ export class AnthropicConnector extends LLMConnector {
     /**
      * Determines if thinking mode should be used based on model capabilities and parameters.
      */
-    private async shouldUseThinkingMode(params: TLLMParams): Promise<boolean> {
+    private async shouldUseThinkingMode(params: TLLMPreparedParams): Promise<boolean> {
         // Legacy thinking models always use thinking mode
         if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
             return true;

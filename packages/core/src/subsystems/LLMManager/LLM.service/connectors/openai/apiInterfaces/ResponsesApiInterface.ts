@@ -9,11 +9,12 @@ import {
     ToolData,
     TLLMToolResultMessageBlock,
     TLLMMessageRole,
-    TOpenAIResponseToolChoice,
     APIKeySource,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, OpenAIApiContext, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies, TToolType } from '../types';
+import { getSearchToolCost } from '../config/costs';
 
 type TSearchContextSize = 'low' | 'medium' | 'high';
 type TSearchLocation = {
@@ -40,17 +41,23 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         this.deps = deps;
     }
 
-    async createRequest(body: any, context: ILLMRequestContext): Promise<any> {
+    async createRequest(body: OpenAI.Responses.ResponseCreateParams, context: ILLMRequestContext): Promise<OpenAI.Responses.Response> {
         const openai = await this.deps.getClient(context);
-        return await openai.responses.create({ ...body, stream: false });
+        return await openai.responses.create({
+            ...body,
+            stream: false,
+        });
     }
 
-    async createStream(body: any, context: ILLMRequestContext): Promise<any> {
+    async createStream(body: OpenAI.Responses.ResponseCreateParams, context: ILLMRequestContext): Promise<AsyncIterable<any>> {
         const openai = await this.deps.getClient(context);
-        return await openai.responses.create({ ...body, stream: true });
+        return await openai.responses.create({
+            ...body,
+            stream: true,
+        });
     }
 
-    handleStream(stream: any, context: ILLMRequestContext): EventEmitter {
+    handleStream(stream: AsyncIterable<any>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
         const usage_data: any[] = [];
         const reportedUsage: any[] = [];
@@ -58,7 +65,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
         // Process stream asynchronously while returning emitter immediately
         (async () => {
-            let finalToolsData: any[] = [];
+            let finalToolsData: ToolData[] = [];
 
             try {
                 // Step 1: Process the stream
@@ -82,71 +89,79 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Process the responses API stream format
      */
-    private async processStream(stream: any, emitter: EventEmitter, usage_data: any[]): Promise<{ toolsData: any[]; finishReason: string }> {
-        let finalToolsData: any[] = [];
+    private async processStream(
+        stream: AsyncIterable<any>,
+        emitter: EventEmitter,
+        usage_data: any[]
+    ): Promise<{ toolsData: ToolData[]; finishReason: string }> {
+        let toolsData: ToolData[] = [];
         let finishReason = 'stop';
 
         for await (const part of stream) {
-            // Handle different event types from the responses API stream
-            if ('type' in part) {
-                const event = part.type;
+            const delta = part.choices?.[0]?.delta;
+            const usage = part.usage;
 
-                switch (event) {
-                    case 'response.output_text.delta': {
-                        if (part?.delta) {
-                            // Emit content in delta format for compatibility
-                            const deltaMsg = {
-                                role: 'assistant',
-                                content: part.delta,
-                            };
-                            emitter.emit('data', deltaMsg);
-                            emitter.emit('content', part.delta, 'assistant');
-                        }
-                        break;
-                    }
-                    case 'response.completed': {
-                        // Process the completed response to extract tool calls
-                        if (part.response?.output) {
-                            finalToolsData = this.extractToolCalls(part.response.output);
+            // Collect usage statistics
+            if (usage) {
+                usage_data.push(usage);
+            }
 
-                            if (finalToolsData.length > 0) {
-                                // Emit tool info event
-                                emitter.emit('tool_info', finalToolsData);
-                            }
-                        }
-                        break;
-                    }
-                    case 'response.cancelled': {
-                        finishReason = 'cancelled';
-                        break;
-                    }
-                    case 'response.failed': {
-                        finishReason = 'failed';
-                        break;
-                    }
-                    case 'response.incomplete': {
-                        finishReason = 'incomplete';
-                        break;
-                    }
-                    // Handle other event types as needed
+            // Emit data event for delta
+            emitter.emit('data', delta);
+
+            // Handle content deltas
+            if (!delta?.tool_calls && delta?.content) {
+                emitter.emit('content', delta?.content, delta?.role);
+            }
+
+            // Handle tool calls
+            if (delta?.tool_calls) {
+                const toolCall = delta?.tool_calls?.[0];
+                const index = toolCall?.index;
+
+                if (!toolsData[index]) {
+                    toolsData[index] = {
+                        index: index || 0,
+                        id: '',
+                        type: 'function',
+                        name: '',
+                        arguments: '',
+                        role: 'assistant',
+                    };
                 }
+
+                if (toolCall?.function?.name) {
+                    toolsData[index].name = toolCall.function.name;
+                }
+                if (toolCall?.function?.arguments) {
+                    toolsData[index].arguments += toolCall.function.arguments;
+                }
+                if (toolCall?.id) {
+                    toolsData[index].id = toolCall.id;
+                }
+            }
+
+            // Handle finish reason
+            if (part.choices?.[0]?.finish_reason) {
+                finishReason = part.choices[0].finish_reason;
             }
         }
 
-        return { toolsData: finalToolsData, finishReason };
+        return { toolsData: this.extractToolCalls(toolsData), finishReason };
     }
 
     /**
-     * Extract tool calls from the responses API output format
+     * Extract and format tool calls from the accumulated data
      */
-    private extractToolCalls(output: any[]): any[] {
-        return output
-            .filter((item) => item.type === 'tool_use')
-            .map((item) => ({
-                name: item.name,
-                arguments: JSON.stringify(item.input),
-                id: item.id,
-            }));
+    private extractToolCalls(output: ToolData[]): ToolData[] {
+        return output.map((tool) => ({
+            index: tool.index,
+            name: tool.name,
+            arguments: tool.arguments,
+            id: tool.id,
+            type: tool.type,
+            role: tool.role,
+        }));
     }
 
     /**
@@ -155,12 +170,19 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     private reportUsageStatistics(usage_data: any[], context: ILLMRequestContext, reportedUsage: any[]): void {
         // Report normal usage
         usage_data.forEach((usage) => {
-            const reported = this.deps.reportUsage(usage, this.buildUsageContext(context));
+            // Convert ResponseUsage to CompletionUsage format for compatibility
+            const convertedUsage = {
+                completion_tokens: usage.completion_tokens || 0,
+                prompt_tokens: usage.prompt_tokens || 0,
+                total_tokens: usage.total_tokens || 0,
+                ...usage,
+            };
+            const reported = this.deps.reportUsage(convertedUsage, this.buildUsageContext(context));
             reportedUsage.push(reported);
         });
 
         // Report search tool usage if enabled
-        if (context.toolsInfo?.webSearch?.enabled) {
+        if (context.toolsInfo?.openai?.webSearch?.enabled) {
             const searchUsage = this.calculateSearchToolUsage(context);
             const reported = this.deps.reportUsage(searchUsage, this.buildUsageContext(context));
             reportedUsage.push(reported);
@@ -170,7 +192,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Emit final events
      */
-    private emitFinalEvents(emitter: EventEmitter, toolsData: any[], reportedUsage: any[], finishReason: string): void {
+    private emitFinalEvents(emitter: EventEmitter, toolsData: ToolData[], reportedUsage: any[], finishReason: string): void {
         // Emit tool info event if tools were called
         if (toolsData.length > 0) {
             emitter.emit('tool_info', toolsData);
@@ -181,10 +203,10 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             emitter.emit('interrupted', finishReason);
         }
 
-        // Emit end event with delay to ensure proper event ordering
-        setTimeout(() => {
+        // Emit end event with setImmediate to ensure proper event ordering
+        setImmediate(() => {
             emitter.emit('end', toolsData, reportedUsage, finishReason);
-        }, 100);
+        });
     }
 
     /**
@@ -204,7 +226,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      */
     private calculateSearchToolUsage(context: ILLMRequestContext) {
         const modelName = context.modelEntryName?.replace('@built-in/', '');
-        const cost = this.getSearchToolCost(modelName, context.toolsInfo?.webSearch?.contextSize);
+        const cost = getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
 
         return {
             cost,
@@ -214,34 +236,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         };
     }
 
-    /**
-     * Get search tool cost based on model and context size
-     */
-    private getSearchToolCost(modelName: string, contextSize: string): number {
-        const costForNormalModels = {
-            low: 30 / 1000,
-            medium: 35 / 1000,
-            high: 50 / 1000,
-        };
-        const costForMiniModels = {
-            low: 25 / 1000,
-            medium: 27.5 / 1000,
-            high: 30 / 1000,
-        };
-
-        const searchToolCost = {
-            'gpt-4.1': costForNormalModels,
-            'gpt-4o': costForNormalModels,
-            'gpt-4o-search': costForNormalModels,
-            'gpt-4.1-mini': costForMiniModels,
-            'gpt-4o-mini': costForMiniModels,
-            'gpt-4o-mini-search': costForMiniModels,
-        };
-
-        return searchToolCost?.[modelName]?.[contextSize] || 0;
-    }
-
-    async prepareRequestBody(params: TLLMParams): Promise<OpenAI.Responses.ResponseCreateParams> {
+    async prepareRequestBody(params: TLLMPreparedParams): Promise<OpenAI.Responses.ResponseCreateParams> {
         const input = await this.prepareInputMessages(params);
 
         const body: OpenAI.Responses.ResponseCreateParams = {
@@ -265,13 +260,14 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.top_p = params.topP;
         }
 
-        let tools = [];
+        let tools: OpenAI.Responses.Tool[] = [];
 
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
             tools = await this.prepareFunctionTools(params);
         }
 
-        if (params.toolsInfo.webSearch.enabled) {
+        // Add null safety check before accessing toolsInfo
+        if (params.toolsInfo?.openai?.webSearch?.enabled) {
             const searchTool = this.prepareWebSearchTool(params);
             tools.push(searchTool);
         }
@@ -280,14 +276,14 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.tools = tools;
 
             if (params?.toolsConfig?.tool_choice) {
-                body.tool_choice = params?.toolsConfig?.tool_choice as TOpenAIResponseToolChoice;
+                body.tool_choice = params?.toolsConfig?.tool_choice as any;
             }
         }
 
         return body;
     }
 
-    transformToolsConfig(config: ToolConfig): any[] {
+    transformToolsConfig(config: ToolConfig): OpenAI.Responses.Tool[] {
         return config.toolDefinitions.map((tool) => ({
             type: tool.type || 'function',
             name: tool.name,
@@ -300,7 +296,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         }));
     }
 
-    transformMessages(messages: any[]): any[] {
+    transformMessages(messages: OpenAI.ChatCompletionMessageParam[]): any[] {
         const transformedMessages: any[] = [];
 
         messages.forEach((message) => {
@@ -406,6 +402,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     validateParameters(params: TLLMParams): boolean {
         // Add any Responses API specific validation
+        // Currently no specific validation is required for this API
         return true;
     }
 
@@ -430,8 +427,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Prepare tools for request
      */
-    private async prepareFunctionTools(params: TLLMParams): Promise<any[]> {
-        const tools: any[] = [];
+    private async prepareFunctionTools(params: TLLMParams): Promise<OpenAI.Responses.Tool[]> {
+        const tools: OpenAI.Responses.Tool[] = [];
 
         // Add regular function tools
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
@@ -455,19 +452,15 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Get web search tool configuration for OpenAI Responses API
      */
-    private prepareWebSearchTool(params: TLLMParams) {
-        const searchCity = params?.webSearchCity;
-        const searchCountry = params?.webSearchCountry;
-        const searchRegion = params?.webSearchRegion;
-        const searchTimezone = params?.webSearchTimezone;
+    private prepareWebSearchTool(params: TLLMPreparedParams): OpenAI.Responses.WebSearchTool {
+        const webSearch = params?.toolsInfo?.openai?.webSearch;
+        const contextSize = webSearch?.contextSize;
+        const searchCity = webSearch?.city;
+        const searchCountry = webSearch?.country;
+        const searchRegion = webSearch?.region;
+        const searchTimezone = webSearch?.timezone;
 
-        const location: {
-            type: 'approximate';
-            city?: string;
-            country?: string;
-            region?: string;
-            timezone?: string;
-        } = {
+        const location: TSearchLocation = {
             type: 'approximate', // Required, always be 'approximate' when we implement location
         };
 
@@ -476,13 +469,9 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         if (searchRegion) location.region = searchRegion;
         if (searchTimezone) location.timezone = searchTimezone;
 
-        const searchTool: {
-            type: TToolType.WebSearch;
-            search_context_size: TSearchContextSize;
-            user_location?: TSearchLocation;
-        } = {
+        const searchTool: OpenAI.Responses.WebSearchTool = {
             type: TToolType.WebSearch,
-            search_context_size: params?.webSearchContextSize || 'medium',
+            search_context_size: (contextSize || 'medium') as TSearchContextSize,
         };
 
         // Add location only if any location field is provided. Since 'type' is always present, we check if the number of keys in the location object is greater than 1.
@@ -496,7 +485,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Transform a regular message for Responses API format
      */
-    private transformRegularMessage(message: any): any {
+    private transformRegularMessage(message: OpenAI.ChatCompletionMessageParam): any {
         const transformedMessage: any = {
             role: message.role,
         };
@@ -517,10 +506,10 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                 // If it's just text items, extract as plain text
                 const textItems = message.content.filter((item) => item.type === 'text' || item.type === 'input_text' || item.type === 'output_text');
                 if (textItems.length === 1) {
-                    transformedMessage.content = textItems[0].text;
+                    transformedMessage.content = (textItems[0] as any).text || '';
                 } else {
                     // Multiple text items - concatenate them
-                    transformedMessage.content = textItems.map((item) => item.text).join(' ');
+                    transformedMessage.content = textItems.map((item) => (item as any).text || '').join(' ');
                 }
             }
         } else if (message.content) {

@@ -102,23 +102,27 @@ export type TGenAILLMOutputs = {
 /**
  * Use this component to generate a responses from an LLM
  */
-export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {    
+export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {
     const { name, ...settingsWithoutName } = settings || {};
-    const dataObject: any = { 
-        name: settings?.name || 'GenAILLM', 
+    const dataObject: any = {
+        name: settings?.name || 'GenAILLM',
         settings: {
-            ...settingsWithoutName 
-        }
+            ...settingsWithoutName,
+        },
     };
     const component = new ComponentWrapper(dataObject, agent);
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
-    
-    const _out: TGenAILLMOutputs = createSafeAccessor({
-        Reply: createSafeAccessor({}, component, 'Reply', {"default":true}),
-    }, component, '');
+
+    const _out: TGenAILLMOutputs = createSafeAccessor(
+        {
+            Reply: createSafeAccessor({}, component, 'Reply', { default: true }),
+        },
+        component,
+        ''
+    );
 
     const _in: { [key: string]: ComponentInput } = {
         Input: {
@@ -142,15 +146,15 @@ export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {
 
     const wrapper = {
         /** Component outputs - access via .out.OutputName */
-        out: _out,        
+        out: _out,
 
-        /** 
-         * Create or Connect the component inputs 
+        /**
+         * Create or Connect the component inputs
          * if the input does not exist, it will be created
-         * @examples 
+         * @examples
          *    - component.in({ Input: source.out.data })
          *    - component.in({ Input: { type: 'string', source:source.out.data } })
-         */        
+         */
         in: component.inputs.bind(component) as (inputs: TGenAILLMInputs) => void,
     };
 

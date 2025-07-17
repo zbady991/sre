@@ -14,8 +14,8 @@ import {
 import { OpenAIApiInterface, OpenAIApiContext, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
-
-const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+import { getSearchToolCost } from '../config/costs';
+import { supportsJsonResponse } from '../config/models';
 
 /**
  * OpenAI Chat Completions API interface implementation
@@ -33,7 +33,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         this.deps = deps;
     }
 
-    async createRequest(body: any, context: ILLMRequestContext): Promise<any> {
+    async createRequest(body: OpenAI.ChatCompletionCreateParams, context: ILLMRequestContext): Promise<OpenAI.ChatCompletion> {
         const openai = await this.deps.getClient(context);
         return await openai.chat.completions.create({
             ...body,
@@ -41,7 +41,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         });
     }
 
-    async createStream(body: any, context: ILLMRequestContext): Promise<any> {
+    async createStream(body: OpenAI.ChatCompletionCreateParams, context: ILLMRequestContext): Promise<AsyncIterable<OpenAI.ChatCompletionChunk>> {
         const openai = await this.deps.getClient(context);
         return await openai.chat.completions.create({
             ...body,
@@ -50,15 +50,15 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         });
     }
 
-    handleStream(stream: any, context: ILLMRequestContext): EventEmitter {
+    handleStream(stream: AsyncIterable<OpenAI.ChatCompletionChunk>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
-        const usage_data: any[] = [];
+        const usage_data: OpenAI.Completions.CompletionUsage[] = [];
         const reportedUsage: any[] = [];
         let finishReason = 'stop';
 
         // Process stream asynchronously while returning emitter immediately
         (async () => {
-            let finalToolsData: any[] = [];
+            let finalToolsData: ToolData[] = [];
 
             try {
                 // Step 1: Process the stream
@@ -82,8 +82,12 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     /**
      * Process the chat completions API stream format
      */
-    private async processStream(stream: any, emitter: EventEmitter, usage_data: any[]): Promise<{ toolsData: any[]; finishReason: string }> {
-        let toolsData: any[] = [];
+    private async processStream(
+        stream: AsyncIterable<OpenAI.ChatCompletionChunk>,
+        emitter: EventEmitter,
+        usage_data: OpenAI.Completions.CompletionUsage[]
+    ): Promise<{ toolsData: ToolData[]; finishReason: string }> {
+        let toolsData: ToolData[] = [];
         let finishReason = 'stop';
 
         for await (const part of stream) {
@@ -109,7 +113,14 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
                 const index = toolCall?.index;
 
                 if (!toolsData[index]) {
-                    toolsData[index] = { name: '', arguments: '', id: '' };
+                    toolsData[index] = {
+                        index: index || 0,
+                        id: '',
+                        type: 'function',
+                        name: '',
+                        arguments: '',
+                        role: 'assistant',
+                    };
                 }
 
                 if (toolCall?.function?.name) {
@@ -135,18 +146,21 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     /**
      * Extract and format tool calls from the accumulated data
      */
-    private extractToolCalls(toolsData: any[]): any[] {
+    private extractToolCalls(toolsData: ToolData[]): ToolData[] {
         return toolsData.map((tool) => ({
+            index: tool.index,
             name: tool.name,
             arguments: tool.arguments,
             id: tool.id,
+            type: tool.type,
+            role: tool.role,
         }));
     }
 
     /**
      * Report usage statistics
      */
-    private reportUsageStatistics(usage_data: any[], context: ILLMRequestContext, reportedUsage: any[]): void {
+    private reportUsageStatistics(usage_data: OpenAI.Completions.CompletionUsage[], context: ILLMRequestContext, reportedUsage: any[]): void {
         // Report normal usage
         usage_data.forEach((usage) => {
             const reported = this.deps.reportUsage(usage, this.buildUsageContext(context));
@@ -154,7 +168,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         });
 
         // Report search tool usage if enabled
-        if (context.toolsInfo?.webSearch?.enabled) {
+        if (context.toolsInfo?.openai?.webSearch?.enabled) {
             const searchUsage = this.calculateSearchToolUsage(context);
             const reported = this.deps.reportUsage(searchUsage, this.buildUsageContext(context));
             reportedUsage.push(reported);
@@ -164,7 +178,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     /**
      * Emit final events
      */
-    private emitFinalEvents(emitter: EventEmitter, toolsData: any[], reportedUsage: any[], finishReason: string): void {
+    private emitFinalEvents(emitter: EventEmitter, toolsData: ToolData[], reportedUsage: any[], finishReason: string): void {
         // Emit tool info event if tools were called
         if (toolsData.length > 0) {
             emitter.emit('tool_info', toolsData);
@@ -175,10 +189,10 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             emitter.emit('interrupted', finishReason);
         }
 
-        // Emit end event with delay to ensure proper event ordering
-        setTimeout(() => {
+        // Emit end event with setImmediate to ensure proper event ordering
+        setImmediate(() => {
             emitter.emit('end', toolsData, reportedUsage, finishReason);
-        }, 100);
+        });
     }
 
     /**
@@ -198,7 +212,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
      */
     private calculateSearchToolUsage(context: ILLMRequestContext) {
         const modelName = context.modelEntryName?.replace('@built-in/', '');
-        const cost = this.getSearchToolCost(modelName, context.toolsInfo?.webSearch?.contextSize);
+        const cost = getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
 
         return {
             cost,
@@ -208,42 +222,15 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         };
     }
 
-    /**
-     * Get search tool cost based on model and context size
-     */
-    private getSearchToolCost(modelName: string, contextSize: string): number {
-        const costForNormalModels = {
-            low: 30 / 1000,
-            medium: 35 / 1000,
-            high: 50 / 1000,
-        };
-        const costForMiniModels = {
-            low: 25 / 1000,
-            medium: 27.5 / 1000,
-            high: 30 / 1000,
-        };
-
-        const searchToolCost = {
-            'gpt-4.1': costForNormalModels,
-            'gpt-4o': costForNormalModels,
-            'gpt-4o-search': costForNormalModels,
-            'gpt-4.1-mini': costForMiniModels,
-            'gpt-4o-mini': costForMiniModels,
-            'gpt-4o-mini-search': costForMiniModels,
-        };
-
-        return searchToolCost?.[modelName]?.[contextSize] || 0;
-    }
-
     async prepareRequestBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
         const messages = await this.prepareMessages(params);
 
         // Handle JSON response format
-        this.handleJsonResponseFormat(messages, params);
+        const { messages: preparedMessages, responseFormat } = this.handleJsonResponseFormat(messages, params);
 
         const body: OpenAI.ChatCompletionCreateParams = {
             model: params.model as string,
-            messages,
+            messages: preparedMessages,
         };
 
         // Handle max tokens
@@ -265,7 +252,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         return body;
     }
 
-    transformToolsConfig(config: ToolConfig): any[] {
+    transformToolsConfig(config: ToolConfig): OpenAI.ChatCompletionTool[] {
         return config.toolDefinitions.map((tool) => ({
             type: tool.type || 'function',
             function: {
@@ -280,7 +267,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         }));
     }
 
-    transformMessages(messages: any[]): any[] {
+    transformMessages(messages: OpenAI.ChatCompletionMessageParam[]): OpenAI.ChatCompletionMessageParam[] {
         // Chat Completions API uses messages as-is, no transformation needed
         return messages;
     }
@@ -313,7 +300,11 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         return [...messageBlocks, ...transformedToolsData];
     }
 
-    async handleFileAttachments(files: BinaryInput[], agentId: string, messages: any[]): Promise<any[]> {
+    async handleFileAttachments(
+        files: BinaryInput[],
+        agentId: string,
+        messages: OpenAI.ChatCompletionMessageParam[]
+    ): Promise<OpenAI.ChatCompletionMessageParam[]> {
         if (files.length === 0) return messages;
 
         const uploadedFiles = await this.uploadFiles(files, agentId);
@@ -324,7 +315,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         const documentData = validDocumentFiles.length > 0 ? await this.getDocumentDataForInterface(validDocumentFiles, agentId) : [];
 
         // For Chat Completions, we modify the last user message
-        const userMessage = Array.isArray(messages) ? messages.pop() : {};
+        const userMessage = Array.isArray(messages) ? messages.pop() : { role: 'user', content: '' };
         const prompt = userMessage?.content || '';
 
         const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
@@ -346,7 +337,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     /**
      * Prepare messages for Chat Completions API
      */
-    private async prepareMessages(params: TLLMParams): Promise<any[]> {
+    private async prepareMessages(params: TLLMParams): Promise<OpenAI.ChatCompletionMessageParam[]> {
         const messages = params?.messages || [];
         const files: BinaryInput[] = params?.files || [];
 
@@ -361,21 +352,29 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     /**
      * Handle JSON response format for Chat Completions API
      */
-    private handleJsonResponseFormat(messages: any[], params: TLLMParams): void {
+    private handleJsonResponseFormat(
+        messages: OpenAI.ChatCompletionMessageParam[],
+        params: TLLMParams
+    ): { messages: OpenAI.ChatCompletionMessageParam[]; responseFormat: any } {
         const responseFormat = params?.responseFormat || '';
+        const messagesCopy = [...messages];
+        const paramsCopy = { ...params };
+
         if (responseFormat === 'json') {
             // We assume that the system message is first item in messages array
-            if (messages?.[0]?.role === TLLMMessageRole.System) {
-                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            if (messagesCopy?.[0]?.role === TLLMMessageRole.System) {
+                messagesCopy[0] = { ...messagesCopy[0], content: messagesCopy[0].content + JSON_RESPONSE_INSTRUCTION };
             } else {
-                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+                messagesCopy.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
             }
 
-            if (MODELS_WITH_JSON_RESPONSE.includes(params.model as string)) {
-                params.responseFormat = { type: 'json_object' };
+            if (supportsJsonResponse(paramsCopy.model as string)) {
+                paramsCopy.responseFormat = { type: 'json_object' };
             } else {
-                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
+                paramsCopy.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
+
+        return { messages: messagesCopy, responseFormat: paramsCopy.responseFormat };
     }
 }

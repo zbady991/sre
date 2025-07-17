@@ -185,4 +185,7 @@ export * from './subsystems/Security/Vault.service/connectors/HashicorpVault.cla
 export * from './subsystems/Security/Vault.service/connectors/JSONFileVault.class';
 export * from './subsystems/Security/Vault.service/connectors/NullVault.class';
 export * from './subsystems/Security/Vault.service/connectors/SecretsManager.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/openai/OpenAIConnector.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/types';
+export * from './subsystems/LLMManager/LLM.service/connectors/openai/config/costs';
+export * from './subsystems/LLMManager/LLM.service/connectors/openai/config/models';
