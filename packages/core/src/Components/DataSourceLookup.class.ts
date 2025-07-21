@@ -29,8 +29,8 @@ export class DataSourceLookup extends Component {
             // Need to reserve 30 characters for the prefixed unique id
             'string.max': `The length of the 'namespace' name must be 50 characters or fewer.`,
         }),
-        scoreThreshold: Joi.number().optional().allow('').label('Score Threshold'),
-        includeScore: Joi.boolean().optional().allow('').label('Score Threshold'),
+        scoreThreshold: Joi.number().optional().label('Score Threshold'),
+        includeScore: Joi.boolean().optional().label('Score Threshold'),
     });
     constructor() {
         super();
