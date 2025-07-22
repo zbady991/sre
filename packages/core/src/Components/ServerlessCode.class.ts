@@ -4,6 +4,7 @@ import Joi from 'joi';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { calculateExecutionCost, generateCodeFromLegacyComponent, getLambdaCredentials, reportUsage } from '@sre/helpers/AWSLambdaCode.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class ServerlessCode extends Component {
 
@@ -96,7 +97,7 @@ export class ServerlessCode extends Component {
                 const cost = calculateExecutionCost(executionTime);
                 if (!codeCredentials.isUserProvidedKeys) {
                     const accountConnector = ConnectorService.getAccountConnector();
-                    const agentTeam = await accountConnector.getCandidateTeam(agent.id);
+                    const agentTeam = await accountConnector.getCandidateTeam(AccessCandidate.agent(agent.id));
                     reportUsage({ cost, agentId: agent.id, teamId: agentTeam });
                 }
 
