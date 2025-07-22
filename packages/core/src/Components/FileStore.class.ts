@@ -47,7 +47,7 @@ export class FileStore extends Component {
 
                 
                 const smythFSUrl = `smythfs://${agent.id}.agent/components_data/${fileName}`;
-                SmythFS.Instance.write(smythFSUrl, buffer, null, metadata);
+                await SmythFS.Instance.write(smythFSUrl, buffer, null, metadata, ttl);
                 const url = await SmythFS.Instance.genResourceUrl(smythFSUrl, AccessCandidate.agent(agent.id));
                 Output = {
                     Url: url,
