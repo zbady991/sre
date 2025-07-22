@@ -14,6 +14,7 @@ import {
     TLLMParams,
     TLLMConnectorParams,
     ILLMRequestContext,
+    TLLMToolResultMessageBlock,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -208,7 +209,38 @@ export class GroqConnector extends LLMConnector {
 
         return usageData;
     }
+    public transformToolMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: TLLMMessageBlock;
+        toolsData: ToolData[];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
+        if (messageBlock) {
+            const transformedMessageBlock = {
+                ...messageBlock,
+                content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
+            };
+            if (transformedMessageBlock.tool_calls) {
+                for (let toolCall of transformedMessageBlock.tool_calls) {
+                    toolCall.function.arguments =
+                        typeof toolCall.function.arguments === 'object' ? JSON.stringify(toolCall.function.arguments) : toolCall.function.arguments;
+                }
+            }
+            messageBlocks.push(transformedMessageBlock);
+        }
+
+        const transformedToolsData = toolsData.map((toolData) => ({
+            tool_call_id: toolData.id,
+            role: TLLMMessageRole.Tool, // toolData.role as TLLMMessageRole, //should always be 'tool' for OpenAI
+            name: toolData.name,
+            content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result), // Ensure content is a string
+        }));
+
+        return [...messageBlocks, ...transformedToolsData];
+    }
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         let tools = [];
 
