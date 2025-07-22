@@ -30,7 +30,7 @@ export class DataSourceLookup extends Component {
             'string.max': `The length of the 'namespace' name must be 50 characters or fewer.`,
         }),
         scoreThreshold: Joi.number().optional().label('Score Threshold'),
-        includeScore: Joi.boolean().optional().label('Score Threshold'),
+        includeScore: Joi.boolean().optional().label('Include Score'),
     });
     constructor() {
         super();
