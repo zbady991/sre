@@ -40,12 +40,15 @@ export class FileStore extends Component {
             const s3StorageConnector = ConnectorService.getStorageConnector('S3') as S3Storage;
             const fileName = this.getFileName(customFileName, extension);
             try {
-                const s3Key = `teams/${agent.teamId}/components_data/${fileName}`;
+                //const s3Key = `teams/${agent.teamId}/components_data/${fileName}`;
 
-                await s3StorageConnector.requester(AccessCandidate.agent(agent.teamId)).write(s3Key, buffer, null, metadata);
-                await s3StorageConnector.requester(AccessCandidate.agent(agent.teamId)).expire(s3Key, +ttl);
-                const smythFSUrl = `smythfs://${agent.teamId}.team/components_data/${fileName}`;
-                const url = await SmythFS.Instance.genResourceUrl(smythFSUrl, AccessCandidate.agent(agent.teamId));
+                //await s3StorageConnector.requester(AccessCandidate.agent(agent.id)).write(s3Key, buffer, null, metadata);
+                //await s3StorageConnector.requester(AccessCandidate.agent(agent.id)).expire(s3Key, +ttl);
+
+                
+                const smythFSUrl = `smythfs://${agent.id}.agent/components_data/${fileName}`;
+                SmythFS.Instance.write(smythFSUrl, buffer, null, metadata);
+                const url = await SmythFS.Instance.genResourceUrl(smythFSUrl, AccessCandidate.agent(agent.id));
                 Output = {
                     Url: url,
                 };
