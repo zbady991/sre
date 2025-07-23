@@ -343,10 +343,10 @@ export class Conversation extends EventEmitter {
             //     return;
             // }
             const lastMessage = this._context?.messages?.[this._context?.messages?.length - 1];
-            const skip = lastMessage?.content?.includes(passThroughtContinueMessage) && lastMessage?.__smyth_data__?.internal;
+            //const skip = lastMessage?.content?.includes(passThroughtContinueMessage) && lastMessage?.__smyth_data__?.internal;
 
             //skip if the content is the last generated message after a passthrough content
-            if (skip) return;
+            //if (skip) return;
             _content += content;
             this.emit(TLLMEvent.Content, content);
         });

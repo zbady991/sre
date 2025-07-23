@@ -225,7 +225,7 @@ export class SmythFS {
         const resourceMetadata = await this.storage.requester(_candidate).getMetadata(resourceId);
 
         const uid = crypto.randomUUID();
-        const tempUserCandidate = AccessCandidate.user(`system:${uid}`);
+        const tempUserCandidate = AccessCandidate.user(`system-${uid}`);
 
         await this.cache.requester(tempUserCandidate).set(
             `pub_url:${uid}`,
@@ -251,10 +251,10 @@ export class SmythFS {
         const uid = tempPath.split('/')[1]?.split('?')[0]; // get uid and remove query params
         if (!uid) throw new Error('Invalid Temp URL format');
 
-        let cacheVal = await this.cache.requester(AccessCandidate.user(`system:${uid}`)).get(`pub_url:${uid}`);
+        let cacheVal = await this.cache.requester(AccessCandidate.user(`system-${uid}`)).get(`pub_url:${uid}`);
         if (!cacheVal) throw new Error('Invalid Temp URL');
         cacheVal = JSONContentHelper.create(cacheVal).tryParse();
-        await this.cache.requester(AccessCandidate.user(`system:${uid}`)).delete(`pub_url:${uid}`);
+        await this.cache.requester(AccessCandidate.user(`system-${uid}`)).delete(`pub_url:${uid}`);
         if (delResource) {
             await this.delete(cacheVal.uri, AccessCandidate.clone(cacheVal.accessCandidate));
         }
@@ -263,7 +263,7 @@ export class SmythFS {
     public async serveTempContent(req: any, res: any) {
         try {
             const { uid } = req.params;
-            let cacheVal = await this.cache.requester(AccessCandidate.user(`system:${uid}`)).get(`pub_url:${uid}`);
+            let cacheVal = await this.cache.requester(AccessCandidate.user(`system-${uid}`)).get(`pub_url:${uid}`);
             if (!cacheVal) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Invalid Temp URL');
@@ -321,10 +321,10 @@ export class SmythFS {
         const resourceMetadata = await this.storage.requester(_candidate).getMetadata(resourceId);
 
         const uid = crypto.randomUUID(); // maybe instead of a random uuid, u can use the resource
-        const tempUserCandidate = AccessCandidate.user(`system:${uid}`);
+        const tempUserCandidate = AccessCandidate.user(`system-${uid}`);
 
         await this.cache.requester(tempUserCandidate).set(
-            `storage_url:${uid}`,
+            `storage_url-${uid}`,
             JSON.stringify({
                 accessCandidate: _candidate,
                 uri,
@@ -352,7 +352,7 @@ export class SmythFS {
         try {
             const { file_id } = req.params;
             const [uid, extention] = file_id.split('.');
-            let cacheVal = await this.cache.requester(AccessCandidate.user(`system:${uid}`)).get(`storage_url:${uid}`);
+            let cacheVal = await this.cache.requester(AccessCandidate.user(`system-${uid}`)).get(`storage_url-${uid}`);
             if (!cacheVal) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Invalid Resource URL');
