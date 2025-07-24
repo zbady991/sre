@@ -28,13 +28,19 @@ export class OpenAIApiInterfaceFactory implements IOpenAIApiInterfaceFactory {
      * @returns The appropriate OpenAI API interface instance
      */
     createInterface(interfaceType: string, context: ILLMRequestContext, deps: HandlerDependencies): OpenAIApiInterface {
+        if (!context || !deps) {
+            throw new Error('Context and dependencies (getClient(), reportUsage()) are required to create an interface');
+        }
+
         switch (interfaceType) {
             case 'responses':
                 return new ResponsesApiInterface(context, deps);
             case 'chat.completions':
                 return new ChatCompletionsApiInterface(context, deps);
             default:
-                throw new Error(`Unsupported OpenAI API interface type: ${interfaceType}`);
+                throw new Error(
+                    `Unsupported OpenAI API interface type: ${interfaceType}. Supported types: ${this.getSupportedInterfaces().join(', ')}`
+                );
         }
     }
 
@@ -68,7 +74,8 @@ export class OpenAIApiInterfaceFactory implements IOpenAIApiInterfaceFactory {
      * @param modelInfo - Model information object
      * @returns The appropriate interface type for the model
      */
-    getInterfaceTypeFromModelInfo(modelInfo?: any): string {
-        return modelInfo?.interface || this.getDefaultInterfaceType();
+    getInterfaceTypeFromModelInfo(modelInfo?: { interface?: string } | unknown): string {
+        const info = modelInfo as { interface?: string } | undefined;
+        return info?.interface || this.getDefaultInterfaceType();
     }
 }

@@ -21,11 +21,6 @@ export const SEARCH_TOOL_COSTS: SearchToolCostConfig = {
             medium: 35 / 1000,
             high: 50 / 1000,
         },
-        'gpt-4o-search': {
-            low: 30 / 1000,
-            medium: 35 / 1000,
-            high: 50 / 1000,
-        },
     },
     miniModels: {
         'gpt-4.1-mini': {
@@ -34,11 +29,6 @@ export const SEARCH_TOOL_COSTS: SearchToolCostConfig = {
             high: 30 / 1000,
         },
         'gpt-4o-mini': {
-            low: 25 / 1000,
-            medium: 27.5 / 1000,
-            high: 30 / 1000,
-        },
-        'gpt-4o-mini-search': {
             low: 25 / 1000,
             medium: 27.5 / 1000,
             high: 30 / 1000,

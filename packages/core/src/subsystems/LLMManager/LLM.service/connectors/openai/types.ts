@@ -7,8 +7,8 @@ export enum TToolType {
 }
 
 export interface IResponseHandler {
-    createStream(body: any, context: ILLMRequestContext): Promise<any>;
-    handleStream(stream: any, context: ILLMRequestContext): EventEmitter;
+    createStream(body: Record<string, unknown>, context: ILLMRequestContext): Promise<unknown>;
+    handleStream(stream: unknown, context: ILLMRequestContext): EventEmitter;
 }
 
 export type HandlerDependencies = {

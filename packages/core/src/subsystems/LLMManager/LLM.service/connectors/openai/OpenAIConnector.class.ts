@@ -34,7 +34,6 @@ export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
     private interfaceFactory: OpenAIApiInterfaceFactory;
-    private interface: OpenAIApiInterface;
 
     constructor() {
         super();
@@ -200,7 +199,6 @@ export class OpenAIConnector extends LLMConnector {
                 isUserKey: false,
                 modelInfo,
                 credentials: null,
-                client: null,
             } as ILLMRequestContext;
 
             const deps: HandlerDependencies = {

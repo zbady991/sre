@@ -48,7 +48,7 @@ export type TLLMToolChoice = OpenAI.ChatCompletionToolChoiceOption;
 export type TOpenAIToolsInfo = {
     webSearch: {
         enabled: boolean;
-        contextSize: string;
+        contextSize: TSearchContextSize;
         city?: string;
         country?: string;
         region?: string;
@@ -164,7 +164,7 @@ export type TLLMPreparedParams = TLLMParams & {
         imageGeneration?: boolean;
         imageEditing?: boolean;
     };
-    toolsInfo: TToolsInfo;
+    toolsInfo?: TToolsInfo;
 };
 
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
