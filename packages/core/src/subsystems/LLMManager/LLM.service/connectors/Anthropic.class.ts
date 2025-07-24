@@ -475,7 +475,7 @@ export class AnthropicConnector extends LLMConnector {
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
         let messages = body.messages.filter(
-            (message) => message?.role !== TLLMMessageRole.Assistant && message?.content !== PREFILL_TEXT_FOR_JSON_RESPONSE
+            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE)
         );
 
         let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
