@@ -187,5 +187,4 @@ export * from './subsystems/Security/Vault.service/connectors/NullVault.class';
 export * from './subsystems/Security/Vault.service/connectors/SecretsManager.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/OpenAIConnector.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/types';
-export * from './subsystems/LLMManager/LLM.service/connectors/openai/config/costs';
-export * from './subsystems/LLMManager/LLM.service/connectors/openai/config/models';
+export * from './subsystems/LLMManager/LLM.service/connectors/openai/apiInterfaces/constants';

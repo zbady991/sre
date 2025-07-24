@@ -131,7 +131,7 @@ export abstract class LLMConnector extends Connector {
             streamRequest: async (params: TLLMConnectorParams) => {
                 const preparedParams = await this.prepareParams(candidate, params);
 
-                const provider = preparedParams.modelInfo.provider;
+                const provider = preparedParams.modelInfo.provider?.toLowerCase();
 
                 const requestParams = {
                     acRequest: candidate.readRequest,

@@ -24,3 +24,14 @@ export type HandlerDependencies = {
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) => any;
 };
+
+export interface CostConfig {
+    [modelName: string]: {
+        [contextSize: string]: number;
+    };
+}
+
+export interface SearchToolCostConfig {
+    normalModels: CostConfig;
+    miniModels: CostConfig;
+}

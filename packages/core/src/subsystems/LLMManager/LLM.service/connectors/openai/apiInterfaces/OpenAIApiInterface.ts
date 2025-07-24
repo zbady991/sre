@@ -1,16 +1,17 @@
 import EventEmitter from 'events';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { TLLMParams, ILLMRequestContext, TLLMToolChoice } from '@sre/types/LLM.types';
+import { TLLMParams, ILLMRequestContext, TLLMToolChoice, OpenAIToolDefinition, LegacyToolDefinition, LLMModelInfo } from '@sre/types/LLM.types';
 import { HandlerDependencies } from '../types';
 
 /**
- * Tool configuration interface
+ * OpenAI-specific tool configuration interface
+ * Only deals with OpenAI tool definitions for clean separation
  */
 export interface ToolConfig {
     type?: string;
-    toolDefinitions: any[];
+    toolDefinitions: (OpenAIToolDefinition | LegacyToolDefinition)[];
     toolChoice?: TLLMToolChoice;
-    modelInfo?: any;
+    modelInfo?: LLMModelInfo | null;
 }
 
 /**

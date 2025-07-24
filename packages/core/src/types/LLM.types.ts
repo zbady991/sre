@@ -284,16 +284,47 @@ export type ToolData = {
     error?: string; // for Bedrock
 };
 
-export interface AnthropicToolDefinition {
+/**
+ * Base tool definition interface - only truly common properties
+ * All provider-specific tool definitions extend from this
+ */
+export interface ToolDefinition {
     name: string;
     description: string;
+}
+
+/**
+ * OpenAI-specific tool definition
+ * Extends base with OpenAI's parameter format
+ */
+export interface OpenAIToolDefinition extends ToolDefinition {
+    parameters: {
+        type: 'object';
+        properties: Record<string, unknown>;
+        required?: string[];
+    };
+}
+
+/**
+ * Anthropic-specific tool definition
+ * Extends base with Anthropic's input_schema format
+ */
+export interface AnthropicToolDefinition extends ToolDefinition {
     input_schema: {
         type: 'object';
         properties: Record<string, unknown>;
         required: string[];
     };
 }
-export type ToolDefinition = OpenAI.ChatCompletionTool | AnthropicToolDefinition;
+
+/**
+ * Legacy tool definition for backward compatibility
+ * @deprecated Use provider-specific definitions instead
+ */
+export interface LegacyToolDefinition extends ToolDefinition {
+    properties?: Record<string, unknown>;
+    requiredFields?: string[];
+}
 export type ToolChoice = OpenAI.ChatCompletionToolChoiceOption | FunctionCallingMode;
 
 export interface ToolsConfig {

@@ -4,19 +4,19 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import {
     TLLMParams,
+    TLLMPreparedParams,
     ILLMRequestContext,
-    TLLMMessageBlock,
     ToolData,
-    TLLMToolResultMessageBlock,
     TLLMMessageRole,
     APIKeySource,
+    TLLMEvent,
+    OpenAIToolDefinition,
+    LegacyToolDefinition,
 } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
-import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
-import { getSearchToolCost } from '../config/costs';
-import { supportsJsonResponse } from '../config/models';
-import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT, MODELS_WITHOUT_TEMPERATURE_SUPPORT } from './constants';
 
 // File size limits in bytes
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -89,20 +89,59 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         return emitter;
     }
 
-    public async prepareRequestBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
+    public async prepareRequestBody(params: TLLMPreparedParams): Promise<OpenAI.ChatCompletionCreateParams> {
         const messages = await this.prepareMessages(params);
 
         // Handle JSON response format
-        const { messages: preparedMessages } = this.handleJsonResponseFormat(messages, params);
+        if (params.responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0] = { ...messages[0], content: messages[0].content + JSON_RESPONSE_INSTRUCTION };
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
+            params.responseFormat = { type: 'json_object' };
+        }
 
         const body: OpenAI.ChatCompletionCreateParams = {
             model: params.model as string,
-            messages: preparedMessages,
+            messages,
         };
 
         // Handle max tokens
         if (params?.maxTokens !== undefined) {
             body.max_completion_tokens = params.maxTokens;
+        }
+
+        // Handle temperature
+        if (params?.temperature !== undefined && !MODELS_WITHOUT_TEMPERATURE_SUPPORT.includes(params.modelEntryName)) {
+            body.temperature = params.temperature;
+        }
+
+        // Handle topP
+        if (params?.topP !== undefined) {
+            body.top_p = params.topP;
+        }
+
+        // Handle frequency penalty
+        if (params?.frequencyPenalty !== undefined) {
+            body.frequency_penalty = params.frequencyPenalty;
+        }
+
+        // Handle presence penalty
+        if (params?.presencePenalty !== undefined && !MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT.includes(params.modelEntryName)) {
+            body.presence_penalty = params.presencePenalty;
+        }
+
+        // Handle response format
+        if (params?.responseFormat?.type) {
+            body.response_format = params.responseFormat;
+        }
+
+        // Handle stop sequences
+        if (params?.stopSequences?.length) {
+            body.stop = params.stopSequences;
         }
 
         // Handle tools configuration
@@ -111,27 +150,47 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             body.tool_choice = params?.toolsConfig?.tool_choice;
         }
 
-        // Handle temperature
-        if (params?.temperature !== undefined) {
-            body.temperature = params.temperature;
-        }
-
         return body;
     }
 
+    /**
+     * Type guard to check if a tool is an OpenAI tool definition
+     */
+    private isOpenAIToolDefinition(tool: OpenAIToolDefinition | LegacyToolDefinition): tool is OpenAIToolDefinition {
+        return 'parameters' in tool;
+    }
+
+    /**
+     * Transform OpenAI tool definitions to ChatCompletionTool format
+     */
     public transformToolsConfig(config: ToolConfig): OpenAI.ChatCompletionTool[] {
-        return config.toolDefinitions.map((tool) => ({
-            type: tool.type || 'function',
-            function: {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters || {
-                    type: 'object',
-                    properties: tool.properties,
-                    required: tool.requiredFields,
+        return config.toolDefinitions.map((tool) => {
+            // Handle OpenAI tool definition format
+            if (this.isOpenAIToolDefinition(tool)) {
+                return {
+                    type: 'function',
+                    function: {
+                        name: tool.name,
+                        description: tool.description,
+                        parameters: tool.parameters,
+                    },
+                };
+            }
+
+            // Handle legacy format for backward compatibility
+            return {
+                type: 'function',
+                function: {
+                    name: tool.name,
+                    description: tool.description,
+                    parameters: {
+                        type: 'object',
+                        properties: tool.properties || {},
+                        required: tool.requiredFields || [],
+                    },
                 },
-            },
-        }));
+            };
+        });
     }
 
     public async handleFileAttachments(
@@ -150,14 +209,21 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         const documentData = await this.processDocumentData(validDocumentFiles, agentId);
 
         // For Chat Completions, we modify the last user message
-        const userMessage = Array.isArray(messages) ? messages.pop() : { role: 'user', content: '' };
-        const prompt = userMessage?.content || '';
+        const messagesCopy = [...messages];
+        const userMessage =
+            Array.isArray(messagesCopy) && messagesCopy.length > 0 ? messagesCopy[messagesCopy.length - 1] : { role: 'user', content: '' };
+        const prompt = userMessage?.content && typeof userMessage.content === 'string' ? userMessage.content : '';
 
         const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
 
-        messages.push({ role: 'user', content: promptData });
+        // Replace the last message or add a new one if array was empty
+        if (messagesCopy.length > 0) {
+            messagesCopy[messagesCopy.length - 1] = { role: 'user', content: promptData };
+        } else {
+            messagesCopy.push({ role: 'user', content: promptData });
+        }
 
-        return messages;
+        return messagesCopy;
     }
 
     /**
@@ -200,7 +266,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
                         type: 'function',
                         name: '',
                         arguments: '',
-                        role: 'assistant',
+                        role: 'tool',
                     };
                 }
 
@@ -247,13 +313,6 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             const reported = this.deps.reportUsage(usage, this.buildUsageContext(context));
             reportedUsage.push(reported);
         });
-
-        // Report search tool usage if enabled
-        if (context.toolsInfo?.openai?.webSearch?.enabled) {
-            const searchUsage = this.calculateSearchToolUsage(context);
-            const reported = this.deps.reportUsage(searchUsage, this.buildUsageContext(context));
-            reportedUsage.push(reported);
-        }
     }
 
     /**
@@ -262,7 +321,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     private emitFinalEvents(emitter: EventEmitter, toolsData: ToolData[], reportedUsage: any[], finishReason: string): void {
         // Emit tool info event if tools were called
         if (toolsData.length > 0) {
-            emitter.emit('tool_info', toolsData);
+            emitter.emit(TLLMEvent.ToolInfo, toolsData);
         }
 
         // Emit interrupted event if finishReason is not 'stop'
@@ -285,21 +344,6 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
             agentId: context.agentId,
             teamId: context.teamId,
-        };
-    }
-
-    /**
-     * Calculate search tool usage with cost
-     */
-    private calculateSearchToolUsage(context: ILLMRequestContext) {
-        const modelName = context.modelEntryName?.replace('@built-in/', '');
-        const cost = getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
-
-        return {
-            cost,
-            completion_tokens: 0,
-            prompt_tokens: 0,
-            total_tokens: 0,
         };
     }
 
@@ -412,34 +456,5 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         }
 
         return messages;
-    }
-
-    /**
-     * Handle JSON response format for Chat Completions API
-     */
-    private handleJsonResponseFormat(
-        messages: OpenAI.ChatCompletionMessageParam[],
-        params: TLLMParams
-    ): { messages: OpenAI.ChatCompletionMessageParam[]; responseFormat: any } {
-        const responseFormat = params?.responseFormat || '';
-        const messagesCopy = [...messages];
-        const paramsCopy = { ...params };
-
-        if (responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (messagesCopy?.[0]?.role === TLLMMessageRole.System) {
-                messagesCopy[0] = { ...messagesCopy[0], content: messagesCopy[0].content + JSON_RESPONSE_INSTRUCTION };
-            } else {
-                messagesCopy.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-            }
-
-            if (supportsJsonResponse(paramsCopy.model as string)) {
-                paramsCopy.responseFormat = { type: 'json_object' };
-            } else {
-                paramsCopy.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
-            }
-        }
-
-        return { messages: messagesCopy, responseFormat: paramsCopy.responseFormat };
     }
 }

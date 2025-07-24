@@ -1,18 +1,7 @@
-/**
- * OpenAI API cost configuration
- * Centralized cost definitions for different models and features
- */
+import { SearchToolCostConfig } from '../types';
 
-export interface CostConfig {
-    [modelName: string]: {
-        [contextSize: string]: number;
-    };
-}
-
-export interface SearchToolCostConfig {
-    normalModels: CostConfig;
-    miniModels: CostConfig;
-}
+export const MODELS_WITHOUT_TEMPERATURE_SUPPORT = ['o3-pro', 'o4-mini'];
+export const MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT = ['o4-mini'];
 
 /**
  * Search tool cost configuration
@@ -54,22 +43,3 @@ export const SEARCH_TOOL_COSTS: SearchToolCostConfig = {
         },
     },
 };
-
-/**
- * Get search tool cost for a specific model and context size
- */
-export function getSearchToolCost(modelName: string, contextSize: string): number {
-    const normalizedModelName = modelName?.replace('@built-in/', '');
-
-    // Check normal models first
-    if (SEARCH_TOOL_COSTS.normalModels[normalizedModelName]) {
-        return SEARCH_TOOL_COSTS.normalModels[normalizedModelName][contextSize] || 0;
-    }
-
-    // Check mini models
-    if (SEARCH_TOOL_COSTS.miniModels[normalizedModelName]) {
-        return SEARCH_TOOL_COSTS.miniModels[normalizedModelName][contextSize] || 0;
-    }
-
-    return 0;
-}

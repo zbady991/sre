@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import OpenAI from 'openai';
+import type { Stream } from 'openai/streaming';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -12,11 +13,15 @@ import {
     TLLMToolResultMessageBlock,
     TLLMMessageRole,
     APIKeySource,
+    TLLMEvent,
+    OpenAIToolDefinition,
+    LegacyToolDefinition,
+    LLMModelInfo,
 } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies, TToolType } from '../types';
-import { getSearchToolCost } from '../config/costs';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { MODELS_WITHOUT_TEMPERATURE_SUPPORT, SEARCH_TOOL_COSTS } from './constants';
 
 // File size limits in bytes
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -57,15 +62,18 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         });
     }
 
-    async createStream(body: OpenAI.Responses.ResponseCreateParams, context: ILLMRequestContext): Promise<AsyncIterable<any>> {
+    async createStream(
+        body: OpenAI.Responses.ResponseCreateParams,
+        context: ILLMRequestContext
+    ): Promise<Stream<OpenAI.Responses.ResponseStreamEvent>> {
         const openai = await this.deps.getClient(context);
-        return await openai.responses.create({
+        return (await openai.responses.create({
             ...body,
             stream: true,
-        });
+        })) as Stream<OpenAI.Responses.ResponseStreamEvent>;
     }
 
-    public handleStream(stream: AsyncIterable<any>, context: ILLMRequestContext): EventEmitter {
+    public handleStream(stream: Stream<OpenAI.Responses.ResponseStreamEvent>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
         const usage_data: any[] = [];
         const reportedUsage: any[] = [];
@@ -98,7 +106,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      * Process the responses API stream format
      */
     private async processStream(
-        stream: AsyncIterable<any>,
+        stream: Stream<OpenAI.Responses.ResponseStreamEvent>,
         emitter: EventEmitter,
         usage_data: any[]
     ): Promise<{ toolsData: ToolData[]; finishReason: string }> {
@@ -106,52 +114,83 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         let finishReason = 'stop';
 
         for await (const part of stream) {
-            const delta = part.choices?.[0]?.delta;
-            const usage = part.usage;
+            // Handle different event types from the Responses API stream
+            if ('type' in part) {
+                const event = part.type;
 
-            // Collect usage statistics
-            if (usage) {
-                usage_data.push(usage);
+                switch (event) {
+                    case 'response.output_text.delta': {
+                        if ('delta' in part && part.delta) {
+                            // Emit content in delta format for compatibility
+                            const deltaMsg = {
+                                role: 'assistant',
+                                content: part.delta,
+                            };
+                            emitter.emit('data', deltaMsg);
+                            emitter.emit('content', part.delta, 'assistant');
+                        }
+                        break;
+                    }
+                    case 'response.function_call_arguments.delta': {
+                        // Handle function call arguments streaming - use any to work around type issues
+                        const partAny = part as any;
+                        if (partAny?.delta && partAny?.call_id) {
+                            // Find or create tool data entry
+                            let toolIndex = toolsData.findIndex((t) => t.id === partAny.call_id);
+                            if (toolIndex === -1) {
+                                toolIndex = toolsData.length;
+                                toolsData.push({
+                                    index: toolIndex,
+                                    id: partAny.call_id,
+                                    type: 'function',
+                                    name: partAny?.name || '',
+                                    arguments: '',
+                                    role: 'tool',
+                                });
+                            }
+                            toolsData[toolIndex].arguments += partAny.delta;
+                        }
+                        break;
+                    }
+                    case 'response.web_search_call.started' as any:
+                    case 'response.web_search_call.completed' as any: {
+                        // Handle web search events - these are newer event types not yet in the official types
+                        const partAny = part as any;
+                        if (partAny?.id) {
+                            // Find or create web search tool data entry
+                            let toolIndex = toolsData.findIndex((t) => t.id === partAny.id);
+                            if (toolIndex === -1) {
+                                toolIndex = toolsData.length;
+                                toolsData.push({
+                                    index: toolIndex,
+                                    id: partAny.id,
+                                    type: TToolType.WebSearch,
+                                    name: 'web_search',
+                                    arguments: partAny?.query || '',
+                                    role: 'tool',
+                                });
+                            } else {
+                                // Update existing entry
+                                if (partAny?.query) {
+                                    toolsData[toolIndex].arguments = partAny.query;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    default: {
+                        // Handle other event types including response completion
+                        if (event.includes('done')) {
+                            finishReason = 'stop';
+                        }
+                        break;
+                    }
+                }
             }
 
-            // Emit data event for delta
-            emitter.emit('data', delta);
-
-            // Handle content deltas
-            if (!delta?.tool_calls && delta?.content) {
-                emitter.emit('content', delta?.content, delta?.role);
-            }
-
-            // Handle tool calls
-            if (delta?.tool_calls) {
-                const toolCall = delta?.tool_calls?.[0];
-                const index = toolCall?.index;
-
-                if (!toolsData[index]) {
-                    toolsData[index] = {
-                        index: index || 0,
-                        id: '',
-                        type: 'function',
-                        name: '',
-                        arguments: '',
-                        role: 'assistant',
-                    };
-                }
-
-                if (toolCall?.function?.name) {
-                    toolsData[index].name = toolCall.function.name;
-                }
-                if (toolCall?.function?.arguments) {
-                    toolsData[index].arguments += toolCall.function.arguments;
-                }
-                if (toolCall?.id) {
-                    toolsData[index].id = toolCall.id;
-                }
-            }
-
-            // Handle finish reason
-            if (part.choices?.[0]?.finish_reason) {
-                finishReason = part.choices[0].finish_reason;
+            // Handle usage statistics from response object
+            if ('response' in part && (part as any).response?.usage) {
+                usage_data.push((part as any).response.usage);
             }
         }
 
@@ -203,7 +242,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     private emitFinalEvents(emitter: EventEmitter, toolsData: ToolData[], reportedUsage: any[], finishReason: string): void {
         // Emit tool info event if tools were called
         if (toolsData.length > 0) {
-            emitter.emit('tool_info', toolsData);
+            emitter.emit(TLLMEvent.ToolInfo, toolsData);
         }
 
         // Emit interrupted event if finishReason is not 'stop'
@@ -233,8 +272,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      * Calculate search tool usage with cost
      */
     private calculateSearchToolUsage(context: ILLMRequestContext) {
-        const modelName = context.modelEntryName?.replace('@built-in/', '');
-        const cost = getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
+        const modelName = context.modelEntryName?.replace('smythos/', '');
+        const cost = this.getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
 
         return {
             cost,
@@ -262,7 +301,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.max_output_tokens = params.maxTokens;
         }
 
-        if (params?.temperature !== undefined) {
+        // o3-pro does not support temperature
+        if (params?.temperature !== undefined && !MODELS_WITHOUT_TEMPERATURE_SUPPORT.includes(params.modelEntryName)) {
             body.temperature = params.temperature;
         }
 
@@ -293,17 +333,42 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         return body;
     }
 
+    /**
+     * Type guard to check if a tool is an OpenAI tool definition
+     */
+    private isOpenAIToolDefinition(tool: OpenAIToolDefinition | LegacyToolDefinition): tool is OpenAIToolDefinition {
+        return 'parameters' in tool;
+    }
+
+    /**
+     * Transform OpenAI tool definitions to Responses.Tool format
+     */
     public transformToolsConfig(config: ToolConfig): OpenAI.Responses.Tool[] {
-        return config.toolDefinitions.map((tool) => ({
-            type: tool.type || 'function',
-            name: tool.name,
-            description: tool.description,
-            parameters: tool.parameters || {
-                type: 'object',
-                properties: tool.properties,
-                required: tool.requiredFields,
-            },
-        }));
+        return config.toolDefinitions.map((tool) => {
+            // Handle OpenAI tool definition format
+            if (this.isOpenAIToolDefinition(tool)) {
+                return {
+                    type: 'function' as const,
+                    name: tool.name,
+                    description: tool.description,
+                    parameters: tool.parameters,
+                    strict: false, // Add required property for OpenAI Responses API
+                } as OpenAI.Responses.Tool;
+            }
+
+            // Handle legacy format for backward compatibility
+            return {
+                type: 'function' as const,
+                name: tool.name,
+                description: tool.description,
+                parameters: {
+                    type: 'object',
+                    properties: tool.properties || {},
+                    required: tool.requiredFields || [],
+                },
+                strict: false, // Add required property for OpenAI Responses API
+            } as OpenAI.Responses.Tool;
+        });
     }
 
     /**
@@ -669,16 +734,13 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
         // Add regular function tools
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            // Now we can pass the tools directly to transformToolsConfig
+            // which handles type detection and conversion properly
             const toolsConfig = this.transformToolsConfig({
                 type: 'function',
-                toolDefinitions: params.toolsConfig.tools.map((tool) => ({
-                    name: tool.function?.name || tool.name,
-                    description: tool.function?.description || tool.description,
-                    properties: tool.function?.parameters?.properties || tool.parameters?.properties,
-                    requiredFields: tool.function?.parameters?.required || tool.parameters?.required,
-                })),
+                toolDefinitions: params.toolsConfig.tools as (OpenAIToolDefinition | LegacyToolDefinition)[],
                 toolChoice: 'auto',
-                modelInfo: params.modelInfo,
+                modelInfo: (params.modelInfo as LLMModelInfo) || null,
             });
             tools.push(...toolsConfig);
         }
@@ -688,6 +750,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     /**
      * Get web search tool configuration for OpenAI Responses API
+     * According to OpenAI documentation: https://platform.openai.com/docs/api-reference/responses/create
      */
     private prepareWebSearchTool(params: TLLMPreparedParams): OpenAI.Responses.WebSearchTool {
         const webSearch = params?.toolsInfo?.openai?.webSearch;
@@ -697,26 +760,37 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         const searchRegion = webSearch?.region;
         const searchTimezone = webSearch?.timezone;
 
-        const location: TSearchLocation = {
+        // Prepare location object - build incrementally if any location parameters exist
+        const userLocation: TSearchLocation = {
             type: 'approximate', // Required, always be 'approximate' when we implement location
         };
 
-        if (searchCity) location.city = searchCity;
-        if (searchCountry) location.country = searchCountry;
-        if (searchRegion) location.region = searchRegion;
-        if (searchTimezone) location.timezone = searchTimezone;
+        // Add location fields if they exist
+        if (searchCity) userLocation.city = searchCity;
+        if (searchCountry) userLocation.country = searchCountry;
+        if (searchRegion) userLocation.region = searchRegion;
+        if (searchTimezone) userLocation.timezone = searchTimezone;
 
+        // Only include location in config if we have actual location data
+        const hasLocationData = searchCity || searchCountry || searchRegion || searchTimezone;
+
+        // Configure web search tool according to OpenAI Responses API specification
         const searchTool: OpenAI.Responses.WebSearchTool = {
-            type: TToolType.WebSearch,
-            search_context_size: (contextSize || 'medium') as TSearchContextSize,
+            type: 'web_search_preview' as any, // Use correct type as per OpenAI docs
         };
 
-        // Add location only if any location field is provided. Since 'type' is always present, we check if the number of keys in the location object is greater than 1.
-        if (Object.keys(location).length > 1) {
-            searchTool.user_location = location;
+        // Add optional configuration properties
+        const webSearchConfig: any = {};
+
+        if (contextSize) {
+            webSearchConfig.search_context_size = contextSize;
         }
 
-        return searchTool;
+        if (hasLocationData) {
+            webSearchConfig.user_location = userLocation;
+        }
+
+        return { ...searchTool, ...webSearchConfig };
     }
 
     private applyToolMessageTransformation(input: any[]): any[] {
@@ -756,5 +830,24 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         });
 
         return transformedMessages;
+    }
+
+    /**
+     * Get search tool cost for a specific model and context size
+     */
+    private getSearchToolCost(modelName: string, contextSize: string): number {
+        const normalizedModelName = modelName?.replace('smythos/', '');
+
+        // Check normal models first
+        if (SEARCH_TOOL_COSTS.normalModels[normalizedModelName]) {
+            return SEARCH_TOOL_COSTS.normalModels[normalizedModelName][contextSize] || 0;
+        }
+
+        // Check mini models
+        if (SEARCH_TOOL_COSTS.miniModels[normalizedModelName]) {
+            return SEARCH_TOOL_COSTS.miniModels[normalizedModelName][contextSize] || 0;
+        }
+
+        return 0;
     }
 }

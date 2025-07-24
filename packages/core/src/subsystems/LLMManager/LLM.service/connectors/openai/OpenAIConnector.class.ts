@@ -54,6 +54,21 @@ export class OpenAIConnector extends LLMConnector {
         return this.interfaceFactory.createInterface(interfaceType, context, deps);
     }
 
+    /**
+     * Determine the appropriate interface type based on context and capabilities
+     */
+    private getInterfaceType(context: ILLMRequestContext): string {
+        // Start with model-specified interface or default
+        let responseInterface = this.interfaceFactory.getInterfaceTypeFromModelInfo(context.modelInfo);
+
+        // Auto-switch to Responses API when web search is enabled
+        if (context.toolsInfo?.openai?.webSearch?.enabled === true) {
+            responseInterface = 'responses';
+        }
+
+        return responseInterface;
+    }
+
     protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
         const baseURL = params?.modelInfo?.baseURL;
@@ -68,123 +83,107 @@ export class OpenAIConnector extends LLMConnector {
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         const _body = body as OpenAI.ChatCompletionCreateParams;
 
-        try {
-            // #region Validate token limit
-            const messages = _body?.messages || [];
-            const lastMessage = messages[messages.length - 1];
+        // #region Validate token limit
+        const messages = _body?.messages || [];
+        const lastMessage = messages[messages.length - 1];
 
-            const promptTokens = context?.hasFiles
-                ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
-                : encodeChat(messages as any, 'gpt-4')?.length;
+        const promptTokens = context?.hasFiles
+            ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
+            : encodeChat(messages as any, 'gpt-4')?.length;
 
-            await this.validateTokenLimit({
-                acRequest,
-                promptTokens,
-                context,
-                maxTokens: _body.max_completion_tokens,
-            });
-            // #endregion Validate token limit
+        await this.validateTokenLimit({
+            acRequest,
+            promptTokens,
+            context,
+            maxTokens: _body.max_completion_tokens,
+        });
+        // #endregion Validate token limit
 
-            const responseInterface = this.interfaceFactory.getInterfaceTypeFromModelInfo(context.modelInfo);
-            const apiInterface = this.getApiInterface(responseInterface, context);
+        const responseInterface = this.getInterfaceType(context);
+        const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const result = await apiInterface.createRequest(body, context);
+        const result = await apiInterface.createRequest(body, context);
 
-            const message = result?.choices?.[0]?.message;
-            const finishReason = result?.choices?.[0]?.finish_reason;
+        const message = result?.choices?.[0]?.message;
+        const finishReason = result?.choices?.[0]?.finish_reason;
 
-            let toolsData: ToolData[] = [];
-            let useTool = false;
+        let toolsData: ToolData[] = [];
+        let useTool = false;
 
-            if (finishReason === 'tool_calls') {
-                toolsData =
-                    message?.tool_calls?.map((tool, index) => ({
-                        index,
-                        id: tool?.id,
-                        type: tool?.type,
-                        name: tool?.function?.name,
-                        arguments: tool?.function?.arguments,
-                        role: 'tool',
-                    })) || [];
+        if (finishReason === 'tool_calls') {
+            toolsData =
+                message?.tool_calls?.map((tool, index) => ({
+                    index,
+                    id: tool?.id,
+                    type: tool?.type,
+                    name: tool?.function?.name,
+                    arguments: tool?.function?.arguments,
+                    role: 'tool',
+                })) || [];
 
-                useTool = true;
-            }
-
-            const usage = result?.usage;
-            this.reportUsage(usage, {
-                modelEntryName: context.modelEntryName,
-                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId: context.agentId,
-                teamId: context.teamId,
-            });
-
-            return {
-                content: message?.content ?? '',
-                finishReason,
-                useTool,
-                toolsData,
-                message,
-                usage,
-            };
-        } catch (error: any) {
-            throw error;
+            useTool = true;
         }
+
+        const usage = result?.usage;
+        this.reportUsage(usage, {
+            modelEntryName: context.modelEntryName,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+            agentId: context.agentId,
+            teamId: context.teamId,
+        });
+
+        return {
+            content: message?.content ?? '',
+            finishReason,
+            useTool,
+            toolsData,
+            message,
+            usage,
+        };
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        try {
-            // #region Validate token limit
-            const messages = body?.messages || body?.input || [];
-            const lastMessage = messages[messages.length - 1];
+        // #region Validate token limit
+        const messages = body?.messages || body?.input || [];
+        const lastMessage = messages[messages.length - 1];
 
-            const promptTokens = context?.hasFiles
-                ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
-                : encodeChat(messages as any, 'gpt-4')?.length;
+        const promptTokens = context?.hasFiles
+            ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
+            : encodeChat(messages as any, 'gpt-4')?.length;
 
-            await this.validateTokenLimit({
-                acRequest,
-                promptTokens,
-                context,
-                maxTokens: body.max_completion_tokens,
-            });
-            // #endregion Validate token limit
+        await this.validateTokenLimit({
+            acRequest,
+            promptTokens,
+            context,
+            maxTokens: body.max_completion_tokens,
+        });
+        // #endregion Validate token limit
 
-            const responseInterface = this.interfaceFactory.getInterfaceTypeFromModelInfo(context.modelInfo);
-            const apiInterface = this.getApiInterface(responseInterface, context);
+        const responseInterface = this.getInterfaceType(context);
+        const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const stream = await apiInterface.createStream(body, context);
+        const stream = await apiInterface.createStream(body, context);
 
-            const emitter = apiInterface.handleStream(stream, context);
+        const emitter = apiInterface.handleStream(stream, context);
 
-            return emitter;
-        } catch (error: any) {
-            throw error;
-        }
+        return emitter;
     }
 
     // #region Image Generation, will be moved to a different subsystem
     protected async imageGenRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
-        try {
-            const openai = await this.getClient(context);
-            const response = await openai.images.generate(body as OpenAI.Images.ImageGenerateParams);
+        const openai = await this.getClient(context);
+        const response = await openai.images.generate(body as OpenAI.Images.ImageGenerateParams);
 
-            return response;
-        } catch (error: any) {
-            throw error;
-        }
+        return response;
     }
 
     protected async imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
         const _body = body as OpenAI.Images.ImageEditParams;
 
-        try {
-            const openai = await this.getClient(context);
-            const response = await openai.images.edit(_body);
+        const openai = await this.getClient(context);
+        const response = await openai.images.edit(_body);
 
-            return response;
-        } catch (error: any) {
-            throw error;
-        }
+        return response;
     }
     // #endregion
 
@@ -310,7 +309,7 @@ export class OpenAIConnector extends LLMConnector {
      * Uses MessageTransformer and ToolsTransformer for clean interface transformations
      */
 
-    private async prepareImageGenerationBody(params: TLLMParams): Promise<OpenAI.Images.ImageGenerateParams> {
+    private async prepareImageGenerationBody(params: TLLMPreparedParams): Promise<OpenAI.Images.ImageGenerateParams> {
         const { model, size, quality, n, responseFormat, style } = params;
 
         const body: OpenAI.Images.ImageGenerateParams = {
@@ -325,7 +324,7 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
-        if (responseFormat) {
+        if (params?.responseFormat?.type) {
             body.response_format = responseFormat;
         }
 
@@ -336,7 +335,7 @@ export class OpenAIConnector extends LLMConnector {
         return body;
     }
 
-    private async prepareImageEditBody(params: TLLMParams): Promise<OpenAI.Images.ImageEditParams> {
+    private async prepareImageEditBody(params: TLLMPreparedParams): Promise<OpenAI.Images.ImageEditParams> {
         const { model, size, n, responseFormat } = params;
 
         const body: OpenAI.Images.ImageEditParams = {
@@ -348,7 +347,7 @@ export class OpenAIConnector extends LLMConnector {
         };
 
         // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
-        if (responseFormat) {
+        if (params?.responseFormat?.type) {
             body.response_format = responseFormat;
         }
 
@@ -372,16 +371,21 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TOpenAIRequestBody> {
-        // Determine the API interface to use for body preparation
-        const responseInterface = params.modelInfo?.interface || 'chat.completions';
-
         // Handle special capabilities first (these override interface type)
         if (params.capabilities?.imageGeneration === true) {
             const capabilityType = params?.files?.length > 0 ? 'image-edit' : 'image-generation';
             return this.prepareRequestBody(params, capabilityType);
         }
 
-        // Use standard interface preparation
+        // Create a minimal context to use the same interface selection logic
+        const minimalContext: ILLMRequestContext = {
+            modelInfo: params.modelInfo,
+            toolsInfo: params.toolsInfo,
+        } as ILLMRequestContext;
+
+        const responseInterface = this.getInterfaceType(minimalContext);
+
+        // Use interface-specific preparation
         return this.prepareRequestBody(params, responseInterface);
     }
 
