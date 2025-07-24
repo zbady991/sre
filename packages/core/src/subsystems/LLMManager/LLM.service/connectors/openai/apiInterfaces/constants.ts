@@ -2,6 +2,8 @@ import { SearchToolCostConfig } from '../types';
 
 export const MODELS_WITHOUT_TEMPERATURE_SUPPORT = ['o3-pro', 'o4-mini'];
 export const MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT = ['o4-mini'];
+export const MODELS_WITHOUT_JSON_RESPONSE_SUPPORT = ['o1-preview'];
+export const MODELS_WITHOUT_SYSTEM_MESSAGE_SUPPORT = ['o1-mini', 'o1-preview'];
 
 /**
  * Search tool cost configuration

@@ -323,11 +323,6 @@ export class OpenAIConnector extends LLMConnector {
             body.quality = quality;
         }
 
-        // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
-        if (params?.responseFormat?.type) {
-            body.response_format = responseFormat;
-        }
-
         if (style) {
             body.style = style;
         }
@@ -345,11 +340,6 @@ export class OpenAIConnector extends LLMConnector {
             n: n || 1,
             image: null,
         };
-
-        // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
-        if (params?.responseFormat?.type) {
-            body.response_format = responseFormat;
-        }
 
         const files: BinaryInput[] = params?.files || [];
 

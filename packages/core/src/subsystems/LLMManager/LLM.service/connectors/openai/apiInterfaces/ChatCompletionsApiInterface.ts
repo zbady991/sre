@@ -16,7 +16,12 @@ import {
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
 import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
-import { MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT, MODELS_WITHOUT_TEMPERATURE_SUPPORT } from './constants';
+import {
+    MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT,
+    MODELS_WITHOUT_TEMPERATURE_SUPPORT,
+    MODELS_WITHOUT_SYSTEM_MESSAGE_SUPPORT,
+    MODELS_WITHOUT_JSON_RESPONSE_SUPPORT,
+} from './constants';
 
 // File size limits in bytes
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -90,15 +95,38 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     }
 
     public async prepareRequestBody(params: TLLMPreparedParams): Promise<OpenAI.ChatCompletionCreateParams> {
-        const messages = await this.prepareMessages(params);
+        let messages = await this.prepareMessages(params);
+
+        // Convert system messages for models that don't support them
+        if (MODELS_WITHOUT_SYSTEM_MESSAGE_SUPPORT.includes(params.modelEntryName)) {
+            messages = this.convertSystemMessagesToUserMessages(messages);
+        }
 
         // Handle JSON response format
         if (params.responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (messages?.[0]?.role === TLLMMessageRole.System) {
-                messages[0] = { ...messages[0], content: messages[0].content + JSON_RESPONSE_INSTRUCTION };
+            const supportsSystemMessages = !MODELS_WITHOUT_SYSTEM_MESSAGE_SUPPORT.includes(params.modelEntryName);
+
+            if (supportsSystemMessages) {
+                // For models that support system messages
+                if (messages?.[0]?.role === TLLMMessageRole.System) {
+                    messages[0] = { ...messages[0], content: messages[0].content + JSON_RESPONSE_INSTRUCTION };
+                } else {
+                    messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+                }
             } else {
-                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+                // For models that don't support system messages, prepend to first user message
+                const firstUserMessageIndex = messages.findIndex((msg) => msg.role === TLLMMessageRole.User);
+                if (firstUserMessageIndex !== -1) {
+                    const userMessage = messages[firstUserMessageIndex];
+                    const content = typeof userMessage.content === 'string' ? userMessage.content : '';
+                    messages[firstUserMessageIndex] = {
+                        ...userMessage,
+                        content: JSON_RESPONSE_INSTRUCTION + '\n\n' + content,
+                    };
+                } else {
+                    // If no user message exists, create one with the instruction
+                    messages.push({ role: TLLMMessageRole.User, content: JSON_RESPONSE_INSTRUCTION });
+                }
             }
 
             params.responseFormat = { type: 'json_object' };
@@ -135,7 +163,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         }
 
         // Handle response format
-        if (params?.responseFormat?.type) {
+        if (params?.responseFormat?.type && !MODELS_WITHOUT_JSON_RESPONSE_SUPPORT.includes(params.modelEntryName)) {
             body.response_format = params.responseFormat;
         }
 
@@ -441,6 +469,46 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     validateParameters(params: TLLMParams): boolean {
         // Basic validation for Chat Completions parameters
         return !!params.model && Array.isArray(params.messages);
+    }
+
+    /**
+     * Convert system messages to user messages for models that don't support system messages
+     */
+    private convertSystemMessagesToUserMessages(messages: OpenAI.ChatCompletionMessageParam[]): OpenAI.ChatCompletionMessageParam[] {
+        const convertedMessages: OpenAI.ChatCompletionMessageParam[] = [];
+        const systemMessages: string[] = [];
+
+        // Extract system messages and collect other messages
+        for (const message of messages) {
+            if (message.role === TLLMMessageRole.System) {
+                const content = typeof message.content === 'string' ? message.content : '';
+                if (content.trim()) {
+                    systemMessages.push(content);
+                }
+            } else {
+                convertedMessages.push(message);
+            }
+        }
+
+        // If we have system messages, prepend them to the first user message
+        if (systemMessages.length > 0) {
+            const systemContent = systemMessages.join('\n\n');
+            const firstUserMessageIndex = convertedMessages.findIndex((msg) => msg.role === TLLMMessageRole.User);
+
+            if (firstUserMessageIndex !== -1) {
+                const userMessage = convertedMessages[firstUserMessageIndex];
+                const existingContent = typeof userMessage.content === 'string' ? userMessage.content : '';
+                convertedMessages[firstUserMessageIndex] = {
+                    ...userMessage,
+                    content: systemContent + '\n\n' + existingContent,
+                };
+            } else {
+                // If no user message exists, create one with the system content
+                convertedMessages.unshift({ role: TLLMMessageRole.User, content: systemContent });
+            }
+        }
+
+        return convertedMessages;
     }
 
     /**
