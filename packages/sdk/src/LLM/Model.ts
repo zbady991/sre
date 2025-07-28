@@ -1,4 +1,4 @@
-import { TCustomLLMModel, TLLMProvider, TLLMModel, models, SystemEvents } from '@smythos/sre';
+import { TCustomLLMModel, TLLMProvider, TLLMModel, SystemEvents } from '@smythos/sre';
 
 import { adaptModelParams } from './utils';
 import { TLLMInstanceParams } from './LLMInstance.class';
@@ -54,7 +54,7 @@ for (const provider of Object.keys(TLLMProvider)) {
     }) as TModelFactory;
 }
 
-export function findClosestModelInfo(modelId: string) {
+export function findClosestModelInfo(models, modelId: string) {
     if (models[modelId]) {
         return models[modelId];
     }

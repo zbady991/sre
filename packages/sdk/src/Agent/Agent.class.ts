@@ -2,8 +2,10 @@ import {
     AccessCandidate,
     AgentProcess,
     BinaryInput,
+    ConnectorService,
     Conversation,
     DEFAULT_TEAM_ID,
+    SRE,
     TLLMConnectorParams,
     TLLMEvent,
     TLLMModel,
@@ -344,11 +346,7 @@ export class Agent extends SDKObject {
 
         const { model, ...rest } = this._settings;
 
-        if (typeof model === 'string') {
-            this._data.defaultModel = findClosestModelInfo(model);
-        } else {
-            this._data.defaultModel = model as any;
-        }
+        this._data.defaultModel = model as any;
 
         for (let key in rest) {
             this._data[key as keyof AgentData] = rest[key];
@@ -378,6 +376,26 @@ export class Agent extends SDKObject {
 
         //if we are using DummyAccount, populate the account data in order to inform it about our newly loaded agent
         DummyAccountHelper.addAgentToTeam(this._data.id, this._data.teamId);
+    }
+
+    protected async init() {
+        //if the SRE instance is not initializing, initialize it with default settings
+        if (!SRE.initializing) SRE.init({});
+        await SRE.ready();
+
+        const model = this._data.defaultModel;
+
+        const modelsProvider = ConnectorService.getModelsProviderConnector();
+        const modelsProviderReq = modelsProvider.agent(this._data.id);
+
+        const models = await modelsProviderReq.getModels();
+
+        if (typeof model === 'string') {
+            this._data.defaultModel = findClosestModelInfo(models, model);
+        } else {
+            this._data.defaultModel = model as any;
+        }
+        this._readyPromise.resolve(true);
     }
 
     private _validateId(id: string) {

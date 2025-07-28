@@ -14,7 +14,7 @@ import { SRE } from '@smythos/sre';
  */
 export class SDKObject {
     private _eventEmitter: EventEmitter;
-    private _readyPromise: ControlledPromise<any>;
+    protected _readyPromise: ControlledPromise<any>;
 
     public get ready() {
         return this._readyPromise;
