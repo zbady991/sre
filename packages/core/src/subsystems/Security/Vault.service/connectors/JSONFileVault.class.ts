@@ -13,6 +13,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import * as readlineSync from 'readline-sync';
 import path from 'path';
+import * as chokidar from 'chokidar';
 import { findSmythPath } from '../../../../helpers/Sysconfig.helper';
 
 const console = Logger('JSONFileVault');
@@ -29,6 +30,7 @@ export class JSONFileVault extends VaultConnector {
     private index: any;
     private shared: string;
     private vaultFile: string;
+    private watcher: chokidar.FSWatcher | null = null;
 
     constructor(protected _settings: JSONFileVaultConfig) {
         super(_settings);
@@ -156,7 +158,6 @@ export class JSONFileVault extends VaultConnector {
     }
 
     private fetchVaultData(vaultFile: string, _settings: JSONFileVaultConfig) {
-   
         if (fs.existsSync(vaultFile)) {
             try {
                 if (_settings.fileKey && fs.existsSync(_settings.fileKey)) {
@@ -200,10 +201,21 @@ export class JSONFileVault extends VaultConnector {
     }
 
     private initFileWatcher() {
-        fs.watch(this.vaultFile, (eventType, filename) => {
-            if (eventType === 'change') {
-                this.fetchVaultData(this.vaultFile, this._settings);
-            }
+        this.watcher = chokidar.watch(this.vaultFile, {
+            persistent: false, // Don't keep the process running
+            ignoreInitial: true,
         });
+
+        this.watcher.on('change', () => {
+            this.fetchVaultData(this.vaultFile, this._settings);
+        });
+    }
+
+    public async stop() {
+        super.stop();
+        if (this.watcher) {
+            this.watcher.close();
+            this.watcher = null;
+        }
     }
 }
