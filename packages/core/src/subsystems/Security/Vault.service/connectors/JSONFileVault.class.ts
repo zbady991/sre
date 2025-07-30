@@ -13,6 +13,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import * as readlineSync from 'readline-sync';
 import path from 'path';
+import * as chokidar from 'chokidar';
 import { findSmythPath } from '../../../../helpers/Sysconfig.helper';
 
 const console = Logger('JSONFileVault');
@@ -28,6 +29,8 @@ export class JSONFileVault extends VaultConnector {
     private vaultData: any;
     private index: any;
     private shared: string;
+    private vaultFile: string;
+    private watcher: chokidar.FSWatcher | null = null;
 
     constructor(protected _settings: JSONFileVaultConfig) {
         super(_settings);
@@ -35,48 +38,9 @@ export class JSONFileVault extends VaultConnector {
 
         this.shared = _settings.shared || ''; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
 
-        let vaultFile = this.findVaultFile(_settings.file);
-        this.vaultData = {};
-        if (fs.existsSync(vaultFile)) {
-            try {
-                if (_settings.fileKey && fs.existsSync(_settings.fileKey)) {
-                    try {
-                        const privateKey = fs.readFileSync(_settings.fileKey, 'utf8');
-                        const encryptedVault = fs.readFileSync(vaultFile, 'utf8').toString();
-                        const decryptedBuffer = crypto.privateDecrypt(
-                            {
-                                key: privateKey,
-                                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                            },
-                            Buffer.from(encryptedVault, 'base64')
-                        );
-                        this.vaultData = JSON.parse(decryptedBuffer.toString('utf8'));
-                    } catch (error) {
-                        throw new Error('Failed to decrypt vault');
-                    }
-                } else {
-                    this.vaultData = JSON.parse(fs.readFileSync(vaultFile).toString());
-                }
-            } catch (e) {
-                console.error('Error parsing vault file:', e);
-                console.error('!!! Vault features might not work properly !!!');
-                this.vaultData = {};
-            }
-
-            if (this.vaultData?.encrypted && this.vaultData?.algorithm && this.vaultData?.data) {
-                //this is an encrypted vault we need to request the master key
-                this.setInteraction(this.getMasterKeyInteractive.bind(this));
-            }
-
-            for (let teamId in this.vaultData) {
-                for (let resourceId in this.vaultData[teamId]) {
-                    if (!this.index) this.index = {};
-                    if (!this.index[resourceId]) this.index[resourceId] = {};
-                    const value = this.vaultData[teamId][resourceId];
-                    this.index[resourceId][teamId] = value;
-                }
-            }
-        }
+        this.vaultFile = this.findVaultFile(_settings.file);
+        this.fetchVaultData(this.vaultFile, _settings);
+        this.initFileWatcher();
     }
 
     private findVaultFile(vaultFile) {
@@ -191,5 +155,67 @@ export class JSONFileVault extends VaultConnector {
         }
 
         return acl;
+    }
+
+    private fetchVaultData(vaultFile: string, _settings: JSONFileVaultConfig) {
+        if (fs.existsSync(vaultFile)) {
+            try {
+                if (_settings.fileKey && fs.existsSync(_settings.fileKey)) {
+                    try {
+                        const privateKey = fs.readFileSync(_settings.fileKey, 'utf8');
+                        const encryptedVault = fs.readFileSync(vaultFile, 'utf8').toString();
+                        const decryptedBuffer = crypto.privateDecrypt(
+                            {
+                                key: privateKey,
+                                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                            },
+                            Buffer.from(encryptedVault, 'base64')
+                        );
+                        this.vaultData = JSON.parse(decryptedBuffer.toString('utf8'));
+                    } catch (error) {
+                        throw new Error('Failed to decrypt vault');
+                    }
+                } else {
+                    this.vaultData = JSON.parse(fs.readFileSync(vaultFile).toString());
+                }
+            } catch (e) {
+                console.error('Error parsing vault file:', e);
+                console.error('!!! Vault features might not work properly !!!');
+                this.vaultData = {};
+            }
+
+            if (this.vaultData?.encrypted && this.vaultData?.algorithm && this.vaultData?.data) {
+                //this is an encrypted vault we need to request the master key
+                this.setInteraction(this.getMasterKeyInteractive.bind(this));
+            }
+
+            for (let teamId in this.vaultData) {
+                for (let resourceId in this.vaultData[teamId]) {
+                    if (!this.index) this.index = {};
+                    if (!this.index[resourceId]) this.index[resourceId] = {};
+                    const value = this.vaultData[teamId][resourceId];
+                    this.index[resourceId][teamId] = value;
+                }
+            }
+        }
+    }
+
+    private initFileWatcher() {
+        this.watcher = chokidar.watch(this.vaultFile, {
+            persistent: false, // Don't keep the process running
+            ignoreInitial: true,
+        });
+
+        this.watcher.on('change', () => {
+            this.fetchVaultData(this.vaultFile, this._settings);
+        });
+    }
+
+    public async stop() {
+        super.stop();
+        if (this.watcher) {
+            this.watcher.close();
+            this.watcher = null;
+        }
     }
 }

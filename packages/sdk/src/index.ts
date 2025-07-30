@@ -29,6 +29,8 @@ export * from './types/ExportedSRETypes';
 export * from './types/SDKTypes';
 export * from './utils/help';
 export * from './utils/index';
+export * from './Vault/Vault';
+export * from './Vault/VaultInstance.class';
 export * from './VectorDB/VectorDB.class';
 export * from './VectorDB/VectorDBInstance.class';
 export * from './Components/generated/APICall';
