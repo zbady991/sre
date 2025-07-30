@@ -3,7 +3,7 @@ import { Agent, Scope } from '@smythos/sdk';
 async function main() {
     const agent = new Agent({
         id: 'crypto-market-assistant',
-        
+
         name: 'CryptoMarket Assistant',
         behavior: 'You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD',
         model: 'gpt-4o',
@@ -19,28 +19,6 @@ async function main() {
             return data.market_data;
         },
     });
-    const imgSkill = agent.addSkill({
-        name: 'ImageAnalyser',
-        description: 'Any attachment should be processed by this function',
-        process: async ({ image_url }) => {
-            console.log(image_url);
-            return 'Image analysed';
-        },
-    });
-    // imgSkill.in({
-    //     image_url : {
-    //         type:'Binary',
-    //         description:'The image url that we will analyze'
-    //     }
-    // })
-
-
-
-    const prompt = await agent.prompt('Analyze this image please ', {
-        files: ['https://www.robuxio.com/wp-content/uploads/2023/05/Trend.png'],
-    });
-    console.log(prompt);
-
 
     //this will prompt the agent and use the agent's LLM to determine which skill to use
     const promptResult = await agent.prompt('What are the current prices of Bitcoin and Ethereum ?');

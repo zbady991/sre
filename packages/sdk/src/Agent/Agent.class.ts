@@ -33,6 +33,7 @@ import { LLMInstance, TLLMInstanceParams } from '../LLM/LLMInstance.class';
 import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
 import { MCP, MCPSettings, MCPTransport } from '../MCP/MCP.class';
 import { findClosestModelInfo } from '../LLM/Model';
+import { VaultInstance } from '../Vault/VaultInstance.class';
 
 const console = SDKLog;
 
@@ -575,6 +576,27 @@ export class Agent extends SDKObject {
         }
 
         return this._vectorDBProviders;
+    }
+
+    private _vault: VaultInstance;
+
+    /**
+     * Access to the agent's team vault
+     *
+     * This will give you access to the current agent team vault, if no explicit team is set, the agent belongs to "default" team.
+     *
+     * @example
+     * ```typescript
+     * const value = await agent.vault.get('my-key');
+     * ```
+     *
+     * @returns The vault instance
+     */
+    public get vault() {
+        if (!this._vault) {
+            this._vault = new VaultInstance(AccessCandidate.agent(this._data.id));
+        }
+        return this._vault;
     }
 
     /**
