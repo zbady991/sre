@@ -42,25 +42,33 @@ export class ECMASandbox extends CodeConnector {
                     executionTime: 0,
                     success: false,
                     errors: [error],
-                }
+                };
             }
             const executableCode = generateExecutableCode(inputs.code, parameters, inputs.inputs);
             if (!this.sandboxUrl) {
+                //Temporarily disable the builtin ECMASandbox
+
                 // run js code in isolated vm
-                console.debug('Running code in isolated vm');
-                const result = await runJs(executableCode);
-                console.debug(`Code result: ${result}`);
+                // console.debug('Running code in isolated vm');
+                // const result = await runJs(executableCode);
+                // console.debug(`Code result: ${result}`);
+                // return {
+                //     output: result?.Output,
+                //     executionTime: 0,
+                //     success: true,
+                //     errors: [],
+                // };
+
                 return {
-                    output: result?.Output,
+                    output: undefined,
                     executionTime: 0,
-                    success: true,
-                    errors: [],
+                    success: false,
+                    errors: ['Builtin ECMASandbox not implemented'],
                 };
             } else {
                 console.debug('Running code in remote sandbox');
                 const result: any = await axios.post(this.sandboxUrl, { code: executableCode }).catch((error) => ({ error }));
                 if (result.error) {
-
                     const error = result.error?.response?.data || result.error?.message || result.error.toString() || 'Unknown error';
                     console.error(`Error running code: ${JSON.stringify(error, null, 2)}`);
                     return {
@@ -89,7 +97,13 @@ export class ECMASandbox extends CodeConnector {
             };
         }
     }
-    public async executeDeployment(acRequest: AccessRequest, codeUID: string, deploymentId: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult> {
+    public async executeDeployment(
+        acRequest: AccessRequest,
+        codeUID: string,
+        deploymentId: string,
+        inputs: Record<string, any>,
+        config: CodeConfig
+    ): Promise<CodeExecutionResult> {
         const result = await this.execute(acRequest, codeUID, inputs, config);
         return result;
     }
