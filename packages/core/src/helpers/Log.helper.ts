@@ -64,39 +64,65 @@ export class LogHelper extends EventEmitter {
     public get elapsedTime() {
         return Date.now() - this.startTime;
     }
-    constructor(
-        private _logger: winston.Logger,
-        public data,
-        private labels: { [key: string]: any },
-    ) {
+    constructor(private _logger: winston.Logger, public data, private labels: { [key: string]: any }) {
         super();
     }
 
     public log(...args) {
-        this._logger.log('info', formatLogMessage(...args), this.labels);
+        let module = this.labels?.module;
+        if (args[args.length - 1]?.agent) {
+            const obj = args.pop();
+            module = `${module}@ag<${obj.agent}>`;
+        }
+        this._logger.log('info', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'info', message: formatLogMessage(...args) });
     }
     public warn(...args) {
-        this._logger.log('warn', formatLogMessage(...args), this.labels);
+        let module = this.labels?.module;
+        if (args[args.length - 1]?.agent) {
+            const obj = args.pop();
+            module = `${module}@ag<${obj.agent}>`;
+        }
+        this._logger.log('warn', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'warn', message: formatLogMessage(...args) });
     }
     public debug(...args) {
-        this._logger.log('debug', formatLogMessage(...args), this.labels);
+        let module = this.labels?.module;
+        if (args[args.length - 1]?.agent) {
+            const obj = args.pop();
+            module = `${module}@ag<${obj.agent}>`;
+        }
+        this._logger.log('debug', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'debug', message: formatLogMessage(...args) });
     }
     public info(...args) {
-        this._logger.log('info', formatLogMessage(...args), this.labels);
+        let module = this.labels?.module;
+        if (args[args.length - 1]?.agent) {
+            const obj = args.pop();
+            module = `${module}@ag<${obj.agent}>`;
+        }
+        this._logger.log('info', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'info', message: formatLogMessage(...args) });
     }
     public verbose(...args) {
-        this._logger.log('verbose', formatLogMessage(...args), this.labels);
+        let module = this.labels?.module;
+        if (args[args.length - 1]?.agent) {
+            const obj = args.pop();
+            module = `${module}@ag<${obj.agent}>`;
+        }
+        this._logger.log('verbose', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'verbose', message: formatLogMessage(...args) });
     }
 
     public error(...args) {
+        let module = this.labels?.module;
+        if (args[args.length - 1]?.agent) {
+            const obj = args.pop();
+            module = `${module}@ag<${obj.agent}>`;
+        }
         const stack = '\nCall Stack:\n' + getFormattedStackTrace(10).join('\n');
 
-        this._logger.log('error', formatLogMessage(...args), { ...this.labels, stack });
+        this._logger.log('error', formatLogMessage(...args), { ...this.labels, stack, module });
 
         this.emit('logged', { level: 'error', message: formatLogMessage(...args) });
     }
@@ -154,7 +180,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 stack: true,
             }),
             winston.format.splat(),
-            winston.format.json(),
+            winston.format.json()
         ),
 
         transports: [
@@ -166,7 +192,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         let message = info.message;
                         message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
                         return `${info.level}:${info.module || ''} ${message} ${info.stack || ''}`;
-                    }),
+                    })
                 ),
                 stderrLevels: ['error'], // Define levels that should be logged to stderr
             }),
@@ -182,7 +208,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
 
                         return `${ns} - ${message}`;
-                    }),
+                    })
                 ),
 
                 //handleExceptions: true,
@@ -195,7 +221,7 @@ function createBaseLogger(memoryStore?: any[]) {
             new ArrayTransport({
                 level: 'debug',
                 logs: memoryStore,
-            }),
+            })
         );
     }
 
@@ -229,6 +255,7 @@ function createLabeledLogger(labels: { [key: string]: any }, memoryStore?: any[]
     return logger;
 }
 
-export function Logger(module: string, withMemoryStore = false) {
-    return createLabeledLogger({ module }, withMemoryStore ? [] : undefined);
+export function Logger(module: string | any, withMemoryStore = false) {
+    const labels: any = typeof module === 'string' ? { module } : module;
+    return createLabeledLogger(labels, withMemoryStore ? [] : undefined);
 }

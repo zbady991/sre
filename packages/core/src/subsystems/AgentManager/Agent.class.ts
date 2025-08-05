@@ -148,7 +148,7 @@ export class Agent implements IAgent {
                     this._componentInstancesLoader.resolve(true);
                 });
         } catch (error) {
-            console.warn('Could not load custom components');
+            console.warn('Could not load custom components', { agent: this.id });
             this._componentInstancesLoader.reject('Could not load custom components');
         }
 
@@ -323,7 +323,7 @@ export class Agent implements IAgent {
                 input,
                 error: 'Agent killed',
             });
-            console.warn(`Agent ${this.id} was killed`);
+            console.warn(`Agent ${this.id} was killed`, { agent: this.id });
             return { error: 'Agent killed' };
         }
         result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
@@ -545,7 +545,7 @@ export class Agent implements IAgent {
         });
 
         if (this._kill) {
-            console.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
+            console.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`, { agent: this.id });
 
             const output = { id: componentData.id, name: componentData.displayName, result: null, error: 'Agent killed' };
 
@@ -669,10 +669,12 @@ export class Agent implements IAgent {
                         await this.parseVariables(); //make sure that any vault variable is loaded before processing the component
                         //TODO: apply type inference here instead of in the component .process method
                         output = await component.process({ ...this.agentVariables, ..._input }, { ...componentData, eventId }, this);
-                        console.log(output);
+                        console.debug(output, { agent: this.id });
                     } catch (error: any) {
                         //this are fatal errors requiring to cancel the execution of this component.
-                        console.error('Error on component process: ', { componentId, name: componentData.name, input: _input }, error);
+                        console.error('Error on component process: ', { componentId, name: componentData.name, input: _input }, error, {
+                            agent: this.id,
+                        });
                         if (error?.message) output = { Response: undefined, _error: error.message, _debug: error.message };
                         else output = { Response: undefined, _error: error.toString(), _debug: error.toString() };
                     }

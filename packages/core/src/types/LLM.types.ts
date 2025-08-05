@@ -260,6 +260,7 @@ export type TVertexAISettings = {
     projectId: string;
     credentialsName: string;
     jsonCredentialsName: string;
+    apiEndpoint?: string;
 };
 
 export type TCustomLLMModel = TLLMModel & {

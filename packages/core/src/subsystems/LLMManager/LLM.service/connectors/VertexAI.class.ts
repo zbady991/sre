@@ -28,9 +28,12 @@ export class VertexAIConnector extends LLMConnector {
         const projectId = (modelInfo?.settings as TVertexAISettings)?.projectId;
         const region = modelInfo?.settings?.region;
 
+        debugger;
+
         return new VertexAI({
             project: projectId,
             location: region,
+            apiEndpoint: (modelInfo?.settings as TVertexAISettings)?.apiEndpoint,
             googleAuthOptions: {
                 credentials: credentials as any,
             },
@@ -162,9 +165,119 @@ export class VertexAIConnector extends LLMConnector {
 
         return usageData;
     }
+    // Add this helper method to sanitize function names
+    private sanitizeFunctionName(name: string): string {
+        // Check if name is undefined or null
+        if (name == null) {
+            return '_unnamed_function';
+        }
 
-    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
-        throw new Error('Tool configuration is not currently implemented for Vertex AI');
+        // Remove any characters that are not alphanumeric, underscore, dot, or dash
+        let sanitized = name.replace(/[^a-zA-Z0-9_.-]/g, '');
+
+        // Ensure the name starts with a letter or underscore
+        if (!/^[a-zA-Z_]/.test(sanitized)) {
+            sanitized = '_' + sanitized;
+        }
+
+        // If sanitized is empty after removing invalid characters, use a default name
+        if (sanitized === '') {
+            sanitized = '_unnamed_function';
+        }
+
+        // Truncate to 64 characters if longer
+        sanitized = sanitized.slice(0, 64);
+
+        return sanitized;
+    }
+    public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
+        const tools = toolDefinitions.map((tool) => {
+            const { name, description, properties, requiredFields } = tool;
+
+            // Ensure the function name is valid
+            const validName = this.sanitizeFunctionName(name);
+
+            // Ensure properties are non-empty for OBJECT type
+            const validProperties = properties && Object.keys(properties).length > 0 ? properties : { dummy: { type: 'string' } };
+
+            return {
+                functionDeclarations: [
+                    {
+                        name: validName,
+                        description: description || '',
+                        parameters: {
+                            type: 'OBJECT',
+                            properties: validProperties,
+                            required: requiredFields || [],
+                        },
+                    },
+                ],
+            };
+        });
+
+        return {
+            tools,
+            toolChoice: {
+                type: toolChoice,
+            },
+        };
+    }
+
+    public transformToolMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: TLLMMessageBlock;
+        toolsData: ToolData[];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
+
+        if (messageBlock) {
+            const content = [];
+            if (typeof messageBlock.content === 'string') {
+                content.push({ text: messageBlock.content });
+            } else if (Array.isArray(messageBlock.content)) {
+                content.push(...messageBlock.content);
+            }
+
+            if (messageBlock.parts) {
+                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
+                if (functionCalls.length > 0) {
+                    content.push(
+                        ...functionCalls.map((call) => ({
+                            functionCall: {
+                                name: call.functionCall.name,
+                                args: JSON.parse(call.functionCall.args),
+                            },
+                        }))
+                    );
+                }
+            }
+
+            messageBlocks.push({
+                role: messageBlock.role,
+                parts: content,
+            });
+        }
+
+        const transformedToolsData = toolsData.map(
+            (toolData): TLLMToolResultMessageBlock => ({
+                role: TLLMMessageRole.Function,
+                parts: [
+                    {
+                        functionResponse: {
+                            name: toolData.name,
+                            response: {
+                                name: toolData.name,
+                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
+                            },
+                        },
+                    },
+                ],
+            })
+        );
+
+        return [...messageBlocks, ...transformedToolsData];
     }
 
     public getConsistentMessages(messages) {

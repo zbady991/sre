@@ -7,7 +7,7 @@ export function adaptModelParams(modelSettings: TLLMInstanceParams, fallbackProv
         provider: provider || fallbackProvider,
         modelId: model as string, // for backward compatibility
         model: model as string, // for backward compatibility
-        tokens: inputTokens || 4096,
+        tokens: inputTokens || 32 * 1024,
         completionTokens: outputTokens,
     };
 
