@@ -49,31 +49,30 @@ export class ECMASandbox extends CodeConnector {
                 //Temporarily disable the builtin ECMASandbox
 
                 // run js code in isolated vm
-                // console.debug('Running code in isolated vm');
-                // const result = await runJs(executableCode);
-                // console.debug(`Code result: ${result}`);
-                // return {
-                //     output: result?.Output,
-                //     executionTime: 0,
-                //     success: true,
-                //     errors: [],
-                // };
 
+                console.debug('Running code in isolated vm');
+                const executionStartTime = Date.now();
+                const result = await runJs(executableCode);
+                const executionTime = Date.now() - executionStartTime;
+                console.debug(`Code result: ${result}`);
                 return {
-                    output: undefined,
-                    executionTime: 0,
-                    success: false,
-                    errors: ['Builtin ECMASandbox not implemented'],
+                    output: result,
+                    executionTime,
+                    success: true,
+                    errors: [],
+
                 };
             } else {
                 console.debug('Running code in remote sandbox');
+                const executionStartTime = Date.now();
                 const result: any = await axios.post(this.sandboxUrl, { code: executableCode }).catch((error) => ({ error }));
+                const executionTime = Date.now() - executionStartTime;
                 if (result.error) {
                     const error = result.error?.response?.data || result.error?.message || result.error.toString() || 'Unknown error';
                     console.error(`Error running code: ${JSON.stringify(error, null, 2)}`);
                     return {
                         output: undefined,
-                        executionTime: 0,
+                        executionTime,
                         success: false,
                         errors: [error],
                     };
@@ -81,7 +80,7 @@ export class ECMASandbox extends CodeConnector {
                     console.debug(`Code result: ${result?.data?.Output}`);
                     return {
                         output: result.data?.Output,
-                        executionTime: 0,
+                        executionTime,
                         success: true,
                         errors: [],
                     };
