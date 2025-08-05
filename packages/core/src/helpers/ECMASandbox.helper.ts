@@ -1,6 +1,8 @@
 import 'ses';
 
 
+
+
 export function runJs(code: string) {
     // Call lockdown to secure the environment
     lockdown();
@@ -25,6 +27,7 @@ export function runJs(code: string) {
         console.error(error);
         throw error;
     }
+
 }
 
 function getParametersString(parameters: string[], inputs: Record<string, any>) {

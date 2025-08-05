@@ -42,11 +42,14 @@ export class ECMASandbox extends CodeConnector {
                     executionTime: 0,
                     success: false,
                     errors: [error],
-                }
+                };
             }
             const executableCode = generateExecutableCode(inputs.code, parameters, inputs.inputs);
             if (!this.sandboxUrl) {
+                //Temporarily disable the builtin ECMASandbox
+
                 // run js code in isolated vm
+
                 console.debug('Running code in isolated vm');
                 const executionStartTime = Date.now();
                 const result = await runJs(executableCode);
@@ -57,6 +60,7 @@ export class ECMASandbox extends CodeConnector {
                     executionTime,
                     success: true,
                     errors: [],
+
                 };
             } else {
                 console.debug('Running code in remote sandbox');
@@ -92,7 +96,13 @@ export class ECMASandbox extends CodeConnector {
             };
         }
     }
-    public async executeDeployment(acRequest: AccessRequest, codeUID: string, deploymentId: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult> {
+    public async executeDeployment(
+        acRequest: AccessRequest,
+        codeUID: string,
+        deploymentId: string,
+        inputs: Record<string, any>,
+        config: CodeConfig
+    ): Promise<CodeExecutionResult> {
         const result = await this.execute(acRequest, codeUID, inputs, config);
         return result;
     }

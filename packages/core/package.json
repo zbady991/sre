@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sre",
-    "version": "1.5.37",
+    "version": "1.5.38",
     "description": "Smyth Runtime Environment",
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
@@ -51,7 +51,7 @@
         "typescript": "^5.4.5"
     },
     "dependencies": {
-        "@anthropic-ai/sdk": "^0.39.0",
+        "@anthropic-ai/sdk": "^0.56.0",
         "@aws-sdk/client-bedrock-runtime": "^3.826.0",
         "@aws-sdk/client-iam": "^3.835.0",
         "@aws-sdk/client-lambda": "^3.835.0",
