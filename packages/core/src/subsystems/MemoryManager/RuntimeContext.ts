@@ -91,7 +91,7 @@ export class RuntimeContext extends EventEmitter {
         if (this._runtimeFileReady) return;
 
         const endpointDBGCall = this.runtime.xDebugId?.startsWith('dbg-'); //weak check for debug session, we need to improve this
-        console.debug('Init ctxFile', this.ctxFile);
+        console.debug('Init Agent Context', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
         const agent = this.runtime.agent;
         let method = (agent.agentRequest.method || 'POST').toUpperCase();
         const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
@@ -177,10 +177,9 @@ export class RuntimeContext extends EventEmitter {
             const exists = await this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).exists(this.ctxFile);
 
             if (exists) {
-                if (this.runtime.debug)
-                    this._cacheConnector
-                        .requester(AccessCandidate.agent(this.runtime.agent.id))
-                        .updateTTL(this.ctxFile, 5 * 60); //expires in 5 minute
+                console.debug('Agent Context Delete', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
+                if (this.runtime.debug) this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).updateTTL(this.ctxFile, 5 * 60);
+                //expires in 5 minute
                 else this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).delete(this.ctxFile);
                 //if (this.runtime.debug && fs.existsSync(this.ctxFile)) await delay(1000 * 60); //if we're in debug mode, we keep the file for a while to allow final state read
                 //if (fs.existsSync(this.ctxFile)) fs.unlinkSync(this.ctxFile);
@@ -188,10 +187,13 @@ export class RuntimeContext extends EventEmitter {
         } else {
             const data = this.serialize();
             //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
-            if (data)
+            if (data) {
+                const serializedData = JSON.stringify(data, null, 2);
+                console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
                 await this._cacheConnector
                     .requester(AccessCandidate.agent(this.runtime.agent.id))
-                    .set(this.ctxFile, JSON.stringify(data, null, 2), null, null, 6 * 60 * 60); //expires in 6 hours max
+                    .set(this.ctxFile, serializedData, null, null, 3 * 60 * 60); //expires in 3 hours max
+            }
         }
     }
 
@@ -206,9 +208,14 @@ export class RuntimeContext extends EventEmitter {
         const component = ctxData.components[componentId];
 
         if (!component) {
-            console.log('>>>>>>> updateComponent Component debug data not found', componentId, component);
-            console.log('>>> ctxFile', this.ctxFile);
-            console.log('>>> ctxData', ctxData);
+            console.debug(
+                '>>>>>>> updateComponent Component debug data not found',
+                componentId,
+                component,
+                AccessCandidate.agent(this.runtime.agent.id)
+            );
+            console.debug('>>> ctxFile', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
+            console.debug('>>> ctxData', ctxData, AccessCandidate.agent(this.runtime.agent.id));
         }
         component.ctx = { ...component.ctx, ...data, step: this.step };
 
@@ -220,9 +227,14 @@ export class RuntimeContext extends EventEmitter {
         const ctxData = this;
         const component = ctxData.components[componentId];
         if (!component) {
-            console.log('>>>>>>> resetComponent Component debug data not found', componentId, component);
-            console.log('>>> ctxFile', this.ctxFile);
-            console.log('>>> ctxData', ctxData);
+            console.debug(
+                '>>>>>>> resetComponent Component debug data not found',
+                componentId,
+                component,
+                AccessCandidate.agent(this.runtime.agent.id)
+            );
+            console.debug('>>> ctxFile', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
+            console.debug('>>> ctxData', ctxData, AccessCandidate.agent(this.runtime.agent.id));
         }
         //component.dbg.active = false;
         //component.dbg.runtimeData = {};
@@ -237,9 +249,14 @@ export class RuntimeContext extends EventEmitter {
         if (!ctxData) return null;
         const component = ctxData.components[componentId];
         if (!component) {
-            console.log('>>>>>>> getComponentData Component debug data not found', componentId, component);
-            console.log('>>> ctxFile', this.ctxFile);
-            console.log('>>> ctxData', ctxData);
+            console.debug(
+                '>>>>>>> getComponentData Component debug data not found',
+                componentId,
+                component,
+                AccessCandidate.agent(this.runtime.agent.id)
+            );
+            console.debug('>>> ctxFile', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
+            console.debug('>>> ctxData', ctxData, AccessCandidate.agent(this.runtime.agent.id));
         }
         //const data = this.debug ? component.dbg : component.ctx;
         const data = component.ctx;

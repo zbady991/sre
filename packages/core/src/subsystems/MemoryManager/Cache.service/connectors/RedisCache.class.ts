@@ -26,9 +26,27 @@ export class RedisCache extends CacheConnector {
         let host = sentinels.length === 1 ? sentinels[0].host : null;
         let port = sentinels.length === 1 ? sentinels[0].port : null;
 
+        const redisConfig = {
+            // HEAVILY OPTIMIZED: Aggressive storm prevention parameters
+            maxRetriesPerRequest: 1, // VERY LIMITED retries (official)
+            retryDelayOnFailover: 50, // Fast failover (official)
+            connectTimeout: 3000, // SHORT timeout (official)
+            lazyConnect: false,
+            enableReadyCheck: false, // Skip ready check for speed (official)
+            commandTimeout: 2000, // VERY SHORT command timeout (official)
+            keepAlive: 10000, // Shorter keepalive - 10sec (official)
+            family: 4, // Force IPv4 (official)
+            maxLoadingTimeout: 2000, // Short loading timeout (official)
+            // Additional aggressive settings
+            enableOfflineQueue: false, // Disable offline queue (official)
+            db: 0, // Explicit DB (official)
+            stringNumbers: false, // No string conversion (official)
+        };
+
         this.redis = new IORedis({
             ...(host ? { host, port } : { sentinels, name: _settings.name || process.env.REDIS_MASTER_NAME }),
             password: _settings.password || process.env.REDIS_PASSWORD,
+            ...redisConfig,
         });
 
         this.redis.on('error', (error) => {

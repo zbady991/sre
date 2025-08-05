@@ -27,7 +27,7 @@ export class Component {
     init() {}
 
     createComponentLogger(agent: Agent, configuration: any) {
-        const logger = Logger(configuration.name || this.constructor.name, agent?.agentRuntime?.debug);
+        const logger = Logger((configuration.name || this.constructor.name) + `,agent<${agent.id}>`, agent?.agentRuntime?.debug);
 
         logger.on('logged', (info: { level: string; message: string }) => {
             if (agent.sse && configuration.eventId) {

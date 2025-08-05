@@ -261,6 +261,10 @@ export class LLMInference {
             maxInputContext -= maxInputContext + maxOutputContext - maxModelContext;
         }
 
+        if (maxInputContext <= 0) {
+            console.warn('Max input context is 0, returning empty context window, This usually indicates a wrong model configuration');
+        }
+
         const systemMessage = { role: 'system', content: systemPrompt };
 
         let smythContextWindow = [];

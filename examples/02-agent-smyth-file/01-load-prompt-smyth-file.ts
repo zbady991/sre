@@ -22,13 +22,12 @@ async function main() {
 
     //Importing the agent workflow
     const agent = Agent.import(agentPath, {
-        model: Model.OpenAI('gpt-4o', { temperature: 0.0 }),
+        model: Model.OpenAI('gpt-4o', { temperature: 1.0 }),
     });
 
     const result = await agent.prompt('What are the current prices of Bitcoin and Ethereum ?');
 
     console.log(result);
-
 }
 
 main();

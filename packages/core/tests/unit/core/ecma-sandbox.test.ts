@@ -6,9 +6,7 @@ import { IAccessCandidate, TAccessRole } from 'index';
 setupSRE({
     Code: {
         Connector: 'ECMASandbox',
-        Settings: {
-            sandboxUrl: 'http://localhost:6100/run-js/v2',
-        },
+        Settings: {},
     },
     Log: {
         Connector: 'ConsoleLog',
@@ -26,7 +24,9 @@ describe('ECMASandbox Tests', () => {
 
             const codeConnector = ConnectorService.getCodeConnector('ECMASandbox');
             const result = await codeConnector.agent(mockCandidate.id).execute(Date.now().toString(), {
-                code: `async function main(prompt) { return prompt + ' ' + 'Hello World'; }`,
+                code: `async function main(prompt) { 
+                return prompt + ' ' + 'Hello World'; 
+                }`,
                 inputs: {
                     prompt: 'Say'
                 }
