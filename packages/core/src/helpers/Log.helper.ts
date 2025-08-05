@@ -4,6 +4,7 @@ import Transport from 'winston-transport';
 import { getFormattedStackTrace, parseCLIArgs } from '../utils';
 import config from '@sre/config';
 import { EventEmitter } from 'events';
+import { AccessCandidate } from '../subsystems/Security/AccessControl/AccessCandidate.class';
 winston.addColors({
     error: 'red',
     warn: 'yellow',
@@ -70,45 +71,55 @@ export class LogHelper extends EventEmitter {
 
     public log(...args) {
         let module = this.labels?.module;
-        if (args[args.length - 1]?.agent) {
-            const obj = args.pop();
-            module = `${module}@ag<${obj.agent}>`;
+        const lastArg = args[args.length - 1];
+
+        if (lastArg instanceof AccessCandidate) {
+            module += `,${lastArg.role}<${lastArg.id}>`;
+            args.pop();
         }
         this._logger.log('info', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'info', message: formatLogMessage(...args) });
     }
     public warn(...args) {
         let module = this.labels?.module;
-        if (args[args.length - 1]?.agent) {
-            const obj = args.pop();
-            module = `${module}@ag<${obj.agent}>`;
+        const lastArg = args[args.length - 1];
+
+        if (lastArg instanceof AccessCandidate) {
+            module += `,${lastArg.role}<${lastArg.id}>`;
+            args.pop();
         }
+
         this._logger.log('warn', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'warn', message: formatLogMessage(...args) });
     }
     public debug(...args) {
         let module = this.labels?.module;
-        if (args[args.length - 1]?.agent) {
-            const obj = args.pop();
-            module = `${module}@ag<${obj.agent}>`;
+        const lastArg = args[args.length - 1];
+
+        if (lastArg instanceof AccessCandidate) {
+            module += `,${lastArg.role}<${lastArg.id}>`;
+            args.pop();
         }
         this._logger.log('debug', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'debug', message: formatLogMessage(...args) });
     }
     public info(...args) {
         let module = this.labels?.module;
-        if (args[args.length - 1]?.agent) {
-            const obj = args.pop();
-            module = `${module}@ag<${obj.agent}>`;
+        const lastArg = args[args.length - 1];
+
+        if (lastArg instanceof AccessCandidate) {
+            module += `,${lastArg.role}<${lastArg.id}>`;
+            args.pop();
         }
         this._logger.log('info', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'info', message: formatLogMessage(...args) });
     }
     public verbose(...args) {
         let module = this.labels?.module;
-        if (args[args.length - 1]?.agent) {
-            const obj = args.pop();
-            module = `${module}@ag<${obj.agent}>`;
+        const lastArg = args[args.length - 1];
+        if (lastArg instanceof AccessCandidate) {
+            module += `,${lastArg.role}<${lastArg.id}>`;
+            args.pop();
         }
         this._logger.log('verbose', formatLogMessage(...args), { ...this.labels, module });
         this.emit('logged', { level: 'verbose', message: formatLogMessage(...args) });
@@ -116,9 +127,11 @@ export class LogHelper extends EventEmitter {
 
     public error(...args) {
         let module = this.labels?.module;
-        if (args[args.length - 1]?.agent) {
-            const obj = args.pop();
-            module = `${module}@ag<${obj.agent}>`;
+        const lastArg = args[args.length - 1];
+
+        if (lastArg instanceof AccessCandidate) {
+            module += `,${lastArg.role}<${lastArg.id}>`;
+            args.pop();
         }
         const stack = '\nCall Stack:\n' + getFormattedStackTrace(10).join('\n');
 

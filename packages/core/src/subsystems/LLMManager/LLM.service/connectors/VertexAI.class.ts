@@ -10,6 +10,10 @@ import {
     TGoogleAIRequestBody,
     ILLMRequestContext,
     TLLMPreparedParams,
+    TLLMMessageBlock,
+    ToolData,
+    TLLMToolResultMessageBlock,
+    TLLMMessageRole,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
