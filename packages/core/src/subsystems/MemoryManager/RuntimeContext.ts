@@ -177,6 +177,7 @@ export class RuntimeContext extends EventEmitter {
             const exists = await this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).exists(this.ctxFile);
 
             if (exists) {
+                console.debug('Agent Context Delete', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
                 if (this.runtime.debug) this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).updateTTL(this.ctxFile, 5 * 60);
                 //expires in 5 minute
                 else this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).delete(this.ctxFile);
@@ -188,7 +189,7 @@ export class RuntimeContext extends EventEmitter {
             //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
             if (data) {
                 const serializedData = JSON.stringify(data, null, 2);
-                console.debug('Serialized Data Size', serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
+                console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
                 await this._cacheConnector
                     .requester(AccessCandidate.agent(this.runtime.agent.id))
                     .set(this.ctxFile, serializedData, null, null, 3 * 60 * 60); //expires in 3 hours max
