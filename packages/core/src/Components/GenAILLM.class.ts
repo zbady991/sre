@@ -36,11 +36,6 @@ export class GenAILLM extends Component {
                 min: 1,
                 label: 'Maximum Tokens',
             },
-            maxThinkingTokens: {
-                type: 'number',
-                min: 1,
-                label: 'Maximum Thinking Tokens',
-            },
             stopSequences: {
                 type: 'string',
                 max: 400,
@@ -248,6 +243,11 @@ export class GenAILLM extends Component {
                 valid: ['none', 'default', 'low', 'medium', 'high'],
                 description: 'Controls the level of effort the model will put into reasoning',
                 label: 'Reasoning Effort',
+            },
+            maxThinkingTokens: {
+                type: 'number',
+                min: 1,
+                label: 'Maximum Thinking Tokens',
             },
             // #endregion
         },
