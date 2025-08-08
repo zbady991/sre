@@ -395,6 +395,13 @@ export class Agent extends SDKObject {
             this._data.defaultModel = findClosestModelInfo(models, model);
         } else {
             this._data.defaultModel = model as any;
+            const builtInModelInfo = findClosestModelInfo(models, model.modelId);
+            if (builtInModelInfo) {
+                this._data.defaultModel = {
+                    ...(this._data.defaultModel as any),
+                    ...builtInModelInfo,
+                };
+            }
         }
         this._readyPromise.resolve(true);
     }

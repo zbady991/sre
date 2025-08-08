@@ -38,6 +38,10 @@ import { ImageGenerator } from './ImageGenerator.class'; // Legacy
 import { MCPClient } from './MCPClient.class';
 import { OpenAPI } from './OpenAPI.class';
 import { ECMASandbox } from './ECMASandbox.class';
+import { MemoryWriteKeyVal } from './MemoryWriteKeyVal.class';
+import { MemoryReadKeyVal } from './MemoryReadKeyVal.class';
+import { MemoryDeleteKeyVal } from './MemoryDeleteKeyVal.class';
+import { MemoryWriteObject } from './MemoryWriteObject.class';
 
 const components = {
     Component: new Component(),
@@ -84,6 +88,10 @@ const components = {
     MCPClient: new MCPClient(),
     OpenAPI: new OpenAPI(),
     ECMASandbox: new ECMASandbox(),
+    MemoryWriteKeyVal: new MemoryWriteKeyVal(),
+    MemoryReadKeyVal: new MemoryReadKeyVal(),
+    MemoryDeleteKeyVal: new MemoryDeleteKeyVal(),
+    MemoryWriteObject: new MemoryWriteObject(),
 };
 
 export const ComponentInstances = components;
