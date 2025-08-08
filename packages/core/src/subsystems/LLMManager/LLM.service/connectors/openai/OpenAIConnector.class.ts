@@ -170,14 +170,16 @@ export class OpenAIConnector extends LLMConnector {
 
     // #region Image Generation, will be moved to a different subsystem
     protected async imageGenRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
+        const _body = body as OpenAI.Images.ImageGenerateParamsNonStreaming;
+
         const openai = await this.getClient(context);
-        const response = await openai.images.generate(body as OpenAI.Images.ImageGenerateParams);
+        const response = await openai.images.generate(_body);
 
         return response;
     }
 
     protected async imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
-        const _body = body as OpenAI.Images.ImageEditParams;
+        const _body = body as OpenAI.Images.ImageEditParamsNonStreaming;
 
         const openai = await this.getClient(context);
         const response = await openai.images.edit(_body);
