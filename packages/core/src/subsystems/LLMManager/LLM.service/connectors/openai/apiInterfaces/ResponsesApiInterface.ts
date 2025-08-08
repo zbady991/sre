@@ -308,6 +308,11 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.top_p = params.topP;
         }
 
+        // Handle verbosity
+        if (params?.verbosity !== undefined && params?.verbosity !== null) {
+            (body as any).verbosity = params.verbosity;
+        }
+
         let tools: OpenAI.Responses.Tool[] = [];
 
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
