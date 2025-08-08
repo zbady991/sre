@@ -122,7 +122,7 @@ class AgentCommand {
             .streamPrompt({ message: this.prompt + attachmentsPrompt, files: hasBinarySkill ? undefined : files })
             .catch((error) => {
                 console.error('Error on streamPrompt: ', error);
-                return { error };
+                return JSON.stringify({ error });
             });
 
         return result;
