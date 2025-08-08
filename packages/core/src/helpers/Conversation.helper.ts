@@ -545,7 +545,7 @@ export class Conversation extends EventEmitter {
             return '';
         });
         _content += toolsContent;
-        let content = JSONContent(_content).tryParse();
+        //let content = JSONContent(_content).tryParse();
 
         // let streamPromise = new Promise((resolve, reject) => {
         //     eventEmitter.on('end', async () => {
@@ -573,7 +573,7 @@ export class Conversation extends EventEmitter {
             //console.log('tool content', content);
         }
 
-        return content;
+        return _content;
     }
 
     private resolveToolEndpoint(baseUrl: string, method: string, endpoint: string, params: Record<string, any>): string {
