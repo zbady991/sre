@@ -425,21 +425,13 @@ export class OpenAIConnector extends LLMConnector {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
-        const inputTokens = usage?.input_tokens || usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0); // Returned by the search tool
-
-        const outputTokens =
-            usage?.output_tokens || // Returned by the search tool
-            usage?.completion_tokens ||
-            0;
-
-        const cachedInputTokens =
-            usage?.input_tokens_details?.cached_tokens || // Returned by the search tool
-            usage?.prompt_tokens_details?.cached_tokens ||
-            0;
+        const cachedInputTokens = usage?.input_tokens_details?.cached_tokens || usage?.prompt_tokens_details?.cached_tokens || 0;
+        const inputTokens = usage?.input_tokens || usage?.prompt_tokens;
+        const outputTokens = usage?.output_tokens || usage?.completion_tokens || 0;
 
         const usageData = {
             sourceId: `llm:${modelName}`,
-            input_tokens: inputTokens,
+            input_tokens: inputTokens - cachedInputTokens,
             output_tokens: outputTokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: cachedInputTokens,
