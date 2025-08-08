@@ -398,8 +398,8 @@ export class Agent extends SDKObject {
             const builtInModelInfo = findClosestModelInfo(models, model.modelId);
             if (builtInModelInfo) {
                 this._data.defaultModel = {
-                    ...(this._data.defaultModel as any),
                     ...builtInModelInfo,
+                    ...(this._data.defaultModel as any),
                 };
             }
         }
