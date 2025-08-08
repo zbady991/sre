@@ -6,6 +6,24 @@ export class PDFParser extends DocParser {
     protected supportedMimeTypes: string[] = ['application/pdf'];
     protected supportedExtensions: string[] = ['pdf'];
     async parse(source: string, params?: TDocumentParseSettings): Promise<TParsedDocument> {
+        // Suppress canvas-related warnings since we only need text extraction
+        const originalConsoleWarn = console.warn;
+        console.warn = (...args) => {
+            const message = args.join(' ');
+            // Filter out canvas and rendering warnings
+            if (
+                message.includes('@napi-rs/canvas') ||
+                message.includes('Cannot polyfill') ||
+                message.includes('DOMMatrix') ||
+                message.includes('ImageData') ||
+                message.includes('Path2D') ||
+                message.includes('rendering may be broken')
+            ) {
+                return; // Suppress these warnings
+            }
+            originalConsoleWarn.apply(console, args);
+        };
+
         // Lazy-load pdfjs-dist to reduce initial bundle size
         const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
         // Set up the worker for pdfjs-dist (legacy build for Node.js)
