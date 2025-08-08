@@ -288,7 +288,7 @@ export class OpenAIConnector extends LLMConnector {
         const provider = await this.getProvider(acRequest, context.modelEntryName);
 
         await provider.validateTokensLimit({
-            model: context.modelEntryName,
+            model: context.modelInfo,
             promptTokens,
             completionTokens: maxTokens,
             hasAPIKey: context.isUserKey,
