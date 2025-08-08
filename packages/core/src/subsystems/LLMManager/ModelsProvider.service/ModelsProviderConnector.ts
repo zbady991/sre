@@ -26,7 +26,7 @@ export interface IModelsProviderRequest {
         completionTokens,
         hasAPIKey,
     }: {
-        model: string | TLLMModel | TCustomLLMModel;
+        model: TLLMModel | TCustomLLMModel;
         promptTokens: number;
         completionTokens: number;
         hasAPIKey?: boolean;
@@ -117,13 +117,13 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                 completionTokens,
                 hasAPIKey,
             }: {
-                model: string | TLLMModel | TCustomLLMModel;
+                model: TLLMModel | TCustomLLMModel;
                 promptTokens: number;
                 completionTokens: number;
                 hasAPIKey: boolean;
             }) => {
-                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
-                const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
+                //const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
+                const modelInfo = await this.getModelInfo(candidate.readRequest, {}, model, hasAPIKey);
                 const allowedContextTokens = modelInfo?.tokens;
                 const totalTokens = promptTokens + completionTokens;
 
