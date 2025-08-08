@@ -14,8 +14,12 @@ import {
     ToolData,
     TLLMToolResultMessageBlock,
     TLLMMessageRole,
+    TLLMChatResponse,
+    TLLMEvent,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
@@ -32,8 +36,6 @@ export class VertexAIConnector extends LLMConnector {
         const projectId = (modelInfo?.settings as TVertexAISettings)?.projectId;
         const region = modelInfo?.settings?.region;
 
-        debugger;
-
         return new VertexAI({
             project: projectId,
             location: region,
@@ -44,32 +46,59 @@ export class VertexAIConnector extends LLMConnector {
         });
     }
 
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any> {
-        const messages = body.messages;
-        delete body.messages;
-
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             const vertexAI = await this.getClient(context);
-            const generativeModel = vertexAI.getGenerativeModel(body);
 
-            const result = await generativeModel.generateContent({ contents: messages });
-            const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
-            const usage = result?.response?.usageMetadata;
+            // Separate contents from model configuration
+            const contents = body.contents;
+            delete body.contents;
 
-            this.reportUsage(usage, {
-                modelEntryName: context.modelEntryName,
-                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId: context.agentId,
-                teamId: context.teamId,
-            });
+            // VertexAI expects contents in a specific format: {contents: [...]}
+            const requestParam = { contents };
+
+            const model = vertexAI.getGenerativeModel(body);
+
+            const result = await model.generateContent(requestParam);
+            const response = await result.response;
+
+            const content = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const finishReason = response.candidates?.[0]?.finishReason || 'stop';
+            const usage = response.usageMetadata;
+
+            let toolsData: ToolData[] = [];
+            let useTool = false;
+
+            // Check for function calls in the response
+            const functionCalls = response.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+            if (functionCalls && functionCalls.length > 0) {
+                functionCalls.forEach((call, index) => {
+                    toolsData.push({
+                        index,
+                        id: call.functionCall?.name + '_' + index, // VertexAI doesn't provide IDs like Anthropic
+                        type: 'function',
+                        name: call.functionCall?.name,
+                        arguments: call.functionCall?.args,
+                        role: TLLMMessageRole.Assistant,
+                    });
+                });
+                useTool = true;
+            }
+
+            if (usage) {
+                this.reportUsage(usage, {
+                    modelEntryName: context.modelEntryName,
+                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    agentId: context.agentId,
+                    teamId: context.teamId,
+                });
+            }
 
             return {
                 content,
-                finishReason: 'stop',
-                useTool: false,
-                toolsData: [],
-                message: { content, role: 'assistant' },
-                usage,
+                finishReason,
+                toolsData,
+                useTool,
             };
         } catch (error) {
             throw error;
@@ -77,26 +106,75 @@ export class VertexAIConnector extends LLMConnector {
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        // Simulate streaming similar to Perplexity's approach - fallback to regular request
         const emitter = new EventEmitter();
 
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
-                this.request({ acRequest, body, context })
-                    .then((response) => {
-                        const finishReason = response.finishReason;
-                        const usage = response.usage;
+                const vertexAI = await this.getClient(context);
 
-                        // Emit the content as a stream-like response
-                        emitter.emit('interrupted', finishReason);
-                        emitter.emit('content', response.content);
-                        emitter.emit('end', undefined, usage, finishReason);
-                    })
-                    .catch((error) => {
-                        emitter.emit('error', error.message || error.toString());
+                // Separate contents from model configuration
+                const contents = body.contents;
+                delete body.contents;
+
+                const vertexModel = vertexAI.getGenerativeModel(body);
+
+                // VertexAI expects contents in a specific format: {contents: [...]}
+                const requestParam = { contents };
+
+                const streamResult = await vertexModel.generateContentStream(requestParam);
+
+                let toolsData: ToolData[] = [];
+                let usageData: any[] = [];
+
+                for await (const chunk of streamResult.stream) {
+                    const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    if (chunkText) {
+                        emitter.emit('content', chunkText);
+                    }
+                }
+
+                const aggregatedResponse = await streamResult.response;
+
+                // Check for function calls in the final response (like Anthropic does)
+                const functionCalls = aggregatedResponse.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+                if (functionCalls && functionCalls.length > 0) {
+                    functionCalls.forEach((call, index) => {
+                        toolsData.push({
+                            index,
+                            id: call.functionCall?.name + '_' + index,
+                            type: 'function',
+                            name: call.functionCall?.name,
+                            arguments: call.functionCall?.args,
+                            role: TLLMMessageRole.Assistant,
+                        });
                     });
+
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
+                }
+
+                const usage = aggregatedResponse.usageMetadata;
+
+                if (usage) {
+                    const reportedUsage = this.reportUsage(usage, {
+                        modelEntryName: context.modelEntryName,
+                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId: context.agentId,
+                        teamId: context.teamId,
+                    });
+                    usageData.push(reportedUsage);
+                }
+
+                const finishReason = (aggregatedResponse.candidates?.[0]?.finishReason || 'stop').toLowerCase();
+
+                if (finishReason !== 'stop') {
+                    emitter.emit('interrupted', finishReason);
+                }
+
+                setTimeout(() => {
+                    emitter.emit('end', toolsData, usageData, finishReason);
+                }, 100);
             } catch (error) {
-                emitter.emit('error', error.message || error.toString());
+                emitter.emit('error', error);
             }
         }, 100);
 
@@ -104,54 +182,49 @@ export class VertexAIConnector extends LLMConnector {
     }
 
     protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TGoogleAIRequestBody> {
-        let messages = params?.messages || [];
+        const model = params?.model;
+        const { messages, systemMessage } = await this.prepareMessages(params);
 
-        //#region Separate system message and add JSON response instruction if needed
-        let systemInstruction;
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-
-        if ('content' in systemMessage) {
-            systemInstruction = systemMessage.content;
-        }
-
-        messages = otherMessages;
+        let body: any = {
+            model: model as string,
+            contents: messages, // This will be separated in the request methods
+        };
 
         const responseFormat = params?.responseFormat || '';
+        let systemInstruction = systemMessage || '';
+
         if (responseFormat === 'json') {
-            systemInstruction = JSON_RESPONSE_INSTRUCTION;
+            systemInstruction += (systemInstruction ? '\n\n' : '') + JSON_RESPONSE_INSTRUCTION;
         }
-        //#endregion Separate system message and add JSON response instruction if needed
-
-        const modelInfo = params.modelInfo as TCustomLLMModel;
-
-        let body: TGoogleAIRequestBody = {
-            model: modelInfo?.settings?.customModel || modelInfo?.settings?.foundationModel,
-            messages,
-        };
 
         const config: GenerationConfig = {};
 
-        if (params?.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
-        if (params?.temperature !== undefined) config.temperature = params.temperature;
-        if (params?.topP !== undefined) config.topP = params.topP;
-        if (params?.topK !== undefined) config.topK = params.topK;
-        if (params?.stopSequences?.length) config.stopSequences = params.stopSequences;
+        if (params.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
+        if (params.temperature !== undefined) config.temperature = params.temperature;
+        if (params.topP !== undefined) config.topP = params.topP;
+        if (params.topK !== undefined) config.topK = params.topK;
+        if (params.stopSequences?.length) config.stopSequences = params.stopSequences;
 
         if (systemInstruction) {
-            body.systemInstruction = systemInstruction;
+            body.systemInstruction = {
+                role: 'system',
+                parts: [{ text: systemInstruction }],
+            };
         }
 
         if (Object.keys(config).length > 0) {
-            body.generationConfig = config as any;
+            body.generationConfig = config;
+        }
+
+        // Handle tools configuration
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
+            body.tools = this.formatToolsForVertexAI(params.toolsConfig.tools);
         }
 
         return body;
     }
 
-    protected reportUsage(
-        usage: UsageMetadata & { cachedContentTokenCount?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
+    protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
@@ -169,53 +242,117 @@ export class VertexAIConnector extends LLMConnector {
 
         return usageData;
     }
-    // Add this helper method to sanitize function names
-    private sanitizeFunctionName(name: string): string {
-        // Check if name is undefined or null
-        if (name == null) {
-            return '_unnamed_function';
+
+    private async prepareMessages(params: TLLMPreparedParams) {
+        const messages = params?.messages || [];
+        const files: BinaryInput[] = params?.files || [];
+
+        let processedMessages = [...messages];
+
+        // Handle system messages - VertexAI uses systemInstruction separately
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(processedMessages);
+        processedMessages = otherMessages;
+
+        // Handle files if present
+        if (files?.length > 0) {
+            const fileData = await this.processFiles(files, params.agentId);
+
+            // Add file data to the last user message
+            const userMessage = processedMessages.pop();
+            if (userMessage) {
+                const content = [{ text: userMessage.content as string }, ...fileData];
+                processedMessages.push({
+                    role: userMessage.role,
+                    parts: content,
+                });
+            }
         }
 
-        // Remove any characters that are not alphanumeric, underscore, dot, or dash
-        let sanitized = name.replace(/[^a-zA-Z0-9_.-]/g, '');
+        // Convert messages to VertexAI format
+        let vertexAIMessages = this.convertMessagesToVertexAIFormat(processedMessages);
 
-        // Ensure the name starts with a letter or underscore
-        if (!/^[a-zA-Z_]/.test(sanitized)) {
-            sanitized = '_' + sanitized;
+        // Ensure we have at least one message with content
+        if (!vertexAIMessages || vertexAIMessages.length === 0) {
+            vertexAIMessages = [
+                {
+                    role: 'user',
+                    parts: [{ text: 'Hello' }],
+                },
+            ];
         }
 
-        // If sanitized is empty after removing invalid characters, use a default name
-        if (sanitized === '') {
-            sanitized = '_unnamed_function';
-        }
-
-        // Truncate to 64 characters if longer
-        sanitized = sanitized.slice(0, 64);
-
-        return sanitized;
+        return {
+            messages: vertexAIMessages,
+            systemMessage: (systemMessage as any)?.content || '',
+        };
     }
+
+    private async processFiles(files: BinaryInput[], agentId: string) {
+        const fileData = [];
+
+        for (const file of files) {
+            const bufferData = await file.readData(AccessCandidate.agent(agentId));
+            const base64Data = bufferData.toString('base64');
+
+            fileData.push({
+                inlineData: {
+                    data: base64Data,
+                    mimeType: file.mimetype,
+                },
+            });
+        }
+
+        return fileData;
+    }
+
+    private convertMessagesToVertexAIFormat(messages: TLLMMessageBlock[]) {
+        return messages
+            .filter((message) => message && (message.content || message.parts))
+            .map((message) => {
+                let parts;
+
+                if (typeof message.content === 'string') {
+                    parts = message.content.trim() ? [{ text: message.content.trim() }] : [{ text: 'Continue' }];
+                } else if (message.parts && Array.isArray(message.parts)) {
+                    parts = message.parts;
+                } else if (message.content) {
+                    parts = [{ text: String(message.content) || 'Continue' }];
+                } else {
+                    parts = [{ text: 'Continue' }];
+                }
+
+                return {
+                    role: message.role === TLLMMessageRole.Assistant ? 'model' : 'user',
+                    parts,
+                };
+            });
+    }
+
+    private formatToolsForVertexAI(tools: any[]) {
+        return [
+            {
+                functionDeclarations: tools.map((tool) => ({
+                    name: tool.name,
+                    description: tool.description || '',
+                    parameters: {
+                        type: 'object',
+                        properties: tool.properties || {},
+                        required: tool.requiredFields || [],
+                    },
+                })),
+            },
+        ];
+    }
+
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
         const tools = toolDefinitions.map((tool) => {
             const { name, description, properties, requiredFields } = tool;
 
-            // Ensure the function name is valid
-            const validName = this.sanitizeFunctionName(name);
-
-            // Ensure properties are non-empty for OBJECT type
-            const validProperties = properties && Object.keys(properties).length > 0 ? properties : { dummy: { type: 'string' } };
-
             return {
-                functionDeclarations: [
-                    {
-                        name: validName,
-                        description: description || '',
-                        parameters: {
-                            type: 'OBJECT',
-                            properties: validProperties,
-                            required: requiredFields || [],
-                        },
-                    },
-                ],
+                name,
+                description,
+                properties,
+                requiredFields,
             };
         });
 
@@ -237,69 +374,50 @@ export class VertexAIConnector extends LLMConnector {
         const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
         if (messageBlock) {
-            const content = [];
+            const parts = [];
+
             if (typeof messageBlock.content === 'string') {
-                content.push({ text: messageBlock.content });
+                parts.push({ text: messageBlock.content });
             } else if (Array.isArray(messageBlock.content)) {
-                content.push(...messageBlock.content);
+                parts.push(...messageBlock.content);
             }
 
-            if (messageBlock.parts) {
-                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
-                if (functionCalls.length > 0) {
-                    content.push(
-                        ...functionCalls.map((call) => ({
-                            functionCall: {
-                                name: call.functionCall.name,
-                                args: JSON.parse(call.functionCall.args),
-                            },
-                        }))
-                    );
-                }
+            if (messageBlock.tool_calls) {
+                const functionCalls = messageBlock.tool_calls.map((toolCall: any) => ({
+                    functionCall: {
+                        name: toolCall?.function?.name,
+                        args:
+                            typeof toolCall?.function?.arguments === 'string'
+                                ? JSON.parse(toolCall.function.arguments)
+                                : toolCall?.function?.arguments || {},
+                    },
+                }));
+                parts.push(...functionCalls);
             }
 
             messageBlocks.push({
                 role: messageBlock.role,
-                parts: content,
+                parts,
             });
         }
 
-        const transformedToolsData = toolsData.map(
-            (toolData): TLLMToolResultMessageBlock => ({
-                role: TLLMMessageRole.Function,
-                parts: [
-                    {
-                        functionResponse: {
+        // Transform tool results
+        const toolResults = toolsData.map((toolData) => ({
+            role: TLLMMessageRole.User,
+            parts: [
+                {
+                    functionResponse: {
+                        name: toolData.name,
+                        response: {
                             name: toolData.name,
-                            response: {
-                                name: toolData.name,
-                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
-                            },
+                            content: toolData.result,
                         },
                     },
-                ],
-            })
-        );
+                },
+            ],
+        }));
 
-        return [...messageBlocks, ...transformedToolsData];
-    }
-
-    public getConsistentMessages(messages) {
-        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
-
-        return _messages.map((message) => {
-            let textBlock = [];
-
-            if (message?.parts) {
-                textBlock = message.parts;
-            } else if (message?.content) {
-                textBlock = Array.isArray(message.content) ? message.content : [{ text: message.content as string }];
-            }
-
-            return {
-                role: message.role,
-                parts: textBlock,
-            };
-        });
+        messageBlocks.push(...toolResults);
+        return messageBlocks;
     }
 }

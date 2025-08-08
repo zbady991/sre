@@ -37,6 +37,16 @@ export type ChatOptions = {
      *
      */
     persist?: boolean | ILLMContextStore;
+
+    /**
+     * The maximum number of tokens to use for the context window
+     */
+    maxContextSize?: number;
+
+    /**
+     * The maximum number of tokens to use for the output
+     */
+    maxOutputTokens?: number;
 };
 
 export enum Scope {

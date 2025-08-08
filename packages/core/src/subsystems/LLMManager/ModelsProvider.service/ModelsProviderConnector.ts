@@ -43,7 +43,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         const cacheKey = `ModelsProviderConnector:${candidate.toString()}`;
         if (ModelsProviderConnector.localCache.has(cacheKey)) {
             //update the TTL every time the requester is called
-            return ModelsProviderConnector.localCache.get(cacheKey, 60 * 60 * 1000) as IModelsProviderRequest;
+            return ModelsProviderConnector.localCache.get(cacheKey, 10 * 60 * 1000) as IModelsProviderRequest;
         }
 
         let teamModels = null;
@@ -135,7 +135,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                 }
             },
         };
-        ModelsProviderConnector.localCache.set(cacheKey, instance, 60 * 60 * 1000); // cache for 1 hour
+        ModelsProviderConnector.localCache.set(cacheKey, instance, 10 * 60 * 1000); // cache for 10 minutes
         return instance;
     }
 

@@ -130,8 +130,14 @@ export class Conversation extends EventEmitter {
             this._lastError = error;
             console.warn('Conversation Error: ', error?.message);
         });
-        if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
-        if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
+        this._maxContextSize =
+            _settings.maxContextSize || (this._model as TLLMModel).tokens || (this._model as TLLMModel).keyOptions?.tokens || this._maxContextSize;
+        this._maxOutputTokens =
+            _settings.maxOutputTokens ||
+            (this._model as TLLMModel).completionTokens ||
+            (this._model as TLLMModel).keyOptions?.completionTokens ||
+            this._maxOutputTokens;
+
         if (_settings?.systemPrompt) {
             this.userDefinedSystemPrompt = _settings.systemPrompt;
         }
@@ -490,9 +496,11 @@ export class Conversation extends EventEmitter {
                     //this._context.addAssistantMessage(passThroughContent, message_id);
                     llmMessage.content += '\n' + passThroughContent;
                     this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+
+                    //this._context.addAssistantMessage(passThroughContent, message_id, { passthrough: true });
                     //this should not be stored in the persistent conversation store
                     //it's just a workaround to avoid generating more content after passthrough content
-                    this._context.addUserMessage(passThroughtContinueMessage, message_id, { internal: true });
+                    //this._context.addUserMessage(passThroughtContinueMessage, message_id, { internal: true });
                     //toolHeaders['x-passthrough'] = 'true';
                 }
 
