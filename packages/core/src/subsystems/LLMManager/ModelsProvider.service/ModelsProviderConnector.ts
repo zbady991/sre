@@ -59,6 +59,15 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                     return null;
                 }
             }
+            //Workaround : non-blocking auto-refresh of team models
+            //this will force team models to refresh for the next request
+            //TODO: we need a more elegant cache invalidation mechanism, and only refresh the team models if the custom models have changed
+            setImmediate(async () => {
+                const _customModels = await this.getCustomModels(candidate);
+                teamModels = { ...teamModels, ..._customModels };
+            });
+
+            //immediatelly return the team models
             return teamModels;
         };
         loadTeamModels();

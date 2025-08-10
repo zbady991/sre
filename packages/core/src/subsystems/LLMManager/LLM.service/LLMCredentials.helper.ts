@@ -5,7 +5,9 @@ import { TBedrockSettings, TCustomLLMModel, TLLMCredentials, TLLMModel, TVertexA
 export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
     //create a credentials list that we can iterate over
     //if the credentials are not provided, we will use None as a default in order to return empty credentials
-    const credentialsList: any[] = !Array.isArray(modelInfo.credentials) ? [modelInfo.credentials] : modelInfo.credentials || [TLLMCredentials.None];
+    const credentialsList: any[] = !Array.isArray(modelInfo.credentials)
+        ? [modelInfo.credentials || TLLMCredentials.Internal]
+        : modelInfo.credentials || [TLLMCredentials.Internal];
 
     for (let credentialsMode of credentialsList) {
         if (typeof credentialsMode === 'object') {

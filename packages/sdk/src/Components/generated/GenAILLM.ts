@@ -14,8 +14,6 @@ export interface TGenAILLMSettings {
     temperature?: number;
     /** Maximum Tokens */
     maxTokens?: number;
-    /** Maximum Thinking Tokens */
-    maxThinkingTokens?: number;
     /** Stop Sequences */
     stopSequences?: string;
     /** Top P */
@@ -80,10 +78,14 @@ export interface TGenAILLMSettings {
     fromDate?: string;
     /** To Date */
     toDate?: string;
+    /** If true, the component will use reasoning capabilities for complex problem-solving */
+    useReasoning?: boolean;
+    /** Controls the level of effort the model will put into reasoning */
+    reasoningEffort?: 'none' | 'default' | 'low' | 'medium' | 'high';
+    /** Maximum Thinking Tokens */
+    maxThinkingTokens?: number;
     /** RSS Link */
     rssLinks?: string;
-    /** Use Reasoning */
-    useReasoning?: boolean;
 }
 
 export type TGenAILLMInputs = {
