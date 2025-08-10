@@ -32,10 +32,6 @@ export interface CostConfig {
 }
 
 export interface SearchToolCostConfig {
-    gpt4Models: {
-        [modelName: string]: number;
-    };
-    gpt5Models: {
-        [modelName: string]: number;
-    };
+    normalModels: CostConfig;
+    miniModels: CostConfig;
 }
