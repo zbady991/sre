@@ -348,11 +348,13 @@ export class Conversation extends EventEmitter {
             //     console.log('Passthrough skiped content ', content);
             //     return;
             // }
-            const lastMessage = this._context?.messages?.[this._context?.messages?.length - 1];
-            //const skip = lastMessage?.content?.includes(passThroughtContinueMessage) && lastMessage?.__smyth_data__?.internal;
+            //const lastMessage = this._context?.messages?.[this._context?.messages?.length - 1];
+            //const skip = lastMessage?.__smyth_data__?.internal;
 
             //skip if the content is the last generated message after a passthrough content
-            //if (skip) return;
+            // if (skip) {
+            //     let s = true;
+            // }
             _content += content;
             this.emit(TLLMEvent.Content, content);
         });
@@ -494,8 +496,8 @@ export class Conversation extends EventEmitter {
                     //delete toolHeaders['x-passthrough'];
                 } else {
                     //this._context.addAssistantMessage(passThroughContent, message_id);
-                    llmMessage.content += '\n' + passThroughContent;
-                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+                    //llmMessage.content += '\n' + passThroughContent;
+                    this._context.addToolMessage(llmMessage, processedToolsData, message_id, { passThrough: true });
 
                     //this._context.addAssistantMessage(passThroughContent, message_id, { passthrough: true });
                     //this should not be stored in the persistent conversation store
