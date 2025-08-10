@@ -496,6 +496,7 @@ export class Conversation extends EventEmitter {
                     //delete toolHeaders['x-passthrough'];
                 } else {
                     //this._context.addAssistantMessage(passThroughContent, message_id);
+
                     //llmMessage.content += '\n' + passThroughContent;
                     this._context.addToolMessage(llmMessage, processedToolsData, message_id, { passThrough: true });
 

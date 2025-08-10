@@ -315,8 +315,10 @@ export abstract class LLMConnector extends Connector {
             imageGeneration: features.includes('image-generation'),
         };
 
-        // * We may have other tools info like file search, image generation, etc.
-        // Organize web search parameters from both flat and nested structures
+        // We're using an object with providers instead of setting toolsInfo directly based on the provider,
+        // so the code stays clean and easy to read in connectors like toolsInfo.openai.webSearch or toolsInfo.xai.search.
+        // it helps prevent errors such as mistakenly using toolsInfo.search in the OpenAI connector and similar cases.
+        // This also helps enable autocomplete, so when typing toolsInfo.openai, it shows suggestions like webSearch.
         _params.toolsInfo = {
             openai: await this.prepareOpenAIToolsInfo(_params),
             xai: await this.prepareXAIToolsInfo(_params),

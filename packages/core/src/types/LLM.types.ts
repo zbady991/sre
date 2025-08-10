@@ -156,7 +156,6 @@ export type TLLMParams = {
      */
     reasoningEffort?: 'none' | 'default' | 'low' | 'medium' | 'high';
     max_output_tokens?: number;
-    verbosity?: 'low' | 'medium' | 'high';
     abortSignal?: AbortSignal;
 };
 
