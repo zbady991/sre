@@ -45,6 +45,9 @@ export type ILLMConnectorCredentials = BasicCredentials | BedrockCredentials | V
 export type TOpenAIResponseToolChoice = OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
 export type TLLMToolChoice = OpenAI.ChatCompletionToolChoiceOption;
 
+// Local alias to the upstream OpenAI reasoning effort union type
+export type OpenAIReasoningEffort = NonNullable<OpenAI.Responses.ResponseCreateParams['reasoning']>['effort'];
+
 export type TOpenAIToolsInfo = {
     webSearch: {
         enabled: boolean;
@@ -149,8 +152,14 @@ export type TLLMParams = {
     // #endregion
 
     useReasoning?: boolean;
+    /**
+     * Controls the level of effort the model will put into reasoning
+     * For GPT-OSS models (20B, 120B): "low" | "medium" | "high"
+     * For Qwen 3 32B: "none" | "default"
+     */
+    reasoningEffort?: 'none' | 'default' | OpenAIReasoningEffort;
     max_output_tokens?: number;
-    verbosity?: 'low' | 'medium' | 'high';
+    verbosity?: OpenAI.Responses.ResponseCreateParams['text']['verbosity'];
     abortSignal?: AbortSignal;
 };
 

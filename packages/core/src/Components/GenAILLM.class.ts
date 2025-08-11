@@ -277,7 +277,7 @@ export class GenAILLM extends Component {
         useSystemPrompt: Joi.boolean().optional().label('Use System Prompt'),
         useContextWindow: Joi.boolean().optional().label('Use Context Window'),
         maxContextWindowLength: Joi.number().optional().min(0).label('Maximum Context Window Length'),
-        verbosity: Joi.string().valid('low', 'medium', 'high').optional().allow('').label('Verbosity'),
+        verbosity: Joi.string().valid('low', 'medium', 'high').optional().allow('').allow(null).label('Verbosity'),
 
         // #region Web Search
         useWebSearch: Joi.boolean().optional().label('Use Web Search'),

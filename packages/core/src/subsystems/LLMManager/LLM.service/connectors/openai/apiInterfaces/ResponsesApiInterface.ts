@@ -22,12 +22,12 @@ import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies, TToolType } from '../types';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { MODELS_WITHOUT_TEMPERATURE_SUPPORT, SEARCH_TOOL_COSTS } from './constants';
+import { isValidOpenAIReasoningEffort } from './utils';
 
 // File size limits in bytes
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
 
-type TSearchContextSize = 'low' | 'medium' | 'high';
 type TSearchLocation = {
     type: 'approximate';
     city?: string;
@@ -84,6 +84,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                 // Step 1: Process the stream
                 const streamResult = await this.processStream(stream, emitter);
                 finalToolsData = streamResult.toolsData;
+
                 const finishReason = streamResult.finishReason || 'stop';
                 const usageData = streamResult.usageData;
 
@@ -187,8 +188,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             }
 
             // Handle usage statistics from response object
-            if ('response' in part && (part as any).response?.usage) {
-                usageData.push((part as any).response.usage);
+            if (part?.type === 'response.completed' && part?.response?.usage) {
+                usageData.push(part.response.usage);
             }
         }
 
@@ -213,7 +214,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      * Report usage statistics
      */
     private reportUsageStatistics(usage_data: any[], context: ILLMRequestContext): any[] {
-        let reportedUsage: any[] = [];
+        const reportedUsage: any[] = [];
 
         // Report normal usage
         usage_data.forEach((usage) => {
@@ -308,10 +309,18 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.top_p = params.topP;
         }
 
-        // Handle verbosity
-        if (params?.verbosity !== undefined && params?.verbosity !== null) {
-            (body as any).verbosity = params.verbosity;
+        // #region GPT 5 specific fields
+
+        const isGPT5Models = params.modelEntryName?.includes('gpt-5');
+        if (isGPT5Models && params?.verbosity) {
+            body.text = { verbosity: params.verbosity };
         }
+
+        // We need to validate the `reasoningEffort` parameter for OpenAI models, since models like `qwen/qwen3-32b` and `deepseek-r1-distill-llama-70b` (available via Groq) also support this parameter but use different values, such as `none` and `default`. These values are valid in our system but not specifically for OpenAI.
+        if (isGPT5Models && isValidOpenAIReasoningEffort(params.reasoningEffort)) {
+            body.reasoning = { effort: params.reasoningEffort };
+        }
+        // #endregion GPT 5 specific fields
 
         let tools: OpenAI.Responses.Tool[] = [];
 
@@ -337,19 +346,12 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     }
 
     /**
-     * Type guard to check if a tool is an OpenAI tool definition
-     */
-    private isOpenAIToolDefinition(tool: OpenAIToolDefinition | LegacyToolDefinition): tool is OpenAIToolDefinition {
-        return 'parameters' in tool;
-    }
-
-    /**
      * Transform OpenAI tool definitions to Responses.Tool format
      */
     public transformToolsConfig(config: ToolConfig): OpenAI.Responses.Tool[] {
         return config.toolDefinitions.map((tool) => {
             // Handle OpenAI tool definition format
-            if (this.isOpenAIToolDefinition(tool)) {
+            if ('parameters' in tool) {
                 return {
                     type: 'function' as const,
                     name: tool.name,
