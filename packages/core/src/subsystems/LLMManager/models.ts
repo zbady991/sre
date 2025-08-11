@@ -745,7 +745,7 @@ export const models = {
         llm: 'GoogleAI',
 
         label: 'Gemini 2.5 Flash Preview',
-        modelId: 'gemini-2.5-flash-preview-04-17',
+        modelId: 'gemini-2.5-flash',
         provider: 'GoogleAI',
         features: ['text', 'image', 'audio', 'video', 'document'],
         tags: ['New', 'Personal'],

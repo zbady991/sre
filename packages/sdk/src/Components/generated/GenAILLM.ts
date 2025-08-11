@@ -14,8 +14,6 @@ export interface TGenAILLMSettings {
     temperature?: number;
     /** Maximum Tokens */
     maxTokens?: number;
-    /** Maximum Thinking Tokens */
-    maxThinkingTokens?: number;
     /** Stop Sequences */
     stopSequences?: string;
     /** Top P */
@@ -36,8 +34,6 @@ export interface TGenAILLMSettings {
     useContextWindow?: boolean;
     /** The maximum number of messages to use from this component context window (if useContextWindow is true) */
     maxContextWindowLength?: number;
-    /** Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. */
-    verbosity?: 'low' | 'medium' | 'high';
     /** If true, the component will use web search for additional context */
     useWebSearch?: boolean;
     /** Web Search Context Size */
@@ -82,10 +78,14 @@ export interface TGenAILLMSettings {
     fromDate?: string;
     /** To Date */
     toDate?: string;
+    /** If true, the component will use reasoning capabilities for complex problem-solving */
+    useReasoning?: boolean;
+    /** Controls the level of effort the model will put into reasoning */
+    reasoningEffort?: 'none' | 'default' | 'low' | 'medium' | 'high';
+    /** Maximum Thinking Tokens */
+    maxThinkingTokens?: number;
     /** RSS Link */
     rssLinks?: string;
-    /** Use Reasoning */
-    useReasoning?: boolean;
 }
 
 export type TGenAILLMInputs = {

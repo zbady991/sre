@@ -122,7 +122,7 @@ class AgentCommand {
             .streamPrompt({ message: this.prompt + attachmentsPrompt, files: hasBinarySkill ? undefined : files })
             .catch((error) => {
                 console.error('Error on streamPrompt: ', error);
-                return { error };
+                return JSON.stringify({ error });
             });
 
         return result;
@@ -395,6 +395,13 @@ export class Agent extends SDKObject {
             this._data.defaultModel = findClosestModelInfo(models, model);
         } else {
             this._data.defaultModel = model as any;
+            const builtInModelInfo = findClosestModelInfo(models, model.modelId);
+            if (builtInModelInfo) {
+                this._data.defaultModel = {
+                    ...builtInModelInfo,
+                    ...(this._data.defaultModel as any),
+                };
+            }
         }
         this._readyPromise.resolve(true);
     }

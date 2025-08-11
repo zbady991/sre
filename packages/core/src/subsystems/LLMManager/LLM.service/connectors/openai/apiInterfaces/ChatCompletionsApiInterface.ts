@@ -2,17 +2,7 @@ import EventEmitter from 'events';
 import OpenAI from 'openai';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import {
-    TLLMParams,
-    TLLMPreparedParams,
-    ILLMRequestContext,
-    ToolData,
-    TLLMMessageRole,
-    APIKeySource,
-    TLLMEvent,
-    OpenAIToolDefinition,
-    LegacyToolDefinition,
-} from '@sre/types/LLM.types';
+import { TLLMParams, TLLMPreparedParams, ILLMRequestContext, ToolData, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
 import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';

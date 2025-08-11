@@ -218,7 +218,14 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
         // Report normal usage
         usage_data.forEach((usage) => {
-            const reported = this.deps.reportUsage(usage, this.buildUsageContext(context));
+            // Convert ResponseUsage to CompletionUsage format for compatibility
+            const convertedUsage = {
+                completion_tokens: usage.completion_tokens || 0,
+                prompt_tokens: usage.prompt_tokens || 0,
+                total_tokens: usage.total_tokens || 0,
+                ...usage,
+            };
+            const reported = this.deps.reportUsage(convertedUsage, this.buildUsageContext(context));
             reportedUsage.push(reported);
         });
 
@@ -266,13 +273,10 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     /**
      * Calculate search tool usage with cost
-     *
-     * Note: This only calculates the per-call cost for web search.
-     * Search content tokens are included in the main usage report as input_tokens.
      */
     private calculateSearchToolUsage(context: ILLMRequestContext) {
         const modelName = context.modelEntryName?.replace('smythos/', '');
-        const cost = this.getSearchToolCost(modelName);
+        const cost = this.getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
 
         return {
             cost,
@@ -838,20 +842,19 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     }
 
     /**
-     * Get search tool cost for a specific model
-     * @returns Cost per call (not per 1000 calls)
+     * Get search tool cost for a specific model and context size
      */
-    private getSearchToolCost(modelName: string): number {
+    private getSearchToolCost(modelName: string, contextSize: string): number {
         const normalizedModelName = modelName?.replace('smythos/', '');
 
-        // Check gpt-4 models (gpt-4o, gpt-4.1 and their mini variants)
-        if (SEARCH_TOOL_COSTS.gpt4Models[normalizedModelName]) {
-            return SEARCH_TOOL_COSTS.gpt4Models[normalizedModelName];
+        // Check normal models first
+        if (SEARCH_TOOL_COSTS.normalModels[normalizedModelName]) {
+            return SEARCH_TOOL_COSTS.normalModels[normalizedModelName][contextSize] || 0;
         }
 
-        // Check gpt-5 models
-        if (SEARCH_TOOL_COSTS.gpt5Models[normalizedModelName]) {
-            return SEARCH_TOOL_COSTS.gpt5Models[normalizedModelName];
+        // Check mini models
+        if (SEARCH_TOOL_COSTS.miniModels[normalizedModelName]) {
+            return SEARCH_TOOL_COSTS.miniModels[normalizedModelName][contextSize] || 0;
         }
 
         return 0;

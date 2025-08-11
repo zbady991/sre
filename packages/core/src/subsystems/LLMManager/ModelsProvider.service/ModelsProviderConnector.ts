@@ -26,7 +26,7 @@ export interface IModelsProviderRequest {
         completionTokens,
         hasAPIKey,
     }: {
-        model: string | TLLMModel | TCustomLLMModel;
+        model: TLLMModel | TCustomLLMModel;
         promptTokens: number;
         completionTokens: number;
         hasAPIKey?: boolean;
@@ -43,7 +43,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         const cacheKey = `ModelsProviderConnector:${candidate.toString()}`;
         if (ModelsProviderConnector.localCache.has(cacheKey)) {
             //update the TTL every time the requester is called
-            return ModelsProviderConnector.localCache.get(cacheKey, 60 * 60 * 1000) as IModelsProviderRequest;
+            return ModelsProviderConnector.localCache.get(cacheKey, 10 * 60 * 1000) as IModelsProviderRequest;
         }
 
         let teamModels = null;
@@ -59,6 +59,15 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                     return null;
                 }
             }
+            //Workaround : non-blocking auto-refresh of team models
+            //this will force team models to refresh for the next request
+            //TODO: we need a more elegant cache invalidation mechanism, and only refresh the team models if the custom models have changed
+            setImmediate(async () => {
+                const _customModels = await this.getCustomModels(candidate);
+                teamModels = { ...teamModels, ..._customModels };
+            });
+
+            //immediatelly return the team models
             return teamModels;
         };
         loadTeamModels();
@@ -117,13 +126,13 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                 completionTokens,
                 hasAPIKey,
             }: {
-                model: string | TLLMModel | TCustomLLMModel;
+                model: TLLMModel | TCustomLLMModel;
                 promptTokens: number;
                 completionTokens: number;
                 hasAPIKey: boolean;
             }) => {
-                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
-                const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
+                //const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
+                const modelInfo = await this.getModelInfo(candidate.readRequest, {}, model, hasAPIKey);
                 const allowedContextTokens = modelInfo?.tokens;
                 const totalTokens = promptTokens + completionTokens;
 
@@ -135,7 +144,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                 }
             },
         };
-        ModelsProviderConnector.localCache.set(cacheKey, instance, 60 * 60 * 1000); // cache for 1 hour
+        ModelsProviderConnector.localCache.set(cacheKey, instance, 10 * 60 * 1000); // cache for 10 minutes
         return instance;
     }
 

@@ -184,6 +184,13 @@ export class Chat extends SDKObject {
             }
         }
 
+        if (options.maxContextSize) {
+            this._convOptions.maxContextSize = options.maxContextSize;
+        }
+        if (options.maxOutputTokens) {
+            this._convOptions.maxOutputTokens = options.maxOutputTokens;
+        }
+
         this._conversation = createConversation(this._data, this._convOptions);
     }
 

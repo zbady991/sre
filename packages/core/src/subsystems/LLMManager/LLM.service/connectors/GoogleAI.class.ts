@@ -3,7 +3,7 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata, FunctionCallingMode } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 import { GoogleGenAI } from '@google/genai';
 
@@ -114,7 +114,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             return {
                 content,
-                finishReason,
+                finishReason: finishReason.toLowerCase(),
                 useTool,
                 toolsData,
                 message: { content, role: 'assistant' },
@@ -397,7 +397,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         const transformedToolsData = toolsData.map(
             (toolData): TLLMToolResultMessageBlock => ({
-                role: TLLMMessageRole.Function,
+                role: TLLMMessageRole.User,
                 parts: [
                     {
                         functionResponse: {
@@ -565,8 +565,23 @@ export class GoogleAIConnector extends LLMConnector {
 
         if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools as any;
         if (params?.toolsConfig?.tool_choice) {
+            // Map tool choice to valid Google AI function calling modes
+            let mode: FunctionCallingMode = FunctionCallingMode.AUTO; // default
+            const toolChoice = params?.toolsConfig?.tool_choice;
+
+            if (toolChoice === 'auto') {
+                mode = FunctionCallingMode.AUTO;
+            } else if (toolChoice === 'required') {
+                mode = FunctionCallingMode.ANY;
+            } else if (toolChoice === 'none') {
+                mode = FunctionCallingMode.NONE;
+            } else if (typeof toolChoice === 'object' && toolChoice.type === 'function') {
+                // Handle OpenAI-style named tool choice - force any function call
+                mode = FunctionCallingMode.ANY;
+            }
+
             toolsPrompt.toolConfig = {
-                functionCallingConfig: { mode: (params?.toolsConfig?.tool_choice as any) || 'auto' },
+                functionCallingConfig: { mode },
             };
         }
 

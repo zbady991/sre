@@ -440,9 +440,11 @@ export class AnthropicConnector extends LLMConnector {
         }
         //#endregion Prepare system message and add JSON response instruction if needed
 
-        if (params?.temperature !== undefined) body.temperature = params.temperature;
-        if (params?.topP !== undefined) body.top_p = params.topP;
-        if (params?.topK !== undefined) body.top_k = params.topK;
+        const isReasoningModel = params?.capabilities?.reasoning;
+
+        if (params?.temperature !== undefined && !isReasoningModel) body.temperature = params.temperature;
+        if (params?.topP !== undefined && !isReasoningModel) body.top_p = params.topP;
+        if (params?.topK !== undefined && !isReasoningModel) body.top_k = params.topK;
         if (params?.stopSequences?.length) body.stop_sequences = params.stopSequences;
 
         // #region Tools

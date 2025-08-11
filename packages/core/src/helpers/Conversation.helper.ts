@@ -130,8 +130,14 @@ export class Conversation extends EventEmitter {
             this._lastError = error;
             console.warn('Conversation Error: ', error?.message);
         });
-        if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
-        if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
+        this._maxContextSize =
+            _settings.maxContextSize || (this._model as TLLMModel).tokens || (this._model as TLLMModel).keyOptions?.tokens || this._maxContextSize;
+        this._maxOutputTokens =
+            _settings.maxOutputTokens ||
+            (this._model as TLLMModel).completionTokens ||
+            (this._model as TLLMModel).keyOptions?.completionTokens ||
+            this._maxOutputTokens;
+
         if (_settings?.systemPrompt) {
             this.userDefinedSystemPrompt = _settings.systemPrompt;
         }
@@ -342,11 +348,13 @@ export class Conversation extends EventEmitter {
             //     console.log('Passthrough skiped content ', content);
             //     return;
             // }
-            const lastMessage = this._context?.messages?.[this._context?.messages?.length - 1];
-            //const skip = lastMessage?.content?.includes(passThroughtContinueMessage) && lastMessage?.__smyth_data__?.internal;
+            //const lastMessage = this._context?.messages?.[this._context?.messages?.length - 1];
+            //const skip = lastMessage?.__smyth_data__?.internal;
 
             //skip if the content is the last generated message after a passthrough content
-            //if (skip) return;
+            // if (skip) {
+            //     let s = true;
+            // }
             _content += content;
             this.emit(TLLMEvent.Content, content);
         });
@@ -488,11 +496,14 @@ export class Conversation extends EventEmitter {
                     //delete toolHeaders['x-passthrough'];
                 } else {
                     //this._context.addAssistantMessage(passThroughContent, message_id);
-                    llmMessage.content += '\n' + passThroughContent;
-                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+
+                    //llmMessage.content += '\n' + passThroughContent;
+                    this._context.addToolMessage(llmMessage, processedToolsData, message_id, { passThrough: true });
+
+                    //this._context.addAssistantMessage(passThroughContent, message_id, { passthrough: true });
                     //this should not be stored in the persistent conversation store
                     //it's just a workaround to avoid generating more content after passthrough content
-                    this._context.addUserMessage(passThroughtContinueMessage, message_id, { internal: true });
+                    //this._context.addUserMessage(passThroughtContinueMessage, message_id, { internal: true });
                     //toolHeaders['x-passthrough'] = 'true';
                 }
 
@@ -537,7 +548,7 @@ export class Conversation extends EventEmitter {
             return '';
         });
         _content += toolsContent;
-        let content = JSONContent(_content).tryParse();
+        //let content = JSONContent(_content).tryParse();
 
         // let streamPromise = new Promise((resolve, reject) => {
         //     eventEmitter.on('end', async () => {
@@ -565,7 +576,7 @@ export class Conversation extends EventEmitter {
             //console.log('tool content', content);
         }
 
-        return content;
+        return _content;
     }
 
     private resolveToolEndpoint(baseUrl: string, method: string, endpoint: string, params: Record<string, any>): string {
