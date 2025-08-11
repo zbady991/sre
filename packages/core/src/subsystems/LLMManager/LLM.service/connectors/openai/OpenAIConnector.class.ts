@@ -173,7 +173,7 @@ export class OpenAIConnector extends LLMConnector {
         const openai = await this.getClient(context);
         const response = await openai.images.generate(body as OpenAI.Images.ImageGenerateParams);
 
-        return response;
+        return response as OpenAI.ImagesResponse;
     }
 
     protected async imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
@@ -182,7 +182,7 @@ export class OpenAIConnector extends LLMConnector {
         const openai = await this.getClient(context);
         const response = await openai.images.edit(_body);
 
-        return response;
+        return response as OpenAI.ImagesResponse;
     }
     // #endregion
 

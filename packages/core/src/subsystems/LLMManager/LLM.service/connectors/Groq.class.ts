@@ -183,7 +183,7 @@ export class GroqConnector extends LLMConnector {
         if (params.toolsConfig?.tool_choice) body.tool_choice = params.toolsConfig?.tool_choice as any;
 
         // Apply user-specified reasoning parameters
-        if (isReasoningModel) {
+        if (isReasoningModel && isValidGroqReasoningEffort(params?.reasoningEffort)) {
             if (params.reasoningEffort !== undefined) body.reasoning_effort = params.reasoningEffort;
         }
 
@@ -288,4 +288,11 @@ export class GroqConnector extends LLMConnector {
             return _message;
         });
     }
+}
+/**
+ * Type guard to check if a value is a valid OpenAI reasoning effort.
+ * Uses array includes for better maintainability when OpenAI adds new values.
+ */
+export function isValidGroqReasoningEffort(value: unknown): value is 'low' | 'medium' | 'high' | 'none' | 'default' {
+    return ['none', 'default', 'low', 'medium', 'high'].includes(value as string);
 }

@@ -84,6 +84,8 @@ export interface TGenAILLMSettings {
     reasoningEffort?: 'none' | 'default' | 'low' | 'medium' | 'high';
     /** Maximum Thinking Tokens */
     maxThinkingTokens?: number;
+    /** Verbosity */
+    verbosity?: 'low' | 'medium' | 'high';
     /** RSS Link */
     rssLinks?: string;
 }
