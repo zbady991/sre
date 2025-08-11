@@ -150,14 +150,12 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
             };
             const updateFunctionCodeCommand = new UpdateFunctionCodeCommand(updateCodeParams);
             await client.send(updateFunctionCodeCommand);
-            // Update function configuration to attach layer
-            await verifyFunctionDeploymentStatus(functionName, client); ``
+            await verifyFunctionDeploymentStatus(functionName, client);
+
             if (envVariables && Object.keys(envVariables).length) {
                 await updateLambdaFunctionConfiguration(client, functionName, envVariables);
-                // Update function configuration to attach layer
                 await verifyFunctionDeploymentStatus(functionName, client);
             }
-            // console.log('Lambda function code and configuration updated successfully!');
         } else {
             // Create function if it does not exist
             let roleArn = '';
