@@ -5,7 +5,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { cacheTTL, createOrUpdateLambdaFunction, generateCodeHash, generateLambdaCode, getDeployedCodeHash, getDeployedFunction, getLambdaFunctionName, invokeLambdaFunction, setDeployedCodeHash, updateDeployedCodeTTL, validateAsyncMainFunction, zipCode } from '@sre/helpers/AWSLambdaCode.helper';
+import { cacheTTL, createOrUpdateLambdaFunction, generateCodeHash, generateLambdaCode, getCurrentEnvironmentVariables, getDeployedCodeHash, getDeployedFunction, getLambdaFunctionName, getSortedObjectValues, invokeLambdaFunction, setDeployedCodeHash, updateDeployedCodeTTL, validateAsyncMainFunction, zipCode } from '@sre/helpers/AWSLambdaCode.helper';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { Logger } from '@sre/helpers/Log.helper';
 
@@ -31,14 +31,16 @@ export class AWSLambdaCode extends CodeConnector {
     public async deploy(acRequest: AccessRequest, codeUID: string, input: CodeInput, config: CodeConfig): Promise<CodeDeployment> {
         const agentId = acRequest.candidate.id;
         const functionName = getLambdaFunctionName(agentId, codeUID);
-    
-
-        const [isLambdaExists, exisitingCodeHash] = await Promise.all([
+        const [isLambdaExists, exisitingCodeHash, currentEnvVariables] = await Promise.all([
             getDeployedFunction(functionName, this.awsConfigs),
             getDeployedCodeHash(agentId, codeUID),
+            getCurrentEnvironmentVariables(acRequest.candidate.id, input.code),
         ]);
 
-        const codeHash = generateCodeHash(input.code, Object.keys(input.inputs));
+        // sorting values to get the same hash for the same env variables
+        const envValues = getSortedObjectValues(currentEnvVariables);
+
+        const codeHash = generateCodeHash(input.code, Object.keys(input.inputs), envValues);
         if (isLambdaExists && exisitingCodeHash === codeHash) {
             return {
                 id: functionName,
@@ -57,7 +59,7 @@ export class AWSLambdaCode extends CodeConnector {
             if (!isValid) {
                 throw new Error(error || 'Invalid Code')
             }
-            const lambdaCode = generateLambdaCode(input.code, parameters);
+            const lambdaCode = generateLambdaCode(input.code, parameters, currentEnvVariables);
             // create folder
             fs.mkdirSync(directory);
             // create index.js file
@@ -68,7 +70,7 @@ export class AWSLambdaCode extends CodeConnector {
             execSync(`npm install ${dependencies.join(' ')}`, { cwd: directory });
 
             const zipFilePath = await zipCode(directory);
-            await createOrUpdateLambdaFunction(functionName, zipFilePath, this.awsConfigs);
+            await createOrUpdateLambdaFunction(functionName, zipFilePath, this.awsConfigs, currentEnvVariables);
             await setDeployedCodeHash(agentId, codeUID, codeHash);
             console.debug('Lambda function updated successfully!');
             return {
@@ -83,7 +85,7 @@ export class AWSLambdaCode extends CodeConnector {
             try {
                 fs.rmSync(`${directory}`, { recursive: true, force: true });
                 fs.unlinkSync(`${directory}.zip`);
-            } catch (error) {}
+            } catch (error) { }
         }
 
     }

@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import zl from 'zip-lib';
-import { InvokeCommand, Runtime, LambdaClient, UpdateFunctionCodeCommand, CreateFunctionCommand, GetFunctionCommand, GetFunctionCommandOutput, InvokeCommandOutput } from '@aws-sdk/client-lambda';
+import { InvokeCommand, Runtime, LambdaClient, UpdateFunctionCodeCommand, CreateFunctionCommand, GetFunctionCommand, GetFunctionCommandOutput, InvokeCommandOutput, UpdateFunctionConfigurationCommand } from '@aws-sdk/client-lambda';
 import { GetRoleCommand, CreateRoleCommand, IAMClient, GetRoleCommandOutput, CreateRoleCommandOutput } from '@aws-sdk/client-iam';
 import fs from 'fs';
 import { AWSConfig, AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
@@ -20,13 +20,15 @@ export function getLambdaFunctionName(agentId: string, componentId: string) {
 }
 
 
-export function generateCodeHash(code_body: string, codeInputs: string[]) {
+export function generateCodeHash(code_body: string, codeInputs: string[], envVariables: string[]) {
     const bodyHash = getSanitizeCodeHash(code_body);
     const inputsHash = getSanitizeCodeHash(JSON.stringify(codeInputs));
-    return `body-${bodyHash}__inputs-${inputsHash}`;
+    const envVariablesHash = getSanitizeCodeHash(JSON.stringify(envVariables));
+    return `body-${bodyHash}__inputs-${inputsHash}__env-${envVariablesHash}`;
 }
 
-export function getSanitizeCodeHash(code: string) {
+export function getSanitizeCodeHash(rawCode: string) {
+    const code = replaceVaultKeysTemplateVars(rawCode, {});
     let output = '';
     let isSingleQuote = false;
     let isDoubleQuote = false;
@@ -82,9 +84,15 @@ export async function setDeployedCodeHash(agentId: string, componentId: string, 
         .set(`${cachePrefix}_${agentId}-${componentId}`, codeHash, null, null, cacheTTL);
 }
 
-export function generateLambdaCode(code: string, parameters: string[]) {
+function replaceVaultKeysTemplateVars(code: string, envVariables: Record<string, string>) {
+    const regex = /\{\{KEY\((.*?)\)\}\}/g;
+    return code.replaceAll(regex, (match, p1) => `process.env.${p1}`);
+}
+
+export function generateLambdaCode(code: string, parameters: string[], envVariables: Record<string, string>) {
+    const codeWithEnvVariables = envVariables && Object.keys(envVariables).length ? replaceVaultKeysTemplateVars(code, envVariables) : code;
     const lambdaCode = `
-    ${code}
+    ${codeWithEnvVariables}
     export const handler = async (event, context) => {
       try {
         context.callbackWaitsForEmptyEventLoop = false;
@@ -118,7 +126,7 @@ export async function zipCode(directory: string) {
     });
 }
 
-export async function createOrUpdateLambdaFunction(functionName, zipFilePath, awsConfigs) {
+export async function createOrUpdateLambdaFunction(functionName, zipFilePath, awsConfigs, envVariables: Record<string, string>) {
     const client = new LambdaClient({
         region: awsConfigs.region,
         credentials: {
@@ -142,9 +150,12 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
             };
             const updateFunctionCodeCommand = new UpdateFunctionCodeCommand(updateCodeParams);
             await client.send(updateFunctionCodeCommand);
-            // Update function configuration to attach layer
             await verifyFunctionDeploymentStatus(functionName, client);
-            // console.log('Lambda function code and configuration updated successfully!');
+
+            if (envVariables && Object.keys(envVariables).length) {
+                await updateLambdaFunctionConfiguration(client, functionName, envVariables);
+                await verifyFunctionDeploymentStatus(functionName, client);
+            }
         } else {
             // Create function if it does not exist
             let roleArn = '';
@@ -188,6 +199,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                     'auto-delete': 'true',
                 },
                 MemorySize: 256,
+                ...(envVariables && Object.keys(envVariables).length ? { Environment: { Variables: envVariables } } : {}),
             };
 
             const functionCreateCommand = new CreateFunctionCommand(functionParams);
@@ -198,6 +210,17 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
     } catch (error) {
         throw error;
     }
+}
+
+function updateLambdaFunctionConfiguration(client: LambdaClient, functionName: string, envVariables: Record<string, string>) {
+    const updateFunctionConfigurationParams = {
+        FunctionName: functionName,
+        Environment: {
+            Variables: envVariables,
+        },
+    };
+    const updateFunctionConfigurationCommand = new UpdateFunctionConfigurationCommand(updateFunctionConfigurationParams);
+    return client.send(updateFunctionConfigurationCommand);
 }
 
 export async function waitForRoleDeploymentStatus(roleName, client): Promise<boolean> {
@@ -356,10 +379,11 @@ export function reportUsage({ cost, agentId, teamId }: { cost: number; agentId: 
     });
 }
 
-export function validateAsyncMainFunction(code: string): { isValid: boolean; error?: string; parameters?: string[]; dependencies?: string[] } {
+export function validateAsyncMainFunction(rawCode: string): { isValid: boolean; error?: string; parameters?: string[]; dependencies?: string[] } {
     try {
-        // Parse the code using acorn
-        const ast = acorn.parse(code, { 
+        const code = replaceVaultKeysTemplateVars(rawCode, {});
+        // Parse the code using     acorn
+        const ast = acorn.parse(code, {
             ecmaVersion: 'latest',
             sourceType: 'module'
         });
@@ -387,8 +411,8 @@ export function validateAsyncMainFunction(code: string): { isValid: boolean; err
             }
 
             // Handle CallExpression (require() calls)
-            if (node.type === 'CallExpression' && 
-                node.callee.type === 'Identifier' && 
+            if (node.type === 'CallExpression' &&
+                node.callee.type === 'Identifier' &&
                 node.callee.name === 'require' &&
                 node.arguments.length > 0 &&
                 node.arguments[0].type === 'Literal') {
@@ -399,7 +423,7 @@ export function validateAsyncMainFunction(code: string): { isValid: boolean; err
             }
 
             // Handle dynamic import() calls
-            if (node.type === 'CallExpression' && 
+            if (node.type === 'CallExpression' &&
                 node.callee.type === 'Import' &&
                 node.arguments.length > 0 &&
                 node.arguments[0].type === 'Literal') {
@@ -473,16 +497,16 @@ export function validateAsyncMainFunction(code: string): { isValid: boolean; err
         }
 
         if (!hasMain) {
-            return { 
-                isValid: false, 
+            return {
+                isValid: false,
                 error: 'No main function found at root level',
                 dependencies
             };
         }
 
         if (!hasAsyncMain) {
-            return { 
-                isValid: false, 
+            return {
+                isValid: false,
                 error: 'Main function exists but is not async',
                 dependencies
             };
@@ -490,9 +514,9 @@ export function validateAsyncMainFunction(code: string): { isValid: boolean; err
 
         return { isValid: true, parameters: mainParameters, dependencies };
     } catch (error) {
-        return { 
-            isValid: false, 
-            error: `Failed to parse code: ${error.message}` 
+        return {
+            isValid: false,
+            error: `Failed to parse code: ${error.message}`
         };
     }
 }
@@ -526,3 +550,39 @@ export function generateCodeFromLegacyComponent(code_body: string, code_imports:
     return code;
 }
 
+export function extractAllKeyNamesFromTemplateVars(input: string): string[] {
+    const regex = /\{\{KEY\((.*?)\)\}\}/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(input)) !== null) {
+        if (match[1]) {
+            matches.push(match[1]);
+        }
+    }
+    return matches;
+}
+
+
+async function fetchVaultSecret(keyName: string, agentTeamId: string): Promise<{ value: string, key: string }> {
+    const vaultSecret = await VaultHelper.getAgentKey(keyName, agentTeamId);
+    return {
+        value: vaultSecret,
+        key: keyName,
+    };
+
+}
+
+export async function getCurrentEnvironmentVariables(agentTeamId: string, code: string): Promise<Record<string, string>> {
+    const allKeyNames = extractAllKeyNamesFromTemplateVars(code);
+    const envVariables: Record<string, string> = {};
+    const vaultSecrets = await Promise.all(allKeyNames.map((keyName) => fetchVaultSecret(keyName, agentTeamId)));
+    vaultSecrets.forEach((secret) => {
+        envVariables[secret.key] = secret.value;
+    });
+    return envVariables;
+}
+
+export function getSortedObjectValues(obj: Record<string, string>): string[] {
+    const sortedKeys = Object.keys(obj).sort();
+    return sortedKeys.map((key) => obj[key]);
+}
