@@ -2,17 +2,7 @@ import EventEmitter from 'events';
 import OpenAI from 'openai';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import {
-    TLLMParams,
-    TLLMPreparedParams,
-    ILLMRequestContext,
-    ToolData,
-    TLLMMessageRole,
-    APIKeySource,
-    TLLMEvent,
-    OpenAIToolDefinition,
-    LegacyToolDefinition,
-} from '@sre/types/LLM.types';
+import { TLLMParams, TLLMPreparedParams, ILLMRequestContext, ToolData, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
 import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
@@ -22,6 +12,8 @@ import {
     MODELS_WITHOUT_SYSTEM_MESSAGE_SUPPORT,
     MODELS_WITHOUT_JSON_RESPONSE_SUPPORT,
 } from './constants';
+
+import { isValidOpenAIReasoningEffort } from './utils';
 
 // File size limits in bytes
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -67,9 +59,6 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
 
     public handleStream(stream: AsyncIterable<OpenAI.ChatCompletionChunk>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
-        const usage_data: OpenAI.Completions.CompletionUsage[] = [];
-        const reportedUsage: any[] = [];
-        let finishReason = 'stop';
 
         // Process stream asynchronously while returning emitter immediately
         (async () => {
@@ -77,12 +66,14 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
 
             try {
                 // Step 1: Process the stream
-                const streamResult = await this.processStream(stream, emitter, usage_data);
+                const streamResult = await this.processStream(stream, emitter);
                 finalToolsData = streamResult.toolsData;
-                finishReason = streamResult.finishReason;
+
+                const finishReason = streamResult.finishReason || 'stop';
+                const usageData = streamResult.usageData;
 
                 // Step 2: Report usage statistics
-                this.reportUsageStatistics(usage_data, context, reportedUsage);
+                const reportedUsage = this.reportUsageStatistics(usageData, context);
 
                 // Step 3: Emit final events
                 this.emitFinalEvents(emitter, finalToolsData, reportedUsage, finishReason);
@@ -172,6 +163,18 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             body.stop = params.stopSequences;
         }
 
+        // #region GPT 5 specific fields
+        const isGPT5ReasoningModels = params.modelEntryName?.includes('gpt-5') && params?.capabilities?.reasoning;
+        if (isGPT5ReasoningModels && params?.verbosity) {
+            body.verbosity = params.verbosity;
+        }
+
+        // We need to validate the `reasoningEffort` parameter for OpenAI models, since models like `qwen/qwen3-32b` and `deepseek-r1-distill-llama-70b` (available via Groq) also support this parameter but use different values, such as `none` and `default`. These values are valid in our system but not specifically for OpenAI.
+        if (isGPT5ReasoningModels && isValidOpenAIReasoningEffort(params.reasoningEffort)) {
+            body.reasoning_effort = params.reasoningEffort;
+        }
+        // #endregion GPT 5 specific fields
+
         // Handle tools configuration
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
             body.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
@@ -182,19 +185,12 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     }
 
     /**
-     * Type guard to check if a tool is an OpenAI tool definition
-     */
-    private isOpenAIToolDefinition(tool: OpenAIToolDefinition | LegacyToolDefinition): tool is OpenAIToolDefinition {
-        return 'parameters' in tool;
-    }
-
-    /**
      * Transform OpenAI tool definitions to ChatCompletionTool format
      */
     public transformToolsConfig(config: ToolConfig): OpenAI.ChatCompletionTool[] {
         return config.toolDefinitions.map((tool) => {
             // Handle OpenAI tool definition format
-            if (this.isOpenAIToolDefinition(tool)) {
+            if ('parameters' in tool) {
                 return {
                     type: 'function',
                     function: {
@@ -259,11 +255,11 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
      */
     private async processStream(
         stream: AsyncIterable<OpenAI.ChatCompletionChunk>,
-        emitter: EventEmitter,
-        usage_data: OpenAI.Completions.CompletionUsage[]
-    ): Promise<{ toolsData: ToolData[]; finishReason: string }> {
+        emitter: EventEmitter
+    ): Promise<{ toolsData: ToolData[]; finishReason: string; usageData: any[] }> {
         let toolsData: ToolData[] = [];
         let finishReason = 'stop';
+        const usageData = [];
 
         for await (const part of stream) {
             const delta = part.choices[0]?.delta;
@@ -271,7 +267,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
 
             // Collect usage statistics
             if (usage) {
-                usage_data.push(usage);
+                usageData.push(usage);
             }
 
             // Emit data event for delta
@@ -315,7 +311,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             }
         }
 
-        return { toolsData: this.extractToolCalls(toolsData), finishReason };
+        return { toolsData: this.extractToolCalls(toolsData), finishReason, usageData };
     }
 
     /**
@@ -335,12 +331,16 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     /**
      * Report usage statistics
      */
-    private reportUsageStatistics(usage_data: OpenAI.Completions.CompletionUsage[], context: ILLMRequestContext, reportedUsage: any[]): void {
+    private reportUsageStatistics(usage_data: OpenAI.Completions.CompletionUsage[], context: ILLMRequestContext): any[] {
+        const reportedUsage: any[] = [];
+
         // Report normal usage
         usage_data.forEach((usage) => {
             const reported = this.deps.reportUsage(usage, this.buildUsageContext(context));
             reportedUsage.push(reported);
         });
+
+        return reportedUsage;
     }
 
     /**

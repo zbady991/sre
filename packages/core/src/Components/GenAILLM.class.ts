@@ -238,6 +238,12 @@ export class GenAILLM extends Component {
                 description: 'If true, the component will use reasoning capabilities for complex problem-solving',
                 label: 'Use Reasoning',
             },
+            verbosity: {
+                type: 'string',
+                valid: ['low', 'medium', 'high'],
+                label: 'Verbosity',
+                allowEmpty: true,
+            },
             reasoningEffort: {
                 type: 'string',
                 valid: ['none', 'default', 'low', 'medium', 'high'],
@@ -283,6 +289,7 @@ export class GenAILLM extends Component {
         useSystemPrompt: Joi.boolean().optional().label('Use System Prompt'),
         useContextWindow: Joi.boolean().optional().label('Use Context Window'),
         maxContextWindowLength: Joi.number().optional().min(0).label('Maximum Context Window Length'),
+        verbosity: Joi.string().valid('low', 'medium', 'high').optional().allow('').allow(null).label('Verbosity'),
 
         // #region Web Search
         useWebSearch: Joi.boolean().optional().label('Use Web Search'),
@@ -322,7 +329,7 @@ export class GenAILLM extends Component {
 
         // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
-        reasoningEffort: Joi.string().valid('none', 'default', 'low', 'medium', 'high').optional().allow('').label('Reasoning Effort'),
+        reasoningEffort: Joi.string().valid('none', 'default', 'minimal', 'low', 'medium', 'high').optional().allow('').label('Reasoning Effort'),
         maxThinkingTokens: Joi.number().min(1).optional().label('Maximum Thinking Tokens'),
         // #endregion
     });

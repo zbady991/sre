@@ -22,12 +22,12 @@ import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies, TToolType } from '../types';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { MODELS_WITHOUT_TEMPERATURE_SUPPORT, SEARCH_TOOL_COSTS } from './constants';
+import { isValidOpenAIReasoningEffort } from './utils';
 
 // File size limits in bytes
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
 
-type TSearchContextSize = 'low' | 'medium' | 'high';
 type TSearchLocation = {
     type: 'approximate';
     city?: string;
@@ -75,9 +75,6 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     public handleStream(stream: Stream<OpenAI.Responses.ResponseStreamEvent>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
-        const usage_data: any[] = [];
-        const reportedUsage: any[] = [];
-        let finishReason = 'stop';
 
         // Process stream asynchronously while returning emitter immediately
         (async () => {
@@ -85,12 +82,14 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
             try {
                 // Step 1: Process the stream
-                const streamResult = await this.processStream(stream, emitter, usage_data);
+                const streamResult = await this.processStream(stream, emitter);
                 finalToolsData = streamResult.toolsData;
-                finishReason = streamResult.finishReason;
+
+                const finishReason = streamResult.finishReason || 'stop';
+                const usageData = streamResult.usageData;
 
                 // Step 2: Report usage statistics
-                this.reportUsageStatistics(usage_data, context, reportedUsage);
+                const reportedUsage = this.reportUsageStatistics(usageData, context);
 
                 // Step 3: Emit final events
                 this.emitFinalEvents(emitter, finalToolsData, reportedUsage, finishReason);
@@ -107,11 +106,11 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      */
     private async processStream(
         stream: Stream<OpenAI.Responses.ResponseStreamEvent>,
-        emitter: EventEmitter,
-        usage_data: any[]
-    ): Promise<{ toolsData: ToolData[]; finishReason: string }> {
+        emitter: EventEmitter
+    ): Promise<{ toolsData: ToolData[]; finishReason: string; usageData: any[] }> {
         let toolsData: ToolData[] = [];
         let finishReason = 'stop';
+        const usageData = [];
 
         for await (const part of stream) {
             // Handle different event types from the Responses API stream
@@ -189,12 +188,12 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             }
 
             // Handle usage statistics from response object
-            if ('response' in part && (part as any).response?.usage) {
-                usage_data.push((part as any).response.usage);
+            if (part?.type === 'response.completed' && part?.response?.usage) {
+                usageData.push(part.response.usage);
             }
         }
 
-        return { toolsData: this.extractToolCalls(toolsData), finishReason };
+        return { toolsData: this.extractToolCalls(toolsData), finishReason, usageData };
     }
 
     /**
@@ -214,7 +213,9 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Report usage statistics
      */
-    private reportUsageStatistics(usage_data: any[], context: ILLMRequestContext, reportedUsage: any[]): void {
+    private reportUsageStatistics(usage_data: any[], context: ILLMRequestContext): any[] {
+        const reportedUsage: any[] = [];
+
         // Report normal usage
         usage_data.forEach((usage) => {
             // Convert ResponseUsage to CompletionUsage format for compatibility
@@ -234,6 +235,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             const reported = this.deps.reportUsage(searchUsage, this.buildUsageContext(context));
             reportedUsage.push(reported);
         }
+
+        return reportedUsage;
     }
 
     /**
@@ -310,6 +313,19 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.top_p = params.topP;
         }
 
+        // #region GPT 5 specific fields
+
+        const isGPT5ReasoningModels = params.modelEntryName?.includes('gpt-5') && params?.capabilities?.reasoning;
+        if (isGPT5ReasoningModels && params?.verbosity) {
+            body.text = { verbosity: params.verbosity };
+        }
+
+        // We need to validate the `reasoningEffort` parameter for OpenAI models, since models like `qwen/qwen3-32b` and `deepseek-r1-distill-llama-70b` (available via Groq) also support this parameter but use different values, such as `none` and `default`. These values are valid in our system but not specifically for OpenAI.
+        if (isGPT5ReasoningModels && isValidOpenAIReasoningEffort(params.reasoningEffort)) {
+            body.reasoning = { effort: params.reasoningEffort };
+        }
+        // #endregion GPT 5 specific fields
+
         let tools: OpenAI.Responses.Tool[] = [];
 
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
@@ -334,19 +350,12 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     }
 
     /**
-     * Type guard to check if a tool is an OpenAI tool definition
-     */
-    private isOpenAIToolDefinition(tool: OpenAIToolDefinition | LegacyToolDefinition): tool is OpenAIToolDefinition {
-        return 'parameters' in tool;
-    }
-
-    /**
      * Transform OpenAI tool definitions to Responses.Tool format
      */
     public transformToolsConfig(config: ToolConfig): OpenAI.Responses.Tool[] {
         return config.toolDefinitions.map((tool) => {
             // Handle OpenAI tool definition format
-            if (this.isOpenAIToolDefinition(tool)) {
+            if ('parameters' in tool) {
                 return {
                     type: 'function' as const,
                     name: tool.name,

@@ -193,3 +193,4 @@ export * from './subsystems/Security/Vault.service/connectors/SecretsManager.cla
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/OpenAIConnector.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/types';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/apiInterfaces/constants';
+export * from './subsystems/LLMManager/LLM.service/connectors/openai/apiInterfaces/utils';

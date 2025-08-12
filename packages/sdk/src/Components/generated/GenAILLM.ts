@@ -80,8 +80,10 @@ export interface TGenAILLMSettings {
     toDate?: string;
     /** If true, the component will use reasoning capabilities for complex problem-solving */
     useReasoning?: boolean;
+    /** Verbosity */
+    verbosity?: 'low' | 'medium' | 'high';
     /** Controls the level of effort the model will put into reasoning */
-    reasoningEffort?: 'none' | 'default' | 'low' | 'medium' | 'high';
+    reasoningEffort?: 'none' | 'default' | 'minimal' | 'low' | 'medium' | 'high';
     /** Maximum Thinking Tokens */
     maxThinkingTokens?: number;
     /** RSS Link */
