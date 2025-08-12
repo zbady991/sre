@@ -19,6 +19,9 @@
         "CHANGELOG"
     ],
     "type": "module",
+    "engines": {
+        "node": ">=20"
+    },
     "scripts": {
         "gen:barrel": "ctix build",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",

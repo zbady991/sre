@@ -34,6 +34,8 @@ type ChatCompletionCreateParams = {
     reasoning_effort?: 'none' | 'default' | 'low' | 'medium' | 'high';
 };
 
+const MODELS_WITHOUT_REASONING_EFFORT_SUPPORT = ['deepseek-r1-distill-llama-70b'];
+
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
@@ -166,10 +168,10 @@ export class GroqConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        const isReasoningModel = params.useReasoning && params.capabilities?.reasoning;
+        const allowReasoning = params.useReasoning && params.capabilities?.reasoning;
 
         if (params.maxTokens !== undefined) {
-            if (isReasoningModel) {
+            if (allowReasoning) {
                 body.max_completion_tokens = params.maxTokens;
             } else {
                 body.max_tokens = params.maxTokens;
@@ -183,7 +185,11 @@ export class GroqConnector extends LLMConnector {
         if (params.toolsConfig?.tool_choice) body.tool_choice = params.toolsConfig?.tool_choice as any;
 
         // Apply user-specified reasoning parameters
-        if (isReasoningModel && isValidGroqReasoningEffort(params?.reasoningEffort)) {
+        if (
+            allowReasoning &&
+            isValidGroqReasoningEffort(params?.reasoningEffort) &&
+            !MODELS_WITHOUT_REASONING_EFFORT_SUPPORT.includes(params?.modelEntryName)
+        ) {
             if (params.reasoningEffort !== undefined) body.reasoning_effort = params.reasoningEffort;
         }
 

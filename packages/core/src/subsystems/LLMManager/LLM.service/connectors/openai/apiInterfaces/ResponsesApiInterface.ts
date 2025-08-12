@@ -315,13 +315,13 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
         // #region GPT 5 specific fields
 
-        const isGPT5Models = params.modelEntryName?.includes('gpt-5');
-        if (isGPT5Models && params?.verbosity) {
+        const isGPT5ReasoningModels = params.modelEntryName?.includes('gpt-5') && params?.capabilities?.reasoning;
+        if (isGPT5ReasoningModels && params?.verbosity) {
             body.text = { verbosity: params.verbosity };
         }
 
         // We need to validate the `reasoningEffort` parameter for OpenAI models, since models like `qwen/qwen3-32b` and `deepseek-r1-distill-llama-70b` (available via Groq) also support this parameter but use different values, such as `none` and `default`. These values are valid in our system but not specifically for OpenAI.
-        if (isGPT5Models && isValidOpenAIReasoningEffort(params.reasoningEffort)) {
+        if (isGPT5ReasoningModels && isValidOpenAIReasoningEffort(params.reasoningEffort)) {
             body.reasoning = { effort: params.reasoningEffort };
         }
         // #endregion GPT 5 specific fields
