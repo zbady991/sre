@@ -644,65 +644,73 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             return [];
         }
 
-        return config.toolDefinitions.map((tool, index) => {
-            // Validate basic tool structure
-            if (!tool || typeof tool !== 'object') {
-                // Return a minimal tool structure for compatibility
-                return {
-                    type: 'function' as const,
-                    name: undefined,
-                    description: undefined,
-                    parameters: {
-                        type: 'object',
-                        properties: undefined,
-                        required: undefined,
-                    },
-                    strict: false,
-                } as OpenAI.Responses.Tool;
-            }
-
-            // Handle tools that are already in ChatCompletionTool format (with nested function object)
-            if ('function' in tool && tool.function && typeof tool.function === 'object' && tool.function !== null) {
-                const funcTool = tool.function as { name: string; description?: string; parameters?: any };
-
-                if (!funcTool.name || typeof funcTool.name !== 'string') {
-                    return null;
+        return config.toolDefinitions
+            .map((tool, index) => {
+                // Validate basic tool structure
+                if (!tool || typeof tool !== 'object') {
+                    // Return a minimal tool structure for compatibility
+                    return {
+                        type: 'function' as const,
+                        name: undefined,
+                        description: undefined,
+                        parameters: {
+                            type: 'object',
+                            properties: undefined,
+                            required: undefined,
+                        },
+                        strict: false,
+                    } as OpenAI.Responses.Tool;
                 }
 
-                return {
-                    type: 'function' as const,
-                    name: funcTool.name,
-                    description: funcTool.description || tool.description || '',
-                    parameters: funcTool.parameters || { type: 'object', properties: {}, required: [] },
-                    strict: false,
-                } as OpenAI.Responses.Tool;
-            }
+                // Handle tools that are already in ChatCompletionTool format (with nested function object)
+                if ('function' in tool && tool.function && typeof tool.function === 'object' && tool.function !== null) {
+                    const funcTool = tool.function as { name: string; description?: string; parameters?: any };
 
-            // Handle OpenAI tool definition format (direct parameters)
-            if ('parameters' in tool) {
+                    if (!funcTool.name || typeof funcTool.name !== 'string') {
+                        return {
+                            type: 'function' as const,
+                            name: undefined,
+                            description: tool.description || '',
+                            parameters: { type: 'object', properties: undefined, required: undefined },
+                            strict: false,
+                        } as OpenAI.Responses.Tool;
+                    }
+
+                    return {
+                        type: 'function' as const,
+                        name: funcTool.name,
+                        description: funcTool.description || tool.description || '',
+                        parameters: funcTool.parameters || { type: 'object', properties: {}, required: [] },
+                        strict: false,
+                    } as OpenAI.Responses.Tool;
+                }
+
+                // Handle OpenAI tool definition format (direct parameters)
+                if ('parameters' in tool) {
+                    return {
+                        type: 'function' as const,
+                        name: tool.name,
+                        description: tool.description || '',
+                        parameters: tool.parameters || { type: 'object', properties: {}, required: [] },
+                        strict: false,
+                    } as OpenAI.Responses.Tool;
+                }
+
+                // Handle legacy format for backward compatibility
+                const legacyTool = tool as any;
                 return {
                     type: 'function' as const,
                     name: tool.name,
-                    description: tool.description || '',
-                    parameters: tool.parameters || { type: 'object', properties: {}, required: [] },
+                    description: tool.description || legacyTool.desc,
+                    parameters: {
+                        type: 'object',
+                        properties: legacyTool.properties,
+                        required: legacyTool.requiredFields || legacyTool.required,
+                    },
                     strict: false,
                 } as OpenAI.Responses.Tool;
-            }
-
-            // Handle legacy format for backward compatibility
-            const legacyTool = tool as any;
-            return {
-                type: 'function' as const,
-                name: tool.name,
-                description: tool.description || legacyTool.desc,
-                parameters: {
-                    type: 'object',
-                    properties: legacyTool.properties,
-                    required: legacyTool.requiredFields || legacyTool.required,
-                },
-                strict: false,
-            } as OpenAI.Responses.Tool;
-        });
+            })
+            .filter(Boolean) as OpenAI.Responses.Tool[];
     }
 
     /**
@@ -989,11 +997,14 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                     // Split assistant message with tool_calls into separate items (Responses API format)
 
                     // Add assistant content first if present
-                    if (message.content && message.content.trim()) {
-                        transformedMessages.push({
-                            role: 'assistant',
-                            content: typeof message.content === 'object' ? JSON.stringify(message.content) : String(message.content),
-                        });
+                    if (message.content !== undefined && message.content !== null) {
+                        const contentStr = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+                        if (contentStr.trim().length > 0) {
+                            transformedMessages.push({
+                                role: 'assistant',
+                                content: contentStr,
+                            });
+                        }
                     }
 
                     // Transform each tool call to function_call format
