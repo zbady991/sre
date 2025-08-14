@@ -28,6 +28,39 @@ import { isValidOpenAIReasoningEffort } from './utils';
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
 
+// Event type constants for type safety and maintainability
+const EVENT_TYPES = {
+    // Officially supported web search events (OpenAI SDK >= 5.12.x)
+    WEB_SEARCH_IN_PROGRESS: 'response.web_search_call.in_progress',
+    WEB_SEARCH_SEARCHING: 'response.web_search_call.searching',
+    WEB_SEARCH_COMPLETED: 'response.web_search_call.completed',
+    // Legacy alias observed historically (kept for backward compat if emitted)
+    WEB_SEARCH_STARTED: 'response.web_search_call.started',
+
+    RESPONSE_COMPLETED: 'response.completed',
+    OUTPUT_TEXT_DELTA: 'response.output_text.delta',
+    OUTPUT_ITEM_ADDED: 'response.output_item.added',
+    FUNCTION_CALL_ARGUMENTS_DELTA: 'response.function_call_arguments.delta',
+    FUNCTION_CALL_ARGUMENTS_DONE: 'response.function_call_arguments.done',
+    OUTPUT_ITEM_DONE: 'response.output_item.done',
+} as const;
+
+// Type definitions for web search events (augmenting SDK types locally)
+interface WebSearchInProgressEvent {
+    type: typeof EVENT_TYPES.WEB_SEARCH_IN_PROGRESS;
+    item_id: string;
+}
+
+interface WebSearchSearchingEvent {
+    type: typeof EVENT_TYPES.WEB_SEARCH_SEARCHING;
+    item_id: string;
+}
+
+interface WebSearchCompletedEvent {
+    type: typeof EVENT_TYPES.WEB_SEARCH_COMPLETED;
+    item_id: string;
+}
+
 type TSearchLocation = {
     type: 'approximate';
     city?: string;
@@ -113,83 +146,69 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         const usageData = [];
 
         for await (const part of stream) {
-            // Handle different event types from the Responses API stream
-            if ('type' in part) {
-                const event = part.type;
+            try {
+                // Handle different event types from the Responses API stream
+                if ('type' in part) {
+                    // Handle officially typed events using constants
+                    switch (part.type) {
+                        case EVENT_TYPES.WEB_SEARCH_IN_PROGRESS:
+                            toolsData = this.handleWebSearchInProgress(part as any, toolsData);
+                            break;
+                        case EVENT_TYPES.WEB_SEARCH_SEARCHING:
+                            toolsData = this.handleWebSearchSearching(part as any, toolsData);
+                            break;
+                        case EVENT_TYPES.WEB_SEARCH_COMPLETED:
+                            toolsData = this.handleWebSearchCompleted(part as any, toolsData);
+                            break;
+                        case EVENT_TYPES.OUTPUT_TEXT_DELTA:
+                            this.handleOutputTextDelta(part, emitter);
+                            break;
 
-                switch (event) {
-                    case 'response.output_text.delta': {
-                        if ('delta' in part && part.delta) {
-                            // Emit content in delta format for compatibility
-                            const deltaMsg = {
-                                role: 'assistant',
-                                content: part.delta,
-                            };
-                            emitter.emit('data', deltaMsg);
-                            emitter.emit('content', part.delta, 'assistant');
-                        }
-                        break;
-                    }
-                    case 'response.function_call_arguments.delta': {
-                        // Handle function call arguments streaming - use any to work around type issues
-                        const partAny = part as any;
-                        if (partAny?.delta && partAny?.call_id) {
-                            // Find or create tool data entry
-                            let toolIndex = toolsData.findIndex((t) => t.id === partAny.call_id);
-                            if (toolIndex === -1) {
-                                toolIndex = toolsData.length;
-                                toolsData.push({
-                                    index: toolIndex,
-                                    id: partAny.call_id,
-                                    type: 'function',
-                                    name: partAny?.name || '',
-                                    arguments: '',
-                                    role: 'tool',
-                                });
-                            }
-                            toolsData[toolIndex].arguments += partAny.delta;
-                        }
-                        break;
-                    }
-                    case 'response.web_search_call.started' as any:
-                    case 'response.web_search_call.completed' as any: {
-                        // Handle web search events - these are newer event types not yet in the official types
-                        const partAny = part as any;
-                        if (partAny?.id) {
-                            // Find or create web search tool data entry
-                            let toolIndex = toolsData.findIndex((t) => t.id === partAny.id);
-                            if (toolIndex === -1) {
-                                toolIndex = toolsData.length;
-                                toolsData.push({
-                                    index: toolIndex,
-                                    id: partAny.id,
-                                    type: TToolType.WebSearch,
-                                    name: 'web_search',
-                                    arguments: partAny?.query || '',
-                                    role: 'tool',
-                                });
-                            } else {
-                                // Update existing entry
-                                if (partAny?.query) {
-                                    toolsData[toolIndex].arguments = partAny.query;
-                                }
-                            }
-                        }
-                        break;
-                    }
-                    default: {
-                        // Handle other event types including response completion
-                        if (event.includes('done')) {
+                        case EVENT_TYPES.OUTPUT_ITEM_ADDED:
+                            toolsData = this.handleOutputItemAdded(part, toolsData, emitter);
+                            break;
+
+                        case EVENT_TYPES.FUNCTION_CALL_ARGUMENTS_DELTA:
+                            toolsData = this.handleFunctionCallArgumentsDelta(part, toolsData, emitter);
+                            break;
+
+                        case EVENT_TYPES.FUNCTION_CALL_ARGUMENTS_DONE:
+                            toolsData = this.handleFunctionCallArgumentsDone(part, toolsData, emitter);
+                            break;
+
+                        case EVENT_TYPES.OUTPUT_ITEM_DONE:
+                            toolsData = this.handleOutputItemDone(part, toolsData);
+                            break;
+
+                        case EVENT_TYPES.RESPONSE_COMPLETED: {
                             finishReason = 'stop';
+                            const responseData = (part as any)?.response;
+                            if (responseData?.usage) {
+                                usageData.push(responseData.usage);
+                            }
+                            break;
                         }
-                        break;
+
+                        default: {
+                            const eventType = String(part.type);
+                            // Handle legacy started event if ever emitted
+                            if (eventType === EVENT_TYPES.WEB_SEARCH_STARTED) {
+                                const legacyId = (part as any)?.id;
+                                if (typeof legacyId === 'string') {
+                                    const result = this.upsertWebSearchToolImmutable(toolsData, legacyId);
+                                    toolsData = result.toolsData;
+                                }
+                                break;
+                            }
+                            // Handle any other unknown 'done' style events as completion
+                            finishReason = this.handleCompletionEvent(eventType);
+                            break;
+                        }
                     }
                 }
-            }
-
-            // Handle usage statistics from response object
-            if (part?.type === 'response.completed' && part?.response?.usage) {
-                usageData.push(part.response.usage);
+            } catch (error) {
+                // Log error but continue processing to prevent stream interruption
+                console.warn('Error processing stream event:', error, 'Event:', part);
             }
         }
 
@@ -204,9 +223,10 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             index: tool.index,
             name: tool.name,
             arguments: tool.arguments,
-            id: tool.id,
+            id: tool.callId || tool.id, // Use callId for final output if available
             type: tool.type,
             role: tool.role,
+            callId: tool.callId, // Preserve callId for reference
         }));
     }
 
@@ -286,6 +306,247 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         };
     }
 
+    // =====================
+    // Event handlers (private)
+    // =====================
+
+    /**
+     * Handle web search completed event with proper type safety
+     */
+    private handleWebSearchCompleted(event: WebSearchCompletedEvent, toolsData: ToolData[]): ToolData[] {
+        try {
+            const { item_id: itemId } = event;
+            const result = this.upsertWebSearchToolImmutable(toolsData, itemId);
+            return result.toolsData;
+        } catch (error) {
+            console.warn('Error handling web search completed event:', error);
+            return toolsData;
+        }
+    }
+
+    /**
+     * Handle web search in-progress event (official typed)
+     */
+    private handleWebSearchInProgress(event: WebSearchInProgressEvent, toolsData: ToolData[]): ToolData[] {
+        try {
+            const { item_id: itemId } = event;
+            const result = this.upsertWebSearchToolImmutable(toolsData, itemId);
+            return result.toolsData;
+        } catch (error) {
+            console.warn('Error handling web search in_progress event:', error);
+            return toolsData;
+        }
+    }
+
+    /**
+     * Handle web search searching event (official typed)
+     */
+    private handleWebSearchSearching(event: WebSearchSearchingEvent, toolsData: ToolData[]): ToolData[] {
+        try {
+            const { item_id: itemId } = event;
+            const result = this.upsertWebSearchToolImmutable(toolsData, itemId);
+            return result.toolsData;
+        } catch (error) {
+            console.warn('Error handling web search searching event:', error);
+            return toolsData;
+        }
+    }
+
+    /**
+     * Handle output text delta events
+     */
+    private handleOutputTextDelta(part: any, emitter: EventEmitter): void {
+        try {
+            if ('delta' in part && part.delta) {
+                const deltaMsg = {
+                    role: 'assistant',
+                    content: part.delta,
+                };
+                emitter.emit('data', deltaMsg);
+                emitter.emit('content', part.delta, 'assistant');
+            }
+        } catch (error) {
+            console.warn('Error handling output text delta:', error);
+        }
+    }
+
+    /**
+     * Handle output item added events (function calls)
+     */
+    private handleOutputItemAdded(part: any, toolsData: ToolData[], emitter: EventEmitter): ToolData[] {
+        try {
+            const partAny = part as any;
+            if (partAny.item && partAny.item.type === 'function_call') {
+                const item = partAny.item;
+                const callId = item.call_id;
+                const functionName = item.name;
+                const itemId = item.id;
+
+                if (callId && itemId) {
+                    const existingIndex = toolsData.findIndex((t) => t.id === itemId || t.id === callId);
+                    const addingNew = existingIndex === -1;
+                    const nextIndex = addingNew ? toolsData.length : existingIndex;
+
+                    let updated: ToolData[];
+                    if (addingNew) {
+                        const newItem: ToolData = {
+                            index: nextIndex,
+                            id: itemId,
+                            callId: callId,
+                            type: 'function',
+                            name: functionName || '',
+                            arguments: item.arguments || '',
+                            role: 'tool',
+                        } as ToolData;
+                        updated = [...toolsData, newItem];
+                    } else {
+                        updated = toolsData.map((t, idx) => {
+                            if (idx !== existingIndex) return t;
+                            return {
+                                ...t,
+                                name: functionName || t.name,
+                                arguments: item.arguments !== undefined ? item.arguments : t.arguments,
+                                callId: t.callId || callId,
+                            };
+                        });
+                    }
+
+                    if (addingNew) {
+                        emitter.emit('tool_call_started', {
+                            id: callId,
+                            name: functionName || '',
+                            type: 'function',
+                        });
+                    }
+
+                    return updated;
+                }
+            }
+            return toolsData;
+        } catch (error) {
+            console.warn('Error handling output item added:', error);
+            return toolsData;
+        }
+    }
+
+    /**
+     * Handle function call arguments delta events
+     */
+    private handleFunctionCallArgumentsDelta(part: any, toolsData: ToolData[], emitter: EventEmitter): ToolData[] {
+        try {
+            if ('delta' in part && 'item_id' in part && typeof part.delta === 'string' && typeof part.item_id === 'string') {
+                const delta = part.delta;
+                const itemId = part.item_id;
+
+                const existingIndex = toolsData.findIndex((t) => t.id === itemId);
+                let updated: ToolData[];
+                let finalIndex: number;
+                if (existingIndex === -1) {
+                    finalIndex = toolsData.length;
+                    const newItem: ToolData = {
+                        index: finalIndex,
+                        id: itemId,
+                        type: 'function',
+                        name: '',
+                        arguments: delta,
+                        role: 'tool',
+                    } as ToolData;
+                    updated = [...toolsData, newItem];
+                } else {
+                    finalIndex = existingIndex;
+                    updated = toolsData.map((t, idx) => (idx === existingIndex ? { ...t, arguments: String(t.arguments || '') + delta } : t));
+                }
+
+                const entry = existingIndex === -1 ? updated[finalIndex] : updated[finalIndex];
+                emitter.emit('tool_call_progress', {
+                    id: entry.callId || itemId,
+                    name: entry.name,
+                    arguments: entry.arguments,
+                    delta: delta,
+                });
+
+                return updated;
+            }
+            return toolsData;
+        } catch (error) {
+            console.warn('Error handling function call arguments delta:', error);
+            return toolsData;
+        }
+    }
+
+    /**
+     * Handle function call arguments done events
+     */
+    private handleFunctionCallArgumentsDone(part: any, toolsData: ToolData[], emitter: EventEmitter): ToolData[] {
+        try {
+            const partAny = part;
+            if (partAny.item_id && partAny.arguments) {
+                const itemId = partAny.item_id;
+                const finalArguments = partAny.arguments;
+
+                const toolIndex = toolsData.findIndex((t) => t.id === itemId);
+                if (toolIndex !== -1) {
+                    const updated = toolsData.map((t, idx) => (idx === toolIndex ? { ...t, arguments: finalArguments } : t));
+
+                    const updatedEntry = updated[toolIndex];
+                    emitter.emit('tool_call_completed', {
+                        id: updatedEntry.callId || itemId,
+                        name: updatedEntry.name,
+                        arguments: finalArguments,
+                    });
+
+                    return updated;
+                }
+            }
+            return toolsData;
+        } catch (error) {
+            console.warn('Error handling function call arguments done:', error);
+            return toolsData;
+        }
+    }
+
+    /**
+     * Handle output item done events
+     */
+    private handleOutputItemDone(part: any, toolsData: ToolData[]): ToolData[] {
+        try {
+            const partAny = part as any;
+            if (partAny.item && partAny.item.type === 'function_call' && partAny.item.status === 'completed') {
+                const item = partAny.item;
+                const callId = item.call_id;
+                const itemId = item.id;
+
+                const toolIndex = toolsData.findIndex((t) => t.id === itemId || t.id === callId);
+                if (toolIndex !== -1 && item.arguments) {
+                    const updated = toolsData.map((t, idx) =>
+                        idx === toolIndex
+                            ? {
+                                  ...t,
+                                  arguments: item.arguments,
+                                  callId: t.callId || callId,
+                              }
+                            : t
+                    );
+                    return updated;
+                }
+            }
+            return toolsData;
+        } catch (error) {
+            console.warn('Error handling output item done:', error);
+            return toolsData;
+        }
+    }
+
+    /**
+     * Handle completion events and unknown event types
+     */
+    private handleCompletionEvent(eventType: string): string {
+        if (eventType === EVENT_TYPES.RESPONSE_COMPLETED || eventType.includes('done')) {
+            return 'stop';
+        }
+        return 'stop'; // Default finish reason
+    }
+
     public async prepareRequestBody(params: TLLMPreparedParams): Promise<OpenAI.Responses.ResponseCreateParams> {
         let input = await this.prepareInputMessages(params);
 
@@ -342,7 +603,32 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             body.tools = tools;
 
             if (params?.toolsConfig?.tool_choice) {
-                body.tool_choice = params?.toolsConfig?.tool_choice as any;
+                const toolChoice = params.toolsConfig.tool_choice;
+
+                // Validate tool choice before applying
+                if (this.validateToolChoice(toolChoice, tools)) {
+                    if (typeof toolChoice === 'string') {
+                        // Handle string-based tool choices
+                        body.tool_choice = toolChoice;
+                    } else if (typeof toolChoice === 'object' && toolChoice !== null) {
+                        // Handle object-based tool choices (specific function selection)
+                        if ('type' in toolChoice && toolChoice.type === 'function' && 'function' in toolChoice && 'name' in toolChoice.function) {
+                            // Transform Chat Completions specific function choice to Responses API format
+                            body.tool_choice = {
+                                type: 'function',
+                                name: toolChoice.function.name,
+                            };
+                        } else {
+                            // For other object formats, pass through with type assertion
+                            body.tool_choice = toolChoice as any;
+                        }
+                    }
+                } else {
+                    body.tool_choice = 'auto';
+                }
+            } else {
+                // Default to auto if tools are present but no choice is specified
+                body.tool_choice = 'auto';
             }
         }
 
@@ -351,164 +637,72 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     /**
      * Transform OpenAI tool definitions to Responses.Tool format
+     * Handles multiple tool definition formats and ensures compatibility
      */
     public transformToolsConfig(config: ToolConfig): OpenAI.Responses.Tool[] {
-        return config.toolDefinitions.map((tool) => {
-            // Handle OpenAI tool definition format
+        if (!config?.toolDefinitions || !Array.isArray(config.toolDefinitions)) {
+            return [];
+        }
+
+        return config.toolDefinitions.map((tool, index) => {
+            // Validate basic tool structure
+            if (!tool || typeof tool !== 'object') {
+                // Return a minimal tool structure for compatibility
+                return {
+                    type: 'function' as const,
+                    name: undefined,
+                    description: undefined,
+                    parameters: {
+                        type: 'object',
+                        properties: undefined,
+                        required: undefined,
+                    },
+                    strict: false,
+                } as OpenAI.Responses.Tool;
+            }
+
+            // Handle tools that are already in ChatCompletionTool format (with nested function object)
+            if ('function' in tool && tool.function && typeof tool.function === 'object' && tool.function !== null) {
+                const funcTool = tool.function as { name: string; description?: string; parameters?: any };
+
+                if (!funcTool.name || typeof funcTool.name !== 'string') {
+                    return null;
+                }
+
+                return {
+                    type: 'function' as const,
+                    name: funcTool.name,
+                    description: funcTool.description || tool.description || '',
+                    parameters: funcTool.parameters || { type: 'object', properties: {}, required: [] },
+                    strict: false,
+                } as OpenAI.Responses.Tool;
+            }
+
+            // Handle OpenAI tool definition format (direct parameters)
             if ('parameters' in tool) {
                 return {
                     type: 'function' as const,
                     name: tool.name,
-                    description: tool.description,
-                    parameters: tool.parameters,
-                    strict: false, // Add required property for OpenAI Responses API
+                    description: tool.description || '',
+                    parameters: tool.parameters || { type: 'object', properties: {}, required: [] },
+                    strict: false,
                 } as OpenAI.Responses.Tool;
             }
 
             // Handle legacy format for backward compatibility
+            const legacyTool = tool as any;
             return {
                 type: 'function' as const,
                 name: tool.name,
-                description: tool.description,
+                description: tool.description || legacyTool.desc,
                 parameters: {
                     type: 'object',
-                    properties: tool.properties || {},
-                    required: tool.requiredFields || [],
+                    properties: legacyTool.properties,
+                    required: legacyTool.requiredFields || legacyTool.required,
                 },
-                strict: false, // Add required property for OpenAI Responses API
+                strict: false,
             } as OpenAI.Responses.Tool;
         });
-    }
-
-    /**
-     * Transform assistant message block with tool calls for Responses API
-     */
-    private transformAssistantMessageBlock(messageBlock: TLLMMessageBlock): TLLMToolResultMessageBlock {
-        const transformedMessageBlock: TLLMToolResultMessageBlock = {
-            ...messageBlock,
-            content: this.normalizeContent(messageBlock.content),
-        };
-
-        // Transform tool calls if present
-        if (transformedMessageBlock.tool_calls) {
-            transformedMessageBlock.tool_calls = this.transformToolCalls(transformedMessageBlock.tool_calls);
-        }
-
-        return transformedMessageBlock;
-    }
-
-    /**
-     * Transform individual tool calls to ensure proper formatting
-     */
-    private transformToolCalls(toolCalls: ToolData[]): ToolData[] {
-        return toolCalls.map((toolCall) => ({
-            ...toolCall,
-            // Ensure function arguments are properly stringified for Responses API
-            function: {
-                ...toolCall.function,
-                arguments: this.normalizeToolArguments(toolCall.function?.arguments || toolCall.arguments),
-            },
-            // Ensure arguments at root level are also normalized (for backward compatibility)
-            arguments: this.normalizeToolArguments(toolCall.arguments),
-        }));
-    }
-
-    /**
-     * Transform tool results with comprehensive error handling and type support
-     */
-    private transformToolResults(toolsData: ToolData[]): TLLMToolResultMessageBlock[] {
-        return toolsData.filter((toolData) => this.isValidToolData(toolData)).map((toolData) => this.createToolResultMessage(toolData));
-    }
-
-    /**
-     * Create a tool result message for the Responses API format
-     */
-    private createToolResultMessage(toolData: ToolData): TLLMToolResultMessageBlock {
-        const baseMessage: TLLMToolResultMessageBlock = {
-            tool_call_id: toolData.id,
-            role: TLLMMessageRole.Tool,
-            name: toolData.name,
-            content: this.formatToolResult(toolData),
-        };
-
-        // Handle tool errors specifically
-        if (toolData.error) {
-            baseMessage.content = this.formatToolError(toolData);
-        }
-
-        return baseMessage;
-    }
-
-    /**
-     * Format tool result content based on type and handle special cases
-     */
-    private formatToolResult(toolData: ToolData): string {
-        const result = toolData.result;
-
-        // Handle different result types
-        if (typeof result === 'string') {
-            return result;
-        }
-
-        if (typeof result === 'object' && result !== null) {
-            try {
-                return JSON.stringify(result, null, 2);
-            } catch (error) {
-                return `[Error serializing result: ${error instanceof Error ? error.message : 'Unknown error'}]`;
-            }
-        }
-
-        // Handle special tool types
-        if (this.isWebSearchTool(toolData)) {
-            return this.formatWebSearchResult(result);
-        }
-
-        // Handle undefined/null results
-        if (result === undefined || result === null) {
-            return `[Tool ${toolData.name} completed with no result]`;
-        }
-
-        // Fallback to string conversion
-        return String(result);
-    }
-
-    /**
-     * Format tool error messages with context
-     */
-    private formatToolError(toolData: ToolData): string {
-        const errorMessage = toolData.error || 'Unknown error occurred';
-        return `[Tool Error in ${toolData.name}]: ${errorMessage}`;
-    }
-
-    /**
-     * Normalize content to string format for Responses API
-     */
-    private normalizeContent(content: any): string {
-        if (typeof content === 'string') {
-            return content;
-        }
-
-        if (Array.isArray(content)) {
-            // Handle array content by extracting text parts
-            return content
-                .map((item) => {
-                    if (typeof item === 'string') return item;
-                    if (item?.text) return item.text;
-                    if (item?.type === 'text' && item?.text) return item.text;
-                    return JSON.stringify(item);
-                })
-                .join(' ');
-        }
-
-        if (typeof content === 'object' && content !== null) {
-            try {
-                return JSON.stringify(content);
-            } catch (error) {
-                return '[Error serializing content]';
-            }
-        }
-
-        return String(content || '');
     }
 
     /**
@@ -547,42 +741,6 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      */
     private isValidToolData(toolData: ToolData): boolean {
         return !!(toolData && toolData.id && toolData.name && (toolData.result !== undefined || toolData.error !== undefined));
-    }
-
-    /**
-     * Check if the tool is a web search tool based on type or name
-     */
-    private isWebSearchTool(toolData: ToolData): boolean {
-        return (
-            toolData.type === TToolType.WebSearch || toolData.name?.toLowerCase().includes('search') || toolData.name?.toLowerCase().includes('web')
-        );
-    }
-
-    /**
-     * Format web search results with better structure
-     */
-    private formatWebSearchResult(result: any): string {
-        if (!result) return '[Web search completed with no results]';
-
-        // If result is already a well-formatted string, use it
-        if (typeof result === 'string') {
-            return result;
-        }
-
-        // If result is an object with search-specific structure, format it nicely
-        if (typeof result === 'object') {
-            try {
-                // Check for common web search result structures
-                if (result.results || result.items || result.data) {
-                    return JSON.stringify(result, null, 2);
-                }
-                return JSON.stringify(result, null, 2);
-            } catch (error) {
-                return '[Error formatting web search results]';
-            }
-        }
-
-        return String(result);
     }
 
     async handleFileAttachments(files: BinaryInput[], agentId: string, messages: any[]): Promise<any[]> {
@@ -736,22 +894,36 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     }
 
     /**
-     * Prepare tools for request
+     * Prepare function tools for Responses API request
+     * Transforms tools from various formats to Responses API format
      */
     private async prepareFunctionTools(params: TLLMParams): Promise<OpenAI.Responses.Tool[]> {
         const tools: OpenAI.Responses.Tool[] = [];
 
-        // Add regular function tools
-        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            // Now we can pass the tools directly to transformToolsConfig
-            // which handles type detection and conversion properly
-            const toolsConfig = this.transformToolsConfig({
-                type: 'function',
-                toolDefinitions: params.toolsConfig.tools as (OpenAIToolDefinition | LegacyToolDefinition)[],
-                toolChoice: 'auto',
-                modelInfo: (params.modelInfo as LLMModelInfo) || null,
-            });
-            tools.push(...toolsConfig);
+        // Validate and process function tools
+        if (params?.toolsConfig?.tools && Array.isArray(params.toolsConfig.tools) && params.toolsConfig.tools.length > 0) {
+            try {
+                // Transform tools using the enhanced transformToolsConfig method
+                const toolsConfig = this.transformToolsConfig({
+                    type: 'function',
+                    toolDefinitions: params.toolsConfig.tools as any[],
+                    toolChoice: params.toolsConfig.tool_choice || 'auto',
+                    modelInfo: (params.modelInfo as LLMModelInfo) || null,
+                });
+
+                // Validate transformed tools before adding them
+                const validTools = toolsConfig.filter((tool, index) => {
+                    if (tool.type !== 'function' || !(tool as any).name) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                tools.push(...validTools);
+            } catch (error) {
+                // Don't throw here to allow the request to continue without tools
+                // This provides better resilience in production
+            }
         }
 
         return tools;
@@ -784,8 +956,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         const hasLocationData = searchCity || searchCountry || searchRegion || searchTimezone;
 
         // Configure web search tool according to OpenAI Responses API specification
-        const searchTool: OpenAI.Responses.WebSearchTool = {
-            type: 'web_search_preview' as any, // Use correct type as per OpenAI docs
+        const searchTool = {
+            type: 'web_search_preview' as const, // Use literal type to ensure consistency
         };
 
         // Add optional configuration properties
@@ -802,43 +974,83 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         return { ...searchTool, ...webSearchConfig };
     }
 
+    /**
+     * Transform messages for Responses API compatibility
+     * Handles the differences between Chat Completions and Responses API message formats
+     */
     private applyToolMessageTransformation(input: any[]): any[] {
         const transformedMessages: any[] = [];
 
-        input.forEach((message) => {
-            if (message.role === 'assistant' && message.tool_calls) {
-                // Split assistant message with tool_calls into separate items (Responses API format)
-                if (message.content) {
-                    transformedMessages.push({
-                        role: 'assistant',
-                        content: typeof message.content === 'object' ? JSON.stringify(message.content) : message.content,
-                    });
-                }
+        for (let i = 0; i < input.length; i++) {
+            const message = input[i];
 
-                message.tool_calls.forEach((toolCall) => {
-                    transformedMessages.push({
-                        type: 'function_call',
-                        name: toolCall.function.name,
-                        arguments:
-                            typeof toolCall.function.arguments === 'object'
-                                ? JSON.stringify(toolCall.function.arguments)
-                                : toolCall.function.arguments,
-                        call_id: toolCall.id,
+            try {
+                if (message.role === 'assistant' && message.tool_calls && Array.isArray(message.tool_calls)) {
+                    // Split assistant message with tool_calls into separate items (Responses API format)
+
+                    // Add assistant content first if present
+                    if (message.content && message.content.trim()) {
+                        transformedMessages.push({
+                            role: 'assistant',
+                            content: typeof message.content === 'object' ? JSON.stringify(message.content) : String(message.content),
+                        });
+                    }
+
+                    // Transform each tool call to function_call format
+                    message.tool_calls.forEach((toolCall: any, index: number) => {
+                        if (!toolCall || !toolCall.function) {
+                            return;
+                        }
+
+                        const functionArgs = toolCall.function.arguments;
+                        const normalizedArgs =
+                            functionArgs === undefined || functionArgs === null
+                                ? undefined
+                                : typeof functionArgs === 'object'
+                                ? JSON.stringify(functionArgs)
+                                : String(functionArgs);
+
+                        transformedMessages.push({
+                            type: 'function_call',
+                            name: toolCall.function.name || '',
+                            arguments: normalizedArgs,
+                            call_id: toolCall.id || toolCall.call_id || `call_${Date.now()}_${index}`, // Ensure unique ID
+                        });
                     });
-                });
-            } else if (message.role === 'tool') {
-                // Transform tool message to function_call_output (Responses API format)
-                transformedMessages.push({
-                    type: 'function_call_output',
-                    call_id: message.tool_call_id,
-                    output: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
-                });
-            } else {
+                } else if (message.role === 'tool') {
+                    // Transform tool message to function_call_output (Responses API format)
+                    if (!message.tool_call_id) {
+                        return;
+                    }
+
+                    const outputContent = message.content;
+                    const normalizedOutput = typeof outputContent === 'string' ? outputContent : JSON.stringify(outputContent || 'null');
+
+                    transformedMessages.push({
+                        type: 'function_call_output',
+                        call_id: message.tool_call_id,
+                        output: normalizedOutput,
+                    });
+                } else {
+                    // Pass through other message types without content modification
+                    // The Responses API can handle various content formats
+                    transformedMessages.push(message);
+                }
+            } catch (error) {
+                // Add the original message to prevent data loss
                 transformedMessages.push(message);
             }
+        }
+
+        // Validate the final message structure
+        const validMessages = transformedMessages.filter((msg, index) => {
+            if (!msg || typeof msg !== 'object') {
+                return false;
+            }
+            return true;
         });
 
-        return transformedMessages;
+        return validMessages;
     }
 
     /**
@@ -858,5 +1070,92 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         }
 
         return 0;
+    }
+
+    /**
+     * Process function call responses and integrate them back into the conversation
+     * This method helps maintain compatibility with the chat completion flow
+     */
+    public async processFunctionCallResults(toolsData: ToolData[]): Promise<ToolData[]> {
+        const processedTools: ToolData[] = [];
+
+        for (const tool of toolsData) {
+            if (!this.isValidToolData(tool)) {
+                continue;
+            }
+
+            try {
+                const processedTool: ToolData = {
+                    ...tool,
+                    // Ensure arguments are properly formatted as JSON string
+                    arguments: this.normalizeToolArguments(tool.arguments),
+                    // Ensure function property is properly structured for compatibility
+                    function: tool.function || {
+                        name: tool.name,
+                        arguments: this.normalizeToolArguments(tool.arguments),
+                    },
+                };
+
+                processedTools.push(processedTool);
+            } catch (error) {
+                // Add error information to the tool result
+                processedTools.push({
+                    ...tool,
+                    error: error instanceof Error ? error.message : 'Unknown processing error',
+                    result: undefined,
+                });
+            }
+        }
+
+        return processedTools;
+    }
+
+    /**
+     * Validate tool choice parameter for Responses API
+     */
+    private validateToolChoice(toolChoice: any, availableTools: OpenAI.Responses.Tool[]): boolean {
+        if (!toolChoice) return true;
+
+        if (typeof toolChoice === 'string') {
+            const validStringChoices = ['auto', 'required', 'none'];
+            return validStringChoices.includes(toolChoice);
+        }
+
+        if (typeof toolChoice === 'object' && toolChoice !== null) {
+            // For specific function selection
+            if (toolChoice.type === 'function' && toolChoice.function?.name) {
+                // Check if the specified function exists in available tools
+                return availableTools.some((tool) => tool.type === 'function' && tool.name === toolChoice.function.name);
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Upsert a web search tool entry in toolsData and return its index
+     */
+    private upsertWebSearchToolImmutable(toolsData: ToolData[], id: string, args: string = ''): { toolsData: ToolData[]; index: number } {
+        const existingIndex = toolsData.findIndex((t) => t.id === id);
+        if (existingIndex === -1) {
+            const index = toolsData.length;
+            const newItem: ToolData = {
+                index,
+                id,
+                type: TToolType.WebSearch,
+                name: 'web_search',
+                arguments: args,
+                role: 'tool',
+            } as ToolData;
+            const updated: ToolData[] = [...toolsData, newItem];
+            return { toolsData: updated, index };
+        }
+
+        if (args) {
+            const updated: ToolData[] = toolsData.map((t, idx) => (idx === existingIndex ? { ...t, arguments: args } : t));
+            return { toolsData: updated, index: existingIndex };
+        }
+
+        return { toolsData, index: existingIndex };
     }
 }
