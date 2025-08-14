@@ -296,7 +296,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      */
     private calculateSearchToolUsage(context: ILLMRequestContext) {
         const modelName = context.modelEntryName?.replace('smythos/', '');
-        const cost = this.getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
+        const cost = this.getSearchToolCost(modelName);
 
         return {
             cost,
@@ -1056,20 +1056,16 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Get search tool cost for a specific model and context size
      */
-    private getSearchToolCost(modelName: string, contextSize: string): number {
-        const normalizedModelName = modelName?.replace('smythos/', '');
+    private getSearchToolCost(modelName: string): number {
+        if (!modelName) return 0;
+        // Normalize: remove built-in prefix and compare case-insensitively
+        const normalized = String(modelName)
+            .toLowerCase()
+            .replace(/^smythos\//, '');
 
-        // Check normal models first
-        if (SEARCH_TOOL_COSTS.normalModels[normalizedModelName]) {
-            return SEARCH_TOOL_COSTS.normalModels[normalizedModelName][contextSize] || 0;
-        }
-
-        // Check mini models
-        if (SEARCH_TOOL_COSTS.miniModels[normalizedModelName]) {
-            return SEARCH_TOOL_COSTS.miniModels[normalizedModelName][contextSize] || 0;
-        }
-
-        return 0;
+        // Match by prefix with any configured family in SEARCH_TOOL_COSTS
+        const match = Object.entries(SEARCH_TOOL_COSTS).find(([family]) => normalized.startsWith(family));
+        return match ? (match[1] as number) : 0;
     }
 
     /**

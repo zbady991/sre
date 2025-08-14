@@ -30,8 +30,3 @@ export interface CostConfig {
         [contextSize: string]: number;
     };
 }
-
-export interface SearchToolCostConfig {
-    normalModels: CostConfig;
-    miniModels: CostConfig;
-}
