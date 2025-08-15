@@ -293,6 +293,7 @@ export type ToolData = {
     result?: string; // result string from the used tool
     function?: any;
     error?: string; // for Bedrock
+    callId?: string; // for OpenAI Responses API call ID mapping
 };
 
 /**
