@@ -85,10 +85,7 @@ export class OpenAIConnector extends LLMConnector {
         // #region Validate token limit
         const messages = _body?.messages || [];
         const lastMessage = messages[messages.length - 1];
-
-        const promptTokens = context?.hasFiles
-            ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
-            : encodeChat(messages as any, 'gpt-4')?.length;
+        const promptTokens = await this.computePromptTokens(messages, context);
 
         await this.validateTokenLimit({
             acRequest,
@@ -145,10 +142,7 @@ export class OpenAIConnector extends LLMConnector {
         // #region Validate token limit
         const messages = body?.messages || body?.input || [];
         const lastMessage = messages[messages.length - 1];
-
-        const promptTokens = context?.hasFiles
-            ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
-            : encodeChat(messages as any, 'gpt-4')?.length;
+        const promptTokens = await this.computePromptTokens(messages, context);
 
         await this.validateTokenLimit({
             acRequest,
@@ -300,6 +294,45 @@ export class OpenAIConnector extends LLMConnector {
         const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
 
         return modelsProvider;
+    }
+
+    /**
+     * Safely compute prompt token count across different interfaces (Chat Completions, Responses)
+     * - Normalizes message content to strings for encodeChat
+     * - Handles vision prompts when files are present
+     * - Never throws; defaults to 0 on failure
+     */
+    private async computePromptTokens(messages: any[], context: ILLMRequestContext): Promise<number> {
+        try {
+            if (context?.hasFiles) {
+                const lastMessage = messages?.[messages?.length - 1] || {};
+                const lastContent = lastMessage?.content ?? '';
+                return await LLMHelper.countVisionPromptTokens(lastContent || '');
+            }
+
+            const normalized = (messages || [])
+                .map((m) => {
+                    if (!m || !m.role) return null;
+                    let content = '';
+                    if (Array.isArray(m.content)) {
+                        content = m.content.map((b) => (typeof b?.text === 'string' ? b.text : '')).join(' ');
+                    } else if (typeof m.content === 'string') {
+                        content = m.content;
+                    } else if (m.content !== undefined && m.content !== null) {
+                        try {
+                            content = JSON.stringify(m.content);
+                        } catch (_) {
+                            content = '';
+                        }
+                    }
+                    return { role: m.role, content };
+                })
+                .filter(Boolean);
+
+            return encodeChat(normalized as any, 'gpt-4')?.length || 0;
+        } catch (_) {
+            return 0;
+        }
     }
 
     /**

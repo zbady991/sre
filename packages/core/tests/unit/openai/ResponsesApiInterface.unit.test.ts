@@ -41,7 +41,6 @@ describe('ResponsesApiInterface - Unit Tests', () => {
                     },
                 ],
                 toolChoice: 'auto' as const,
-                modelInfo: { name: 'gpt-4o', provider: 'openai' },
             };
 
             const result = apiInterface.transformToolsConfig(toolConfig);
@@ -58,6 +57,7 @@ describe('ResponsesApiInterface - Unit Tests', () => {
                         },
                         required: ['location'],
                     },
+                    strict: false,
                 },
             ]);
         });
@@ -67,7 +67,6 @@ describe('ResponsesApiInterface - Unit Tests', () => {
                 type: 'function' as const,
                 toolDefinitions: [],
                 toolChoice: 'auto' as const,
-                modelInfo: { name: 'gpt-4o', provider: 'openai' },
             };
 
             const result = apiInterface.transformToolsConfig(toolConfig);
@@ -754,7 +753,6 @@ describe('ResponsesApiInterface - Unit Tests', () => {
                     } as any,
                 ],
                 toolChoice: 'auto' as const,
-                modelInfo: { name: 'gpt-4o', provider: 'openai' },
             };
 
             const result = apiInterface.transformToolsConfig(toolConfig);
@@ -769,6 +767,7 @@ describe('ResponsesApiInterface - Unit Tests', () => {
                     properties: undefined,
                     required: undefined,
                 },
+                strict: false,
             });
         });
 
