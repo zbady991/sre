@@ -564,16 +564,6 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         if (params?.maxTokens !== undefined) {
             body.max_output_tokens = params.maxTokens;
         }
-
-        // o3-pro does not support temperature
-        if (params?.temperature !== undefined && !MODELS_WITHOUT_TEMPERATURE_SUPPORT.includes(params.modelEntryName)) {
-            body.temperature = params.temperature;
-        }
-
-        if (params?.topP !== undefined) {
-            body.top_p = params.topP;
-        }
-
         // #region GPT 5 specific fields
 
         const isGPT5ReasoningModels = params.modelEntryName?.includes('gpt-5') && params?.capabilities?.reasoning;
