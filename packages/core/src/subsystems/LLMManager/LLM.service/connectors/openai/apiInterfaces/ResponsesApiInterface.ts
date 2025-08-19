@@ -4,24 +4,11 @@ import type { Stream } from 'openai/streaming';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import {
-    TLLMParams,
-    TLLMPreparedParams,
-    ILLMRequestContext,
-    TLLMMessageBlock,
-    ToolData,
-    TLLMToolResultMessageBlock,
-    TLLMMessageRole,
-    APIKeySource,
-    TLLMEvent,
-    OpenAIToolDefinition,
-    LegacyToolDefinition,
-    LLMModelInfo,
-} from '@sre/types/LLM.types';
+import { TLLMParams, TLLMPreparedParams, ILLMRequestContext, ToolData, APIKeySource, TLLMEvent, LLMModelInfo } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies, TToolType } from '../types';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
-import { MODELS_WITHOUT_TEMPERATURE_SUPPORT, SEARCH_TOOL_COSTS } from './constants';
+import { SEARCH_TOOL_COSTS } from './constants';
 import { isValidOpenAIReasoningEffort } from './utils';
 
 // File size limits in bytes
