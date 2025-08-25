@@ -351,9 +351,7 @@ const getKeyIdsFromTemplateVars = (str: string): string[] => {
 };
 
 async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, config, agent, isNewStructure = false) {
-    console.log('tokensData', tokensData);
-    console.log('keyId', keyId);
-    console.log('oauthTokens', oauthTokens);
+
 
     const logAndThrowError = (message) => {
         logger.debug(message);

@@ -147,6 +147,7 @@ class AccessTokenManager {
             // Update internal tokensData reference
             this.tokensData = updatedData;
             this.primaryToken = newAccessToken;
+            this.expires_in = expirationTimestamp ? expirationTimestamp.toString() : expirationTimestamp;
 
             return newAccessToken;
         } catch (error) {
