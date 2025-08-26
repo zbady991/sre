@@ -147,8 +147,13 @@ class AccessTokenManager {
             // Update internal tokensData reference
             this.tokensData = updatedData;
             this.primaryToken = newAccessToken;
-            this.expires_in = expirationTimestamp ? expirationTimestamp.toString() : expirationTimestamp;
-
+            // Update in-memory refresh token in case the provider rotated it
+            this.secondaryToken = (response?.data?.refresh_token ?? this.secondaryToken);
+            // Preserve 0 and avoid dropping undefined
+            this.expires_in =
+                (expirationTimestamp ?? undefined) !== undefined
+                    ? String(expirationTimestamp)
+                    : undefined;
             return newAccessToken;
         } catch (error) {
             console.error('Failed to refresh access token:', error);
