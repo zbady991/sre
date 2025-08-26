@@ -286,7 +286,8 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
         oAuthConfigString = await TemplateString(oAuthConfigString).parseTeamKeysAsync(oauthTokens.team || agent.teamId).asyncResult;
 
         const oAuthConfig = JSON.parse(oAuthConfigString);
-        console.log('oAuthConfig', oAuthConfig);
+        // Avoid logging sensitive OAuth config in plaintext
+        // console.log('oAuthConfig', { ...oAuthConfig, clientSecret: '***' });
         if (oauthTokens.service === 'oauth2_client_credentials') {
             const accessToken = await getClientCredentialToken(tokensData, logger, keyId, oauthTokens, config, agent, isNewStructure);
             headers['Authorization'] = `Bearer ${accessToken}`;
@@ -388,20 +389,26 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
             // Maintain the same structure format when saving
             let updatedData;
             if (isNewStructure) {
-                // Maintain new structure format
+                // Maintain new structure format; preserve existing fields
+                const parts = String(config?.data?.oauth_con_id ?? '').split('_');
+                const prefixSuffix = parts.length > 1 ? parts[1] : parts[0];
+                const oauthKeysPrefix = prefixSuffix ? `OAUTH_${prefixSuffix}` : undefined;
                 updatedData = {
+                    ...(tokensData || {}),
                     auth_data: {
+                        ...(tokensData?.auth_data || {}),
                         primary: newAccessToken,
                         expires_in: expirationTimestamp.toString()
                     },
-                    auth_settings: tokensData.auth_settings || {
+                    auth_settings: {
+                        ...(tokensData?.auth_settings || {}),
                         type: 'oauth2',
                         tokenURL,
                         clientID,
                         clientSecret,
-                        oauth_keys_prefix: `OAUTH_${config?.data?.oauth_con_id?.split('_')[1]}`,
-                        service: 'oauth2_client_credentials'
-                    }
+                        ...(oauthKeysPrefix ? { oauth_keys_prefix: oauthKeysPrefix } : {}),
+                        service: 'oauth2_client_credentials',
+                    },
                 };
             } else {
                 // Maintain old structure format

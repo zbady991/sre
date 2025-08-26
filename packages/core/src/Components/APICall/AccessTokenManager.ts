@@ -116,10 +116,12 @@ class AccessTokenManager {
                 updatedData = {
                     ...this.tokensData,
                     auth_data: {
-                        ...this.tokensData.auth_data,
+                        ...(this.tokensData?.auth_data ?? {}),
                         primary: newAccessToken,
-                        secondary: this.secondaryToken,
-                        expires_in: expirationTimestamp ? expirationTimestamp.toString() : expirationTimestamp
+                        // Persist rotated refresh_token when provided; fall back to existing
+                        secondary: (response?.data?.refresh_token ?? this.secondaryToken),
+                        // Use nullish check so 0 is preserved
+                        expires_in: (expirationTimestamp ?? undefined) !== undefined ? String(expirationTimestamp) : undefined
                     }
                 };
             } else {
@@ -127,12 +129,10 @@ class AccessTokenManager {
                 updatedData = {
                     ...this.tokensData,
                     primary: newAccessToken,
-                    expires_in: expirationTimestamp ? expirationTimestamp.toString() : expirationTimestamp
+                    expires_in: (expirationTimestamp ?? undefined) !== undefined ? String(expirationTimestamp) : undefined
                 };
-                // Keep secondary token if it exists
-                if (this.secondaryToken) {
-                    updatedData.secondary = this.secondaryToken;
-                }
+                // Persist rotated refresh_token when provided; otherwise keep existing
+                updatedData.secondary = (response?.data?.refresh_token ?? this.secondaryToken);
             }
 
             const save: any = await managedVault.user(AccessCandidate.agent(this.agent.id)).set(this.keyId, JSON.stringify(updatedData));
