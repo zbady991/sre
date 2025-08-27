@@ -428,6 +428,8 @@ export type TLLMModelsList = {
 
 export enum TLLMEvent {
     /** Generated response chunks */
+    Data = 'data',
+    /** Generated response chunks */
     Content = 'content',
     /** Thinking blocks/chunks */
     Thinking = 'thinking',

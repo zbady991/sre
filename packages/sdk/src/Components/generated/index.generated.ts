@@ -9,10 +9,11 @@ import { GenAILLM } from './GenAILLM';
 import { HuggingFace } from './HuggingFace';
 import { ImageGenerator } from './ImageGenerator';
 import { MCPClient } from './MCPClient';
+import { ScrapflyWebScrape } from './ScrapflyWebScrape';
 import { ServerlessCode } from './ServerlessCode';
 import { TavilyWebSearch } from './TavilyWebSearch';
 
 
 
-const Components = { APICall, APIOutput, Await, Classifier, ECMASandbox, GenAILLM, HuggingFace, ImageGenerator, MCPClient, ServerlessCode, TavilyWebSearch, };
+const Components = { APICall, APIOutput, Await, Classifier, ECMASandbox, GenAILLM, HuggingFace, ImageGenerator, MCPClient, ScrapflyWebScrape, ServerlessCode, TavilyWebSearch, };
  export default Components; 

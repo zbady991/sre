@@ -12,8 +12,14 @@
     "dependencies": {
         "@smythos/sdk": "workspace:*",
         "@smythos/sre": "workspace:*",
+        "@types/blessed": "^0.1.25",
+        "@types/react": "^19.1.10",
+        "blessed": "^0.1.81",
         "chalk": "^5.4.1",
-        "dotenv": "^16.5.0"
+        "dotenv": "^16.5.0",
+        "ink": "^6.1.1",
+        "react": "^19.1.1",
+        "terminal-kit": "^3.1.2"
     },
     "devDependencies": {
         "@types/node": "^20.19.0",
