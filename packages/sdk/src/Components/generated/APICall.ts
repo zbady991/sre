@@ -47,6 +47,8 @@ export interface TAPICallSettings {
     oauth1CallbackURL?: string;
     /** Authenticate */
     authenticate?: string;
+    /** OAuth Connection ID */
+    oauth_con_id?: string;
 }
 
 export type TAPICallInputs = {
