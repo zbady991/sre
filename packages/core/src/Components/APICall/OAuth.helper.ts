@@ -176,7 +176,8 @@ export const buildOAuth1Header = (url, method, oauth1Credentials, additionalPara
 export const retrieveOAuthTokens = async (agent, config) => {
     let tokenKey: any = null;
     try {
-        tokenKey = config?.data?.oauth_con_id;
+        // To support both old and new OAuth configuration, we check for both oauth_con_id and config.id (component id)
+        tokenKey = config?.data?.oauth_con_id || `OAUTH_${config?.id}_TOKENS`;
 
         try {
             const result: any = await managedVault.user(AccessCandidate.agent(agent.id)).get(tokenKey);
@@ -423,7 +424,7 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
                 if (!updatedData.team) updatedData.team = agent.teamId;
                 if (!updatedData.oauth_info) {
                     updatedData.oauth_info = {
-                        oauth_keys_prefix: `OAUTH_${config?.data?.oauth_con_id?.split('_')[1]}`,
+                        oauth_keys_prefix: `OAUTH_${config?.data?.oauth_con_id?.split('_')[1] || config?.id}`,
                         service: 'oauth2_client_credentials',
                         tokenURL,
                         clientID,
