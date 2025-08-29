@@ -64,7 +64,20 @@ declare module 'express' {
     sendStatus(code: number): void;
   }
   
-  export default function express(): any;
+  interface Express {
+    use(middleware: any): void;
+    post(path: string, handler: any): void;
+    get(path: string, handler: any): void;
+    listen(port: string | number, callback?: () => void): void;
+  }
+  
+  interface ExpressStatic {
+    (): Express;
+    json(): any;
+  }
+  
+  const express: ExpressStatic;
+  export default express;
   export { Request, Response };
 }
 

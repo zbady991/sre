@@ -14,7 +14,8 @@
     "rootDir": "./",
     "noImplicitAny": false,
     "strictNullChecks": false,
-    "typeRoots": ["./node_modules/@types", "./types.d.ts"]
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["ES2022", "DOM"]
   },
   "include": [
     "**/*.ts",

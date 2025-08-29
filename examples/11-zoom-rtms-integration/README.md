@@ -139,7 +139,7 @@ AWS_S3_BUCKET=zoom-meeting-data
 ### 3. Webhook Configuration
 
 Set your webhook endpoint URL to:
-```
+```bash
 https://your-domain.com/webhook
 ```
 
@@ -185,7 +185,7 @@ When a Zoom meeting starts with RTMS enabled:
 2. **Agent Created**: SRE agent is instantiated for the meeting
 3. **WebSocket Connection**: Connects to Zoom's media stream
 4. **Real-time Processing**: Transcripts are analyzed as they arrive
-5. **Insights Generated**: Key information extracted and stored
+5. **Insights Generated**: Key information is extracted and stored
 
 ### Example Output
 
@@ -206,7 +206,7 @@ When a Zoom meeting starts with RTMS enabled:
 
 ### Meeting Summary
 
-```
+```markdown
 # Meeting Summary - Project Review Call
 
 ## Overview
@@ -229,13 +229,13 @@ Team discussion about Q1 project proposal and next steps.
 ## API Endpoints
 
 ### Health Check
-```
+```http
 GET /health
 ```
 Returns server status and active meeting count.
 
 ### Webhook Endpoint
-```
+```http
 POST /webhook
 ```
 Receives Zoom RTMS events and processes meeting data.
@@ -314,22 +314,22 @@ Response:
 
 ### Common Issues
 
-1. **No Transcript Data**
+1. **No Transcript Data**:
    - Verify RTMS is enabled in Zoom settings
    - Check webhook URL is accessible
    - Ensure proper scopes are configured
 
-2. **Agent Creation Fails**
+2. **Agent Creation Fails**:
    - Verify AI API keys (OpenAI/Anthropic)
    - Check SRE initialization
    - Review log output for errors
 
-3. **Storage Issues**
+3. **Storage Issues**:
    - Verify AWS credentials and permissions
    - Check S3 bucket exists and is accessible
    - Ensure proper IAM policies
 
-4. **VectorDB Problems**
+4. **VectorDB Problems**:
    - Verify Pinecone API key and index name
    - Check index dimensions match embedding model
    - Ensure sufficient Pinecone quota
@@ -357,12 +357,14 @@ curl http://localhost:3000/health
 ## Scaling for Production
 
 ### Performance Optimization
+
 - Use Redis for caching meeting data
 - Implement connection pooling for databases
 - Use load balancers for multiple instances
 - Monitor memory usage and optimize accordingly
 
 ### Enterprise Features
+
 - Multi-tenant isolation with SRE scoping
 - Custom storage backends (enterprise databases)
 - Advanced security with HashiCorp Vault
@@ -389,4 +391,4 @@ MIT License - see the main SRE repository for details.
 
 ---
 
-**Built using SmythOS SRE - The Operating System for Agentic AI**
+## Built using SmythOS SRE - The Operating System for Agentic AI

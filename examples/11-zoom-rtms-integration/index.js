@@ -120,7 +120,7 @@ function connectToSignalingWebSocket(meetingUuid, streamId, serverUrl) {
         
         // Handle successful handshake
         if (msg.msg_type === 2 && msg.status_code === 0) {
-            const mediaUrl = msg.media_server?.server_urls?.all;
+            const mediaUrl = msg.media_server;
             if (mediaUrl) {
                 connectToMediaWebSocket(mediaUrl, meetingUuid, streamId, ws);
             }
