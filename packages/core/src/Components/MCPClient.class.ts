@@ -7,6 +7,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { Component } from './Component.class';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 export class MCPClient extends Component {
     protected configSchema = Joi.object({
@@ -50,13 +51,8 @@ export class MCPClient extends Component {
             }
 
             // TODO [Forhad]: Need to check and validate input prompt token
-            const baseUrl = new URL(mcpUrl);
-            const transport = new SSEClientTransport(baseUrl);
-            const client = new Client({
-                name: 'sse-client',
-                version: '1.0.0',
-            });
-            await client.connect(transport);
+            const { client } = await this.connectMCP(mcpUrl);
+
             const toolsData = await client.listTools();
             const conv = new Conversation(
                 model,
@@ -109,4 +105,34 @@ export class MCPClient extends Component {
             return { _error: `Error on running MCP Client!\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         }
     }
+    private async connectMCP(mcpUrl: string) {
+        const client = new Client({ name: 'auto-client', version: '1.0.0' });
+      
+        // 1) Try Streamable HTTP first
+        try {
+          const st = new StreamableHTTPClientTransport(new URL(mcpUrl));
+          await client.connect(st);
+          console.debug('Connected to MCP using Streamable HTTP');
+          return { client, transport: 'streamable' as const };
+        } catch (e: any) {
+          console.debug('Failed to connect to MCP using Streamable HTTP, falling back to SSE');
+          // 2) If clearly unsupported, fall back to SSE
+          const msg = String(e?.message || e);
+          const isUnsupported =
+            /404|405|ENOTFOUND|ECONNREFUSED|CORS/i.test(msg);
+      
+          // 406 means wrong/missing Accept for Streamable → retry Streamable with proper header
+          const isAcceptProblem = /406|Not Acceptable|text\/event-stream/i.test(msg);
+          if (isAcceptProblem) {
+            throw new Error('Server is Streamable; include Accept: application/json, text/event-stream');
+          }
+      
+          if (!isUnsupported) throw e;
+      
+          // SSE fallback
+          const sse = new SSEClientTransport(new URL(mcpUrl));
+          await client.connect(sse);
+          return { client, transport: 'sse' as const };
+        }
+      }
 }

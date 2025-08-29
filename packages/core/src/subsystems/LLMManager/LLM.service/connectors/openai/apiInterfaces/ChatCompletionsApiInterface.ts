@@ -5,13 +5,8 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { TLLMParams, TLLMPreparedParams, ILLMRequestContext, ToolData, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
-import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
-import {
-    MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT,
-    MODELS_WITHOUT_TEMPERATURE_SUPPORT,
-    MODELS_WITHOUT_SYSTEM_MESSAGE_SUPPORT,
-    MODELS_WITHOUT_JSON_RESPONSE_SUPPORT,
-} from './constants';
+import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
+import { MODELS_WITHOUT_SYSTEM_MESSAGE_SUPPORT, MODELS_WITHOUT_JSON_RESPONSE_SUPPORT, O3_AND_O4_MODELS } from './constants';
 
 import { isValidOpenAIReasoningEffort } from './utils';
 
@@ -134,32 +129,33 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         }
 
         // Handle temperature
-        if (params?.temperature !== undefined && !MODELS_WITHOUT_TEMPERATURE_SUPPORT.includes(params.modelEntryName)) {
+        const modelName = params.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
+        if (params?.temperature !== undefined && !O3_AND_O4_MODELS.includes(modelName)) {
             body.temperature = params.temperature;
         }
 
         // Handle topP
-        if (params?.topP !== undefined) {
+        if (params?.topP !== undefined && !O3_AND_O4_MODELS.includes(modelName)) {
             body.top_p = params.topP;
         }
 
         // Handle frequency penalty
-        if (params?.frequencyPenalty !== undefined) {
+        if (params?.frequencyPenalty !== undefined && !O3_AND_O4_MODELS.includes(modelName)) {
             body.frequency_penalty = params.frequencyPenalty;
         }
 
         // Handle presence penalty
-        if (params?.presencePenalty !== undefined && !MODELS_WITHOUT_PRESENCE_PENALTY_SUPPORT.includes(params.modelEntryName)) {
+        if (params?.presencePenalty !== undefined && !O3_AND_O4_MODELS.includes(modelName)) {
             body.presence_penalty = params.presencePenalty;
         }
 
         // Handle response format
-        if (params?.responseFormat?.type && !MODELS_WITHOUT_JSON_RESPONSE_SUPPORT.includes(params.modelEntryName)) {
+        if (params?.responseFormat?.type && !MODELS_WITHOUT_JSON_RESPONSE_SUPPORT.includes(modelName)) {
             body.response_format = params.responseFormat;
         }
 
         // Handle stop sequences
-        if (params?.stopSequences?.length) {
+        if (params?.stopSequences?.length && !O3_AND_O4_MODELS.includes(modelName)) {
             body.stop = params.stopSequences;
         }
 
