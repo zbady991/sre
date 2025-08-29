@@ -114,7 +114,8 @@ export class APICall extends Component {
             let Headers: any = {};
             let _error: any = undefined;
             try {
-                if (config?.data?.oauth_con_id !== '' && config?.data?.oauth_con_id !== 'None') {
+                // To support both old and new OAuth configuration, we check for both oauth_con_id and oauthService.
+                if ((config?.data?.oauth_con_id !== '' && config?.data?.oauth_con_id !== 'None') || (config?.data?.oauthService !== '' && config.data.oauthService !== 'None')) {
                     const additionalParams = extractAdditionalParamsForOAuth1(reqConfig);
                     const oauthHeaders = await generateOAuthHeaders(agent, config, reqConfig, logger, additionalParams);
                     //reqConfig.headers = { ...reqConfig.headers, ...oauthHeaders };
