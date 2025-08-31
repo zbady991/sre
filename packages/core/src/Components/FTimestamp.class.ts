@@ -5,15 +5,14 @@ import dayjs from 'dayjs';
 
 export class FTimestamp extends Component {
     protected configSchema = Joi.object({
-        format: Joi.string()
-            .valid('unix', 'iso', 'timestamp')
-            .pattern(/^[YMDHhmsSSZzAa\s\-\/:,\.]*$/, 'custom dayjs format')
+        format: Joi.alternatives()
+            .try(Joi.string().valid('unix', 'iso', 'timestamp'), Joi.string().pattern(/^[YMDHhmsSSZzAa\s\-\/:,\.]*$/, 'custom dayjs format'))
             .default('unix')
+            .allow(null)
             .label('Timestamp Format')
             .messages({
-                'string.pattern.name': 'Custom format contains invalid characters. Use dayjs format tokens like YYYY-MM-DD HH:mm:ss',
-                'any.only': 'Format must be "unix", "iso", "timestamp", or a valid dayjs format pattern'
-            })
+                'string.pattern.name': 'Invalid format string: {#value}',
+            }),
     });
 
     constructor() {
@@ -22,14 +21,25 @@ export class FTimestamp extends Component {
     init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
+
         const logger = this.createComponentLogger(agent, config);
+
+        const validationResult = await this.validateConfig(config);
+        if (validationResult._error) {
+            return {
+                Timestamp: undefined,
+                _error: validationResult._error,
+                _debug: logger.output,
+                _debug_time: logger.elapsedTime,
+            };
+        }
         try {
             const _error = undefined;
             const format = config.data.format || 'unix';
             const now = dayjs();
-            
+
             let Timestamp: number | string;
-            
+
             switch (format) {
                 case 'unix':
                 case 'timestamp':
@@ -41,16 +51,8 @@ export class FTimestamp extends Component {
                     logger.debug(`ISO timestamp: ${Timestamp}`);
                     break;
                 default:
-                    // Custom dayjs format
-                    try {
-                        Timestamp = now.format(format);
-                        logger.debug(`Custom formatted timestamp (${format}): ${Timestamp}`);
-                    } catch (formatError) {
-                        logger.error(`Invalid format string: ${format}`);
-                        // Fallback to unix timestamp for invalid formats
-                        Timestamp = Date.now();
-                        logger.debug(`Fallback unix timestamp: ${Timestamp}`);
-                    }
+                    Timestamp = now.format(format);
+                    logger.debug(`Custom formatted timestamp (${format}): ${Timestamp}`);
                     break;
             }
 
