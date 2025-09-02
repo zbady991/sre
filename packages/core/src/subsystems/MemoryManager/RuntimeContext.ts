@@ -21,6 +21,7 @@ type TComponentContext = {
     input?: { [key: string]: any };
     output?: { [key: string]: any };
 };
+
 export class RuntimeContext extends EventEmitter {
     public circularLimitReached: string | boolean = false;
     public step: number = 0;
@@ -120,10 +121,12 @@ export class RuntimeContext extends EventEmitter {
                             cpt.ctx.active = true;
                         }
                     }
-                    //fs.writeFileSync(this.ctxFile, JSON.stringify(ctxData, null, 2));
-                    await this._cacheConnector
-                        .requester(AccessCandidate.agent(this.runtime.agent.id))
-                        .set(this.ctxFile, JSON.stringify(ctxData, null, 2), null, null, 6 * 60 * 60); //expires in 6 hours max
+
+                    if (this.runtime.debug) {
+                        await this._cacheConnector
+                            .requester(AccessCandidate.agent(this.runtime.agent.id))
+                            .set(this.ctxFile, JSON.stringify(ctxData), null, null, 1 * 60 * 60); //expires in 1 hour
+                    }
                 } else {
                     ctxData = JSON.parse(data);
                     if (!ctxData.step) ctxData.step = 0;
@@ -133,42 +136,15 @@ export class RuntimeContext extends EventEmitter {
                 this._runtimeFileReady = true;
                 this.emit('ready');
             });
-
-        // if (!fs.existsSync(this.ctxFile)) {
-        //     ctxData = JSON.parse(JSON.stringify({ components: agent.components, connections: agent.connections, timestamp: Date.now() }));
-        //     if (!ctxData.step) ctxData.step = 0;
-        //     for (let cptId in ctxData.components) {
-        //         ctxData.components[cptId] = {
-        //             id: cptId,
-        //             name: ctxData.components[cptId].name,
-        //             //dbg: { active: false, name: ctxData.components[cptId].name },
-        //             ctx: { active: false, name: ctxData.components[cptId].name },
-        //         };
-
-        //         const cpt = ctxData.components[cptId];
-        //         //if this debug session was initiated from an endpoint, we mark the endpoint component as active
-        //         if (endpoint && endpoint.id != undefined && cpt.id == endpoint.id && endpointDBGCall) {
-        //             //cpt.dbg.active = true;
-        //             cpt.ctx.active = true;
-        //         }
-        //     }
-        //     fs.writeFileSync(this.ctxFile, JSON.stringify(ctxData, null, 2));
-        // } else {
-        //     ctxData = JSON.parse(fs.readFileSync(this.ctxFile, 'utf8'));
-        //     if (!ctxData.step) ctxData.step = 0;
-        // }
-
-        // this.deserialize(ctxData);
-        // this._runtimeFileReady = true;
-        // this.emit('ready');
     }
 
     public async ready() {
         if (this._runtimeFileReady) return true;
         return this._readyPromise;
     }
-    public async sync() {
-        if (!this.ctxFile) return;
+    private async sync() {
+        if (!this.ctxFile || this.runtime.debug) return;
+
         this.emit('syncing');
 
         const deleteSession = this.runtime.sessionClosed;
@@ -183,23 +159,36 @@ export class RuntimeContext extends EventEmitter {
                 else this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).delete(this.ctxFile);
                 //if (this.runtime.debug && fs.existsSync(this.ctxFile)) await delay(1000 * 60); //if we're in debug mode, we keep the file for a while to allow final state read
                 //if (fs.existsSync(this.ctxFile)) fs.unlinkSync(this.ctxFile);
+                this.ctxFile = null;
             }
         } else {
             const data = this.serialize();
             //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
             if (data) {
-                const serializedData = JSON.stringify(data, null, 2);
+                let serializedData = JSON.stringify(data);
                 console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
                 await this._cacheConnector
                     .requester(AccessCandidate.agent(this.runtime.agent.id))
                     .set(this.ctxFile, serializedData, null, null, 3 * 60 * 60); //expires in 3 hours max
+
+                const mb = serializedData.length / 1024 / 1024;
+                const cooldown = (mb / 10) * 1000;
+                serializedData = null;
+
+                await delay(cooldown);
             }
         }
     }
+    private _syncQueue = Promise.resolve();
 
+    public enqueueSync() {
+        if (!this.ctxFile) return;
+        console.log('ENQUEUE SYNC');
+        this._syncQueue = this._syncQueue.then(() => this.sync()).catch(() => {}); // avoid unhandled rejections
+    }
     public incStep() {
         this.step++;
-        this.sync();
+        //this.sync();
     }
 
     public updateComponent(componentId: string, data: any) {
@@ -217,11 +206,16 @@ export class RuntimeContext extends EventEmitter {
             console.debug('>>> ctxFile', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
             console.debug('>>> ctxData', ctxData, AccessCandidate.agent(this.runtime.agent.id));
         }
-        component.ctx = { ...component.ctx, ...data, step: this.step };
+        //component.ctx = { ...component.ctx, ...data, step: this.step };
+        // minimal allocations
+
+        if (!component.ctx) component.ctx = { active: false, name: '', step: 0 };
+        Object.assign(component.ctx, data);
+        component.ctx.step = this.step;
 
         //if (this.debug) component.dbg = { ...component.dbg, ...data };
 
-        this.sync();
+        this.enqueueSync();
     }
     public resetComponent(componentId: string) {
         const ctxData = this;
@@ -240,8 +234,13 @@ export class RuntimeContext extends EventEmitter {
         //component.dbg.runtimeData = {};
         component.ctx.runtimeData = {};
         component.ctx.active = false;
+        if (!this.runtime.debug) {
+            //console.debug('NOT in debug mode, clearing context input/output');
+            component.ctx.input = undefined;
+            component.ctx.output = undefined;
+        }
 
-        this.sync();
+        this.enqueueSync();
     }
 
     public getComponentData(componentId: string) {
