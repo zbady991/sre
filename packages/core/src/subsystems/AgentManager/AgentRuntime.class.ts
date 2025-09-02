@@ -1,13 +1,11 @@
-import fs from 'fs';
-import path from 'path';
-import { Agent } from './Agent.class';
 import { Component } from '@sre/Components/Component.class';
+import { Agent } from './Agent.class';
 
 import { Logger } from '@sre/helpers/Log.helper';
-import { uid } from '@sre/utils';
-import { RuntimeContext } from '@sre/MemoryManager/RuntimeContext';
 import { LLMCache } from '@sre/MemoryManager/LLMCache';
+import { RuntimeContext } from '@sre/MemoryManager/RuntimeContext';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { uid } from '@sre/utils';
 
 const console = Logger('AgentRuntime');
 const AgentRuntimeUnavailable = new Proxy(
@@ -201,7 +199,7 @@ export class AgentRuntime {
             delete AgentRuntime.tagsData[this.reqTag];
         }
 
-        this.agentContext.sync();
+        this.agentContext.enqueueSync();
     }
     public getWaitingComponents() {
         const ctxData = this.agentContext;
