@@ -65,7 +65,7 @@ export class APICall extends Component {
         super();
     }
 
-    init() { }
+    init() {}
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
@@ -115,7 +115,11 @@ export class APICall extends Component {
             let _error: any = undefined;
             try {
                 // To support both old and new OAuth configuration, we check for both oauth_con_id and oauthService.
-                if ((config?.data?.oauth_con_id !== undefined && config?.data?.oauth_con_id !== '' && config?.data?.oauth_con_id !== 'None') || (config?.data?.oauthService !== '' && config.data.oauthService !== 'None')) {
+                logger.debug('checking oauth config', config?.data?.oauth_con_id, config?.data?.oauthService);
+                if (
+                    (config?.data?.oauth_con_id !== undefined && config?.data?.oauth_con_id !== '' && config?.data?.oauth_con_id !== 'None') ||
+                    (config?.data?.oauthService !== '' && config.data.oauthService !== 'None')
+                ) {
                     const additionalParams = extractAdditionalParamsForOAuth1(reqConfig);
                     const oauthHeaders = await generateOAuthHeaders(agent, config, reqConfig, logger, additionalParams);
                     //reqConfig.headers = { ...reqConfig.headers, ...oauthHeaders };
