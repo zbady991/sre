@@ -1,6 +1,6 @@
 import { Agent } from './Agent.class';
 
-import { encode } from 'gpt-tokenizer';
+//import { encode } from 'gpt-tokenizer';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
 import { debounce, delay, getDayFormattedDate, uid } from '@sre/utils';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -93,10 +93,14 @@ class LogTransaction {
         if (sourceCptName) sourceId += `@${sourceCptName}@${curStepOrder}`;
         if (componentCptName) componentId += `@${componentCptName}@${nextStepOrder}`;
 
-        const inputTokensObj = encode(typeof firstData.input == 'string' ? firstData.input : JSON.stringify(firstData.input) || '');
-        const outputTokensObj = encode(typeof firstData.output == 'string' ? firstData.output : JSON.stringify(firstData.output) || '');
-        const inputTokens = inputTokensObj.length || undefined;
-        const outputTokens = outputTokensObj.length || undefined;
+        //const inputTokensObj = encode(typeof firstData.input == 'string' ? firstData.input : JSON.stringify(firstData.input) || '');
+        //const outputTokensObj = encode(typeof firstData.output == 'string' ? firstData.output : JSON.stringify(firstData.output) || '');
+        //const inputTokens = inputTokensObj.length || undefined;
+        //const outputTokens = outputTokensObj.length || undefined;
+
+        //token length calculation uses high CPU and does not bring much value ==> disabled
+        const inputTokens = undefined;
+        const outputTokens = undefined;
 
         const tags = firstData.tags || '';
         let raw_error =
