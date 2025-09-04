@@ -188,7 +188,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             // Handle OpenAI tool definition format
             if ('parameters' in tool) {
                 return {
-                    type: 'function',
+                    type: 'function' as const,
                     function: {
                         name: tool.name,
                         description: tool.description,
@@ -199,7 +199,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
 
             // Handle legacy format for backward compatibility
             return {
-                type: 'function',
+                type: 'function' as const,
                 function: {
                     name: tool.name,
                     description: tool.description,

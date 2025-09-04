@@ -122,11 +122,9 @@ export class RuntimeContext extends EventEmitter {
                         }
                     }
 
-                    if (this.runtime.debug) {
-                        await this._cacheConnector
-                            .requester(AccessCandidate.agent(this.runtime.agent.id))
-                            .set(this.ctxFile, JSON.stringify(ctxData), null, null, 1 * 60 * 60); //expires in 1 hour
-                    }
+                    await this._cacheConnector
+                        .requester(AccessCandidate.agent(this.runtime.agent.id))
+                        .set(this.ctxFile, JSON.stringify(ctxData), null, null, 1 * 60 * 60); //expires in 1 hour
                 } else {
                     ctxData = JSON.parse(data);
                     if (!ctxData.step) ctxData.step = 0;
@@ -143,11 +141,30 @@ export class RuntimeContext extends EventEmitter {
         return this._readyPromise;
     }
     private async sync() {
-        if (!this.ctxFile || this.runtime.debug) return;
+        if (!this.ctxFile) return;
 
         this.emit('syncing');
 
         const deleteSession = this.runtime.sessionClosed;
+
+        //TODO : Do we need to cache the context if not in debug mode ?
+
+        const data = this.serialize();
+        //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
+        if (data) {
+            let serializedData = JSON.stringify(data);
+            console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
+
+            await this._cacheConnector
+                .requester(AccessCandidate.agent(this.runtime.agent.id))
+                .set(this.ctxFile, serializedData, null, null, 3 * 60 * 60); //expires in 3 hours max
+
+            const mb = serializedData.length / 1024 / 1024;
+            const cooldown = (mb / 10) * 1000;
+            serializedData = null;
+
+            await delay(cooldown);
+        }
 
         if (deleteSession) {
             const exists = await this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).exists(this.ctxFile);
@@ -161,22 +178,6 @@ export class RuntimeContext extends EventEmitter {
                 //if (fs.existsSync(this.ctxFile)) fs.unlinkSync(this.ctxFile);
                 this.ctxFile = null;
             }
-        } else {
-            const data = this.serialize();
-            //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
-            if (data) {
-                let serializedData = JSON.stringify(data);
-                console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
-                await this._cacheConnector
-                    .requester(AccessCandidate.agent(this.runtime.agent.id))
-                    .set(this.ctxFile, serializedData, null, null, 3 * 60 * 60); //expires in 3 hours max
-
-                const mb = serializedData.length / 1024 / 1024;
-                const cooldown = (mb / 10) * 1000;
-                serializedData = null;
-
-                await delay(cooldown);
-            }
         }
     }
     private _syncQueue = Promise.resolve();
@@ -184,7 +185,11 @@ export class RuntimeContext extends EventEmitter {
     public enqueueSync() {
         if (!this.ctxFile) return;
         console.log('ENQUEUE SYNC');
-        this._syncQueue = this._syncQueue.then(() => this.sync()).catch(() => {}); // avoid unhandled rejections
+        this._syncQueue = this._syncQueue
+            .then(() => this.sync())
+            .catch((err) => {
+                console.error('Error syncing context', err);
+            }); // avoid unhandled rejections
     }
     public incStep() {
         this.step++;

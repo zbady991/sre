@@ -132,6 +132,9 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                 hasAPIKey: boolean;
             }) => {
                 //const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
+                if (Array.isArray(model?.tags) && model?.tags?.includes('sdk')) {
+                    return; //skip check for SDK
+                }
                 const modelInfo = await this.getModelInfo(candidate.readRequest, {}, model, hasAPIKey);
                 const allowedContextTokens = modelInfo?.tokens;
                 const totalTokens = promptTokens + completionTokens;

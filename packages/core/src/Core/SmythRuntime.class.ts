@@ -5,6 +5,7 @@ import { Logger } from '../helpers/Log.helper';
 import { ConnectorService } from './ConnectorsService';
 import { SystemEvents } from './SystemEvents';
 import { findSmythPath } from '../helpers/Sysconfig.helper';
+import pkg from '../../package.json';
 
 const logger = Logger('SRE');
 
@@ -17,6 +18,10 @@ export class SmythRuntime {
     }
     private _readyPromise: Promise<boolean>;
     private _readyResolve: (value: boolean) => void;
+
+    public get version() {
+        return pkg.version;
+    }
 
     private defaultConfig: SREConfig = {
         Vault: {
@@ -88,6 +93,7 @@ export class SmythRuntime {
     private _initialized = false;
 
     public init(_config?: SREConfig): SmythRuntime {
+        logger.info(`SRE v${this.version} initializing...`);
         if (!_config || JSON.stringify(_config) === '{}') {
             this._smythDir = findSmythPath();
             logger.info('.smyth directory found in:', this._smythDir);

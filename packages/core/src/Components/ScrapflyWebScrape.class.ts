@@ -9,6 +9,30 @@ import { getCredentials } from '../subsystems/Security/Credentials.helper';
 // const CREDITS_PER_URL = 0.2;
 
 export class ScrapflyWebScrape extends Component {
+    protected schema = {
+        name: 'ScrapflyWebScrape',
+        description: 'Use this component to scrape web pages',
+        inputs: {
+            URLs: {
+                type: 'Array',
+                description: 'The URLs to scrape',
+                default: true,
+            },
+        },
+        outputs: {
+            Results: {
+                type: 'Array',
+                description: 'The scraped results',
+                default: true,
+            },
+            FailedURLs: {
+                type: 'Array',
+                description: 'The URLs that failed to scrape',
+                default: true,
+            },
+        },
+    };
+
     protected configSchema = Joi.object({
         // includeImages: Joi.boolean().default(false).label('Include Image Results'),
         antiScrapingProtection: Joi.boolean().default(false).label('Enable Anti-Scraping Protection'),

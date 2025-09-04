@@ -342,6 +342,11 @@ export class Conversation extends EventEmitter {
             this.emit(TLLMEvent.Thinking, thinking);
         });
 
+        eventEmitter.on(TLLMEvent.Data, (data) => {
+            if (this.stop) return;
+            this.emit(TLLMEvent.Data, data);
+        });
+
         eventEmitter.on(TLLMEvent.Content, (content) => {
             if (this.stop) return;
             // if (toolHeaders['x-passthrough']) {

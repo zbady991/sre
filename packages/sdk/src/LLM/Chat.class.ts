@@ -91,6 +91,11 @@ class ChatCommand {
             this.chat.emit(TLLMEvent.Interrupted, interrupted);
         };
 
+        const dataHandler = (data: any) => {
+            eventEmitter.emit(TLLMEvent.Data, data);
+            this.chat.emit(TLLMEvent.Data, data);
+        };
+
         const contentHandler = (content: string) => {
             eventEmitter.emit(TLLMEvent.Content, content);
             this.chat.emit(TLLMEvent.Content, content);
@@ -127,6 +132,7 @@ class ChatCommand {
             this._conversation.off(TLLMEvent.Content, contentHandler);
             this._conversation.off(TLLMEvent.ToolInfo, toolInfoHandler);
             this._conversation.off(TLLMEvent.Interrupted, interruptedHandler);
+            this._conversation.off(TLLMEvent.Data, dataHandler);
         };
 
         this._conversation.on(TLLMEvent.ToolCall, toolCallHandler);
@@ -136,6 +142,7 @@ class ChatCommand {
         this._conversation.on(TLLMEvent.Content, contentHandler);
         this._conversation.on(TLLMEvent.ToolInfo, toolInfoHandler);
         this._conversation.on(TLLMEvent.Interrupted, interruptedHandler);
+        this._conversation.on(TLLMEvent.Data, dataHandler);
 
         this._conversation.streamPrompt(this.prompt);
         return eventEmitter;

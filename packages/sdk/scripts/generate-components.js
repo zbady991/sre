@@ -38,7 +38,8 @@ const INCLUDED_COMPONENTS = [
     'TavilyWebSearch',
     'MCPClient',
     'ServerlessCode',
-    'ECMASandbox'
+    'ScrapflyWebScrape',
+    'ECMASandbox',
 ]; // Example: ['APICall', 'GenAILLM', 'Image']
 
 /**

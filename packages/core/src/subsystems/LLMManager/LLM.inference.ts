@@ -265,6 +265,9 @@ export class LLMInference {
             console.warn('Max input context is 0, returning empty context window, This usually indicates a wrong model configuration');
         }
 
+        console.debug(
+            `Context Window Configuration: Max Input Tokens: ${maxInputContext}, Max Output Tokens: ${maxOutputContext}, Max Model Tokens: ${maxModelContext}`
+        );
         const systemMessage = { role: 'system', content: systemPrompt };
 
         let smythContextWindow = [];

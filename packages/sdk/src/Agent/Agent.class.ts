@@ -34,6 +34,7 @@ import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
 import { MCP, MCPSettings, MCPTransport } from '../MCP/MCP.class';
 import { findClosestModelInfo } from '../LLM/Model';
 import { VaultInstance } from '../Vault/VaultInstance.class';
+import AgentMode from './mode/AgentMode';
 
 const console = SDKLog;
 
@@ -220,7 +221,10 @@ class AgentCommand {
     // ...
     // params(...): PromptBuilder : override the modelParams
 }
-
+export enum TAgentMode {
+    DEFAULT = 'default',
+    PLANNER = 'planner',
+}
 /**
  * Configuration settings for creating an Agent instance.
  *
@@ -240,6 +244,8 @@ export type TAgentSettings = {
     model: string | TLLMConnectorParams;
     /** Optional behavior description that guides the agent's responses */
     behavior?: string;
+    /** The mode of the agent */
+    mode?: TAgentMode;
     [key: string]: any;
 };
 
@@ -286,6 +292,14 @@ export class Agent extends SDKObject {
         components: [],
         connections: [],
     };
+
+    public get behavior() {
+        return this._data.behavior;
+    }
+
+    public set behavior(behavior: string) {
+        this._data.behavior = behavior;
+    }
 
     /**
      * The agent internal structure
@@ -345,7 +359,7 @@ export class Agent extends SDKObject {
     constructor(private _settings: TAgentSettings) {
         super();
 
-        const { model, ...rest } = this._settings;
+        const { model, mode, ...rest } = this._settings;
 
         this._data.defaultModel = model as any;
 
@@ -377,6 +391,10 @@ export class Agent extends SDKObject {
 
         //if we are using DummyAccount, populate the account data in order to inform it about our newly loaded agent
         DummyAccountHelper.addAgentToTeam(this._data.id, this._data.teamId);
+
+        if (mode) {
+            this.addMode(mode);
+        }
     }
 
     protected async init() {
@@ -500,13 +518,17 @@ export class Agent extends SDKObject {
                 this._llmProviders[provider] = ((modelIdOrParams: string | TLLMInstanceParams, modelParams?: TLLMInstanceParams): LLMInstance => {
                     if (typeof modelIdOrParams === 'string') {
                         // First signature: (modelId: string, modelParams?: TLLMInstanceParams)
-                        return new LLMInstance(TLLMProvider[provider], {
-                            model: modelIdOrParams,
-                            ...modelParams,
-                        });
+                        return new LLMInstance(
+                            TLLMProvider[provider],
+                            {
+                                model: modelIdOrParams,
+                                ...modelParams,
+                            },
+                            AccessCandidate.agent(this._data.id)
+                        );
                     } else {
                         // Second signature: (modelParams: TLLMInstanceParams)
-                        return new LLMInstance(TLLMProvider[provider], modelIdOrParams);
+                        return new LLMInstance(TLLMProvider[provider], modelIdOrParams, AccessCandidate.agent(this._data.id));
                     }
                 }) as TLLMInstanceFactory;
             }
@@ -801,5 +823,26 @@ export class Agent extends SDKObject {
     public async mcp(transport: MCPTransport, port: number = 3388) {
         const instance = new MCP(this);
         return await instance.start({ transport, port });
+    }
+
+    /**
+     * Set the operational mode of the agent.
+     * an operational mode is a set of skills that are applied to the agent to change its behavior.
+     *
+     * @example
+     * ```typescript
+     * agent.setMode(TAgentMode.PLANNER);
+     * //or
+     * agent.addMode('planner');
+     * ```
+     *
+     * @param mode - The mode to apply, currently only "planner" is supported
+     */
+    public addMode(mode: TAgentMode) {
+        if (typeof AgentMode?.[mode]?.apply === 'function') {
+            AgentMode[mode].apply(this);
+        } else {
+            console.warn(`Mode ${mode} is not a valid mode, skipping...`);
+        }
     }
 }
