@@ -82,7 +82,12 @@ export class TavilyWebSearch extends Component {
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
             const _error = err?.message || err?.response?.data || err.toString();
-            logger.error(` Error scraping web \n${JSON.stringify(_error)}\n`);
+
+            if (err?.status === 401) {
+                logger.error(`Tavily Web Search Auth failed, make sure that you have the vault key "tavily" is present and valid`);
+            } else {
+                logger.error(` Error scraping web \n${JSON.stringify(_error)}\n`);
+            }
             return { Output: undefined, _error, _debug: logger.output };
         }
     }

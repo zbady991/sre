@@ -9,6 +9,7 @@ import {
     TLLMProvider,
     DEFAULT_TEAM_ID,
     BinaryInput,
+    SRE,
 } from '@smythos/sre';
 import { EventEmitter } from 'events';
 import { Chat } from './Chat.class';
@@ -16,6 +17,7 @@ import { SDKObject } from '../Core/SDKObject.class';
 import { adaptModelParams } from './utils';
 import { isFile, uid } from '../utils/general.utils';
 import { ChatOptions } from '../types/SDKTypes';
+import { findClosestModelInfo } from './Model';
 import * as fs from 'fs';
 
 class LLMCommand {
@@ -184,10 +186,25 @@ export class LLMInstance extends SDKObject {
 
     protected async init() {
         await super.init();
-        const llmConnector = ConnectorService.getLLMConnector(this._providerId);
+        // const llmConnector = ConnectorService.getLLMConnector(this._providerId);
+        // this._candidate = this._candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
+        // this._llmRequester = llmConnector.user(this._candidate);
+        // this._modelSettings = adaptModelParams(this._modelSettings, this._providerId, this._candidate);
+
         this._candidate = this._candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
+
+        const modelsProvider = ConnectorService.getModelsProviderConnector();
+        const modelsProviderReq = modelsProvider.requester(this._candidate);
+
+        const models = await modelsProviderReq.getModels();
+
+        const model = this._modelSettings;
+
+        const builtInModelInfo = findClosestModelInfo(models, model.modelId || model.model);
+
+        const llmConnector = ConnectorService.getLLMConnector(this._providerId);
         this._llmRequester = llmConnector.user(this._candidate);
-        this._modelSettings = adaptModelParams(this._modelSettings, this._providerId);
+        this._modelSettings = adaptModelParams(this._modelSettings, this._providerId, builtInModelInfo);
     }
 
     /**

@@ -13,7 +13,8 @@
         "@smythos/sdk": "workspace:*",
         "@smythos/sre": "workspace:*",
         "chalk": "^5.4.1",
-        "dotenv": "^16.5.0"
+        "dotenv": "^16.5.0",
+        "tokenloom": "^1.0.7"
     },
     "devDependencies": {
         "@types/node": "^20.19.0",

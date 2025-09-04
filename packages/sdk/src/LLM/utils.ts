@@ -1,14 +1,22 @@
-import { TLLMProvider } from '@smythos/sre';
+import { TLLMModel, TLLMProvider } from '@smythos/sre';
 import { TLLMInstanceParams } from './LLMInstance.class';
+import { findClosestModelInfo } from './Model';
 
-export function adaptModelParams(modelSettings: TLLMInstanceParams, fallbackProvider?: TLLMProvider): TLLMInstanceParams {
-    const { model, provider, inputTokens, outputTokens, ...params } = modelSettings;
+export function adaptModelParams(
+    modelSettings: TLLMInstanceParams,
+    fallbackProvider?: TLLMProvider,
+    defaultSettings?: TLLMModel
+): TLLMInstanceParams {
+    const { model, provider, inputTokens, outputTokens, interface: interfaceType, features, ...params } = modelSettings;
     const modelObject: any = {
         provider: provider || fallbackProvider,
         modelId: model as string, // for backward compatibility
         model: model as string, // for backward compatibility
-        tokens: inputTokens || 32 * 1024,
-        completionTokens: outputTokens,
+        interface: interfaceType,
+        features: features,
+        tags: ['sdk'],
+        tokens: inputTokens || defaultSettings?.keyOptions?.tokens || defaultSettings?.tokens,
+        completionTokens: outputTokens || defaultSettings?.keyOptions?.completionTokens || defaultSettings?.completionTokens,
     };
 
     modelObject.params = params;
