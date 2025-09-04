@@ -32,9 +32,6 @@ importers:
       '@smythos/sre':
         specifier: workspace:*
         version: link:../packages/core
-      blessed:
-        specifier: ^0.1.81
-        version: 0.1.81
       chalk:
         specifier: ^5.4.1
         version: 5.4.1
@@ -45,9 +42,6 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7
     devDependencies:
-      '@types/blessed':
-        specifier: ^0.1.25
-        version: 0.1.25
       '@types/node':
         specifier: ^20.19.0
         version: 20.19.0
@@ -1929,9 +1923,6 @@ packages:
   '@tybys/wasm-util@0.9.0':
     resolution: {integrity: sha512-6+7nlbMVX/PVDCwaIQ8nTOPveOcFLSt8GcXdx8hD0bt39uWxYT88uXzqTd4fTvqta7oeUJqudepapKNt2DYJFw==}
 
-  '@types/blessed@0.1.25':
-    resolution: {integrity: sha512-kQsjBgtsbJLmG6CJA+Z6Nujj+tq1fcSE3UIowbDvzQI4wWmoTV7djUDhSo5lDjgwpIN0oRvks0SA5mMdKE5eFg==}
-
   '@types/body-parser@1.19.6':
     resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
 
@@ -2252,11 +2243,6 @@ packages:
 
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
-
-  blessed@0.1.81:
-    resolution: {integrity: sha512-LoF5gae+hlmfORcG1M5+5XZi4LBmvlXTzwJWzUlPryN/SJdSflZvROM2TwkT0GMpq7oqT48NRd4GS7BiVBc5OQ==}
-    engines: {node: '>= 0.8.0'}
-    hasBin: true
 
   bluebird@3.4.7:
     resolution: {integrity: sha512-iD3898SR7sWVRHbiQv+sHUtHnMvC1o3nW5rAcqnq3uOn07DSAppZYUkIGslDz6gXC7HfunPe7YVBgoEJASPcHA==}
@@ -7743,10 +7729,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@types/blessed@0.1.25':
-    dependencies:
-      '@types/node': 20.19.0
-
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
@@ -8103,8 +8085,6 @@ snapshots:
       buffer: 5.7.1
       inherits: 2.0.4
       readable-stream: 3.6.2
-
-  blessed@0.1.81: {}
 
   bluebird@3.4.7: {}
 

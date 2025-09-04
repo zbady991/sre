@@ -12,13 +12,11 @@
     "dependencies": {
         "@smythos/sdk": "workspace:*",
         "@smythos/sre": "workspace:*",
-        "blessed": "^0.1.81",
         "chalk": "^5.4.1",
         "dotenv": "^16.5.0",
         "tokenloom": "^1.0.7"
     },
     "devDependencies": {
-        "@types/blessed": "^0.1.25",
         "@types/node": "^20.19.0",
         "ts-node": "^10.9.2",
         "tsx": "^4.7.0",
