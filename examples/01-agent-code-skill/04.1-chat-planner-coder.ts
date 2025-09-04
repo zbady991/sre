@@ -1,8 +1,7 @@
 import { Agent, Chat, Component, Model, TAgentMode, TLLMEvent } from '@smythos/sdk';
 import chalk from 'chalk';
-import util from 'util';
 import * as readline from 'readline';
-import { EventEmitter } from 'events';
+import { EmitUnit, PluginAPI, PluginBase, TokenLoom } from 'tokenloom';
 
 //Show the tasks list and status to the user at every step before performing the tasks, and also give a tasks status summary after tasks.
 //When you display the tasks list to a user show it in a concise way with a summary and checkboxes for each task.
@@ -23,8 +22,6 @@ async function main() {
     console.log(''); // Empty line
 
     const agent = new Agent({
-        //IMPORTANT !! : in order to persist chat, you need to set an id for your agent
-        //in fact, due to SRE data isolaton we need to identify the owner of persisted data, in this case the agent
         id: 'smyth-code-assistant',
         name: 'Smyth Code Assistant',
         behavior: `You are a code assistant. You are given a code task and you need to complete it.
@@ -41,10 +38,6 @@ async function main() {
         //     reasoningEffort: 'low',
         // }),
         mode: TAgentMode.PLANNER,
-        // Model.OpenAI('gpt-5-mini', {
-        //     inputTokens: 300000,
-        //     outputTokens: 100000,
-        // }),
     });
     agent.on('TasksAdded', (tasksList: any, tasks: any) => {
         displayTasksList(tasks);
@@ -156,329 +149,7 @@ const content_color = {
     planning: chalk.green,
 };
 
-// Content processor to handle special tags and buffering
-class ContentProcessor extends EventEmitter {
-    private buffer: string = '';
-    private insideTag: string | null = null;
-    private isFirst: boolean = true;
-    private tagStartTime: number | null = null;
-    private tagContent: string = '';
-    private insideBlock: boolean = false;
-    private blockStartTime: number | null = null;
-    private blockContent: string = '';
-    private blockParams: string[] = [];
-    private processingTags: boolean = false;
-
-    constructor() {
-        super();
-        this.reset();
-    }
-
-    reset() {
-        this.buffer = '';
-        this.insideTag = null;
-        this.isFirst = true;
-        this.tagStartTime = null;
-        this.tagContent = '';
-        this.insideBlock = false;
-        this.blockStartTime = null;
-        this.blockContent = '';
-        this.blockParams = [];
-        this.processingTags = false;
-    }
-
-    processContent(content: string): void {
-        // Add content to buffer
-        this.buffer += content;
-
-        // Add assistant prefix only on first content
-        if (this.isFirst) {
-            process.stdout.write(chalk.green('🤖 Assistant: '));
-            this.isFirst = false;
-        }
-
-        // Process buffer for complete tags
-        this.flushProcessedContent();
-    }
-
-    private flushProcessedContent(): void {
-        let processedIndex = 0;
-
-        // Handle both blocks and tags in the same pass
-        // Look for ``` at line starts first
-        const lines = this.buffer.split('\n');
-        let reconstructedBuffer = '';
-        let lineProcessed = false;
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-
-            // Check for complete line with ```
-            if (line.trim().startsWith('```')) {
-                // Process any accumulated content first
-                if (reconstructedBuffer) {
-                    this.processTagsInContent(reconstructedBuffer);
-                    reconstructedBuffer = '';
-                }
-
-                this.handleBlockLine(line);
-                lineProcessed = true;
-            } else if (i === lines.length - 1 && !this.buffer.endsWith('\n')) {
-                // Last line without newline - might be partial, keep in buffer for next time
-                reconstructedBuffer += line;
-            } else {
-                // Regular content line
-                reconstructedBuffer += line;
-                if (i < lines.length - 1) reconstructedBuffer += '\n';
-            }
-        }
-
-        // Process remaining content for tags if not inside a block
-        if (reconstructedBuffer) {
-            if (lineProcessed) {
-                // We processed some lines, so output remaining content appropriately
-                this.outputContent(reconstructedBuffer);
-                this.buffer = '';
-            } else {
-                // No lines processed, handle tags in the reconstructed buffer
-                const processedLength = this.processTagsInContent(reconstructedBuffer);
-
-                // Update buffer to only keep unprocessed content from the original buffer
-                if (processedLength < reconstructedBuffer.length) {
-                    this.buffer = reconstructedBuffer.substring(processedLength);
-                } else {
-                    this.buffer = '';
-                }
-            }
-        } else if (lineProcessed) {
-            this.buffer = '';
-        } else {
-            // No reconstructed buffer and no lines processed, handle tags in the full buffer
-            const processedLength = this.processTagsInContent(this.buffer);
-
-            // Update buffer to only keep unprocessed content
-            if (processedLength < this.buffer.length) {
-                this.buffer = this.buffer.substring(processedLength);
-            } else {
-                this.buffer = '';
-            }
-        }
-    }
-
-    private handleBlockLine(line: string): void {
-        if (!this.insideBlock) {
-            // Opening block
-            const params = this.parseBlockParams(line);
-            this.insideBlock = true;
-            this.blockStartTime = Date.now();
-            this.blockContent = '';
-            this.blockParams = params;
-
-            // Output the opening block line in gray with newline
-            process.stdout.write(chalk.gray(line) + '\n');
-
-            // Emit block opened event
-            this.emit('blockOpened', {
-                params: params,
-            });
-        } else {
-            // Potential closing block
-            if (line.trim() === '```') {
-                // Valid closing block
-                process.stdout.write(chalk.gray(line) + '\n');
-
-                // Calculate duration and emit close event
-                const duration = this.blockStartTime ? Date.now() - this.blockStartTime : 0;
-                const fullBlockText = `\`\`\`${this.blockParams.join(' ')}\n${this.blockContent}\n\`\`\``;
-
-                this.emit('blockClosed', {
-                    tagName: this.insideBlock,
-                    params: this.blockParams,
-                    fullText: fullBlockText,
-                    duration: duration,
-                });
-
-                // Reset block state
-                this.insideBlock = false;
-                this.blockStartTime = null;
-                this.blockContent = '';
-                this.blockParams = [];
-            } else {
-                // Not a valid closing block, treat as content
-                this.outputContent(line + '\n');
-            }
-        }
-    }
-
-    private processTagsInContent(content: string): number {
-        // Prevent recursive processing
-        if (this.processingTags) {
-            return content.length;
-        }
-
-        this.processingTags = true;
-        let processedIndex = 0;
-        const tagRegex = /<(\/?)(\w+)>/g;
-        let match;
-
-        // Reset regex lastIndex to scan from the beginning
-        tagRegex.lastIndex = 0;
-
-        while ((match = tagRegex.exec(content)) !== null) {
-            const [fullMatch, isClosing, tagName] = match;
-            const matchStart = match.index;
-            const matchEnd = match.index + fullMatch.length;
-
-            // Check if this is a special tag
-            if (special_tags.includes(tagName.toLowerCase())) {
-                // Output content before the tag
-                const contentBeforeTag = content.substring(processedIndex, matchStart);
-                if (contentBeforeTag) {
-                    this.outputContent(contentBeforeTag);
-                }
-
-                if (isClosing === '/') {
-                    // Closing tag
-                    if (this.insideTag === tagName.toLowerCase()) {
-                        // Output the closing tag in gray
-                        process.stdout.write(chalk.gray(fullMatch));
-
-                        // Calculate duration and emit close event
-                        const duration = this.tagStartTime ? Date.now() - this.tagStartTime : 0;
-                        const fullTagText = `<${tagName}>${this.tagContent}</${tagName}>`;
-
-                        this.emit('tagClosed', {
-                            tagName: tagName.toLowerCase(),
-                            fullText: fullTagText,
-                            duration: duration,
-                        });
-
-                        // Reset tag state
-                        this.insideTag = null;
-                        this.tagStartTime = null;
-                        this.tagContent = '';
-                    } else {
-                        // Unmatched closing tag, treat as regular content
-                        this.outputContent(fullMatch);
-                    }
-                } else {
-                    // Opening tag
-                    process.stdout.write(chalk.gray(fullMatch));
-                    this.insideTag = tagName.toLowerCase();
-                    this.tagStartTime = Date.now();
-                    this.tagContent = '';
-
-                    // Emit tag opened event
-                    this.emit('tagOpened', {
-                        tagName: tagName.toLowerCase(),
-                    });
-                }
-
-                processedIndex = matchEnd;
-            }
-        }
-
-        // Output remaining content (but track what we processed)
-        const remainingContent = content.substring(processedIndex);
-        if (remainingContent) {
-            // Check if we should keep partial tags in buffer
-            const partialTagMatch = remainingContent.match(/<\/?\w*$/);
-            if (partialTagMatch) {
-                // Output content before partial tag
-                const safeContent = remainingContent.substring(0, partialTagMatch.index!);
-                if (safeContent) {
-                    this.outputContent(safeContent);
-                }
-                // Return how much we fully processed (excluding partial tag)
-                this.processingTags = false;
-                return processedIndex + partialTagMatch.index!;
-            } else {
-                // Output all remaining content
-                this.outputContent(remainingContent);
-                this.processingTags = false;
-                return content.length;
-            }
-        }
-
-        this.processingTags = false;
-        return processedIndex;
-    }
-
-    private parseBlockParams(line: string): string[] {
-        // Remove the ``` and split by spaces, but preserve quoted strings
-        const content = line.substring(3).trim();
-        if (!content) return [];
-
-        const params: string[] = [];
-        let current = '';
-        let inQuotes = false;
-        let quoteChar = '';
-
-        for (let i = 0; i < content.length; i++) {
-            const char = content[i];
-
-            if (!inQuotes && (char === '"' || char === "'")) {
-                inQuotes = true;
-                quoteChar = char;
-                current += char;
-            } else if (inQuotes && char === quoteChar) {
-                inQuotes = false;
-                quoteChar = '';
-                current += char;
-            } else if (!inQuotes && char === ' ') {
-                if (current.trim()) {
-                    params.push(current.trim());
-                    current = '';
-                }
-            } else {
-                current += char;
-            }
-        }
-
-        if (current.trim()) {
-            params.push(current.trim());
-        }
-
-        return params;
-    }
-
-    private outputContent(content: string): void {
-        if (this.insideTag) {
-            // Inside a special tag, output in gray and track content
-            this.tagContent += content;
-            const color = content_color[this.insideTag as keyof typeof content_color] || chalk.gray;
-            process.stdout.write(color(content));
-        } else if (this.insideBlock) {
-            // Inside a block, output in gray and track content
-            this.blockContent += content;
-            process.stdout.write(chalk.cyan(content));
-        } else {
-            // Outside special tags/blocks, output in white
-            process.stdout.write(chalk.white(content));
-        }
-    }
-
-    // Call this when streaming ends to flush any remaining buffer
-    finalize(): void {
-        if (this.buffer) {
-            this.outputContent(this.buffer);
-            this.buffer = '';
-        }
-
-        // If we're still inside a block when streaming ends, emit a close event
-        if (this.insideBlock) {
-            const duration = this.blockStartTime ? Date.now() - this.blockStartTime : 0;
-            const fullBlockText = `\`\`\`${this.blockParams.join(' ')}\n${this.blockContent}`;
-
-            this.emit('blockClosed', {
-                tagName: this.insideBlock,
-                params: this.blockParams,
-                fullText: fullBlockText,
-                duration: duration,
-            });
-        }
-    }
-}
+// Replaced custom ContentProcessor with TokenLoom-driven streaming handlers
 
 // Function to handle user input and chat response
 async function handleUserInput(input: string, rl: readline.Interface, chat: Chat) {
@@ -503,24 +174,82 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
         // Clear the current line and move to a new line for the response
         process.stdout.write('\r');
 
-        // Create content processor for this response
-        const contentProcessor = new ContentProcessor();
-
-        // Set up event listeners for tag events
-        contentProcessor.on('tagOpened', (data) => {
-            console.log(chalk.cyan(`\n[Tag Opened: ${data.tagName}]`));
+        // TokenLoom parser to handle streaming content
+        const parser = new TokenLoom({
+            emitUnit: EmitUnit.Word,
+            emitDelay: 5,
+            tags: ['thinking', 'planning', 'code'],
         });
 
-        contentProcessor.on('tagClosed', (data) => {
-            console.log(chalk.blue(`\n[${data.tagName}] Took ${data.duration}ms`));
+        // Add line wrapping plugin (wrap based on terminal width)
+        const terminalWidth = process.stdout.columns || 80;
+        const panelWidth = 40; // Same as in updateStickyTasksPanel
+        const availableWidth = terminalWidth - panelWidth - 10;
+        const wrapWidth = Math.max(50, availableWidth);
+        parser.use(new LineWrapperPlugin(wrapWidth));
+
+        let assistantPrefixed = false;
+        const printAssistantPrefixOnce = () => {
+            if (!assistantPrefixed) {
+                process.stdout.write(chalk.green('🤖 Assistant: '));
+                assistantPrefixed = true;
+            }
+        };
+
+        // Timing trackers
+        const tagStartTime: Record<string, number> = {};
+        let fenceStartTime: number | null = null;
+
+        // Tag events
+        parser.on('tag-open', (event: any) => {
+            printAssistantPrefixOnce();
+            const name = (event.name || '').toLowerCase();
+            process.stdout.write(chalk.gray(`<${name}>`));
+            tagStartTime[name] = Date.now();
+            //console.log(chalk.cyan(`\n[Tag Opened: ${name}]`));
         });
 
-        contentProcessor.on('blockOpened', (data) => {
-            //console.log(chalk.magenta(`\n[Block Opened: ${data.params.join(' ')}]`));
+        parser.on('tag-close', (event: any) => {
+            printAssistantPrefixOnce();
+            const name = (event.name || '').toLowerCase();
+            process.stdout.write(chalk.gray(`</${name}>`));
+            const duration = tagStartTime[name] ? Date.now() - tagStartTime[name] : 0;
+            delete tagStartTime[name];
+            console.log(chalk.blue(`\n[${name}] Took ${duration}ms`));
         });
 
-        contentProcessor.on('blockClosed', (data) => {
-            console.log(chalk.blue(`\n[${data.tagName} Block] Took: ${data.duration}ms`));
+        // Code fence events
+        parser.on('code-fence-start', (event: any) => {
+            printAssistantPrefixOnce();
+            const info = event.info ? String(event.info) : event.lang ? String(event.lang) : '';
+            process.stdout.write(chalk.gray(`\n\`\`\`${info}\n`));
+            fenceStartTime = Date.now();
+        });
+
+        parser.on('code-fence-chunk', (event: any) => {
+            printAssistantPrefixOnce();
+            process.stdout.write(chalk.cyan(event.text || ''));
+        });
+
+        parser.on('code-fence-end', () => {
+            printAssistantPrefixOnce();
+            process.stdout.write(chalk.gray(`\n\`\`\`\n`));
+            const duration = fenceStartTime ? Date.now() - fenceStartTime : 0;
+            fenceStartTime = null;
+            console.log(chalk.blue(`\n[code Block] Took: ${duration}ms`));
+        });
+
+        // Plain text tokens
+        parser.on('text', (event: any) => {
+            printAssistantPrefixOnce();
+            const inTagName = event?.in?.inTag?.name ? String(event.in.inTag.name).toLowerCase() : null;
+            if (inTagName && special_tags.includes(inTagName)) {
+                const color = (content_color as any)[inTagName] || chalk.gray;
+                process.stdout.write(color(event.text || ''));
+            } else {
+                process.stdout.write(chalk.white(event.text || ''));
+            }
+            displayTasksList(currentTasks);
         });
 
         streamChat.on(TLLMEvent.Data, (data) => {
@@ -529,15 +258,12 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
 
         streamChat.on(TLLMEvent.Content, (content) => {
             displayTasksList(currentTasks);
-            // Use the content processor to handle special tags and buffering
-            contentProcessor.processContent(content);
+            parser.feed({ text: content });
         });
 
         streamChat.on(TLLMEvent.End, () => {
-            // Finalize the content processor to flush any remaining buffer
-            contentProcessor.finalize();
+            parser.flush();
             console.log('\n');
-            // Restore the prompt after streaming is complete
             displayTasksList(currentTasks);
             rl.prompt();
         });
@@ -555,21 +281,27 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
                 return;
             }
 
-            const args =
-                typeof toolCall?.tool?.arguments === 'object'
-                    ? Object.keys(toolCall?.tool?.arguments).map((key) => `${key}: ${toolCall?.tool?.arguments[key]}`)
-                    : toolCall?.tool?.arguments;
-            console.log(chalk.gray('\n[Calling Tool]'), chalk.gray(toolCall?.tool?.name), chalk.gray(args));
-
-            toolCalls[toolCall?.tool?.id] = { startTime: Date.now() };
+            //make sure to not print tool info in the middle of a stream output
+            parser.once('buffer-released', (event) => {
+                const args =
+                    typeof toolCall?.tool?.arguments === 'object'
+                        ? Object.keys(toolCall?.tool?.arguments).map((key) => `${key}: ${toolCall?.tool?.arguments[key]}`)
+                        : toolCall?.tool?.arguments;
+                console.log(chalk.gray('\n[Calling Tool]'), chalk.gray(toolCall?.tool?.name), chalk.gray(args));
+                toolCalls[toolCall?.tool?.id] = { startTime: Date.now() };
+            });
         });
 
         streamChat.on(TLLMEvent.ToolResult, (toolResult) => {
             if (toolResult?.tool?.name.startsWith('_sre_')) {
                 return;
             }
-            console.log(chalk.gray(toolResult?.tool?.name), chalk.gray(`Took: ${Date.now() - toolCalls[toolResult?.tool?.id].startTime}ms`));
-            delete toolCalls[toolResult?.tool?.id];
+
+            //make sure to not print tool info in the middle of a stream output
+            parser.once('buffer-released', (event) => {
+                console.log(chalk.gray(toolResult?.tool?.name), chalk.gray(`Took: ${Date.now() - toolCalls[toolResult?.tool?.id].startTime}ms`));
+                delete toolCalls[toolResult?.tool?.id];
+            });
             displayTasksList(currentTasks);
         });
     } catch (error) {
@@ -578,11 +310,39 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
     }
 }
 
+// === [ utility functions ] ================
+
+// Helper function to wrap text to specified width
+function wrapText(text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+        if ((currentLine + word).length <= maxWidth) {
+            currentLine += (currentLine ? ' ' : '') + word;
+        } else {
+            if (currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                // Single word longer than maxWidth, truncate it
+                lines.push(word.substring(0, maxWidth - 3) + '...');
+                currentLine = '';
+            }
+        }
+    }
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+    return lines;
+}
+
 function updateStickyTasksPanel() {
     if (!currentTasks || Object.keys(currentTasks).length === 0) return;
 
     const terminalWidth = process.stdout.columns || 80;
-    const panelWidth = 55; // Increased width
+    const panelWidth = 40; // Updated width
     const panelHeight = 30;
     const panelStartCol = terminalWidth - panelWidth;
 
@@ -643,16 +403,20 @@ function updateStickyTasksPanel() {
         process.stdout.write(chalk.cyan('│'));
         currentRow++;
 
-        // Summary line - use fixed positioning
+        // Summary lines with word wrapping
         const maxSummaryLength = panelWidth - 5;
-        const shortSummary = summary.length > maxSummaryLength ? summary.substring(0, maxSummaryLength - 3) + '...' : summary;
+        const wrappedSummary = wrapText(summary, maxSummaryLength);
 
-        process.stdout.write(`\u001b[${currentRow};${panelStartCol}H`);
-        process.stdout.write(chalk.cyan('│') + '  ');
-        process.stdout.write(chalk.white(shortSummary));
-        process.stdout.write(`\u001b[${currentRow};${panelStartCol + panelWidth - 1}H`);
-        process.stdout.write(chalk.cyan('│'));
-        currentRow++;
+        for (const line of wrappedSummary) {
+            if (currentRow >= panelHeight - 3) break; // Leave space for footer
+
+            process.stdout.write(`\u001b[${currentRow};${panelStartCol}H`);
+            process.stdout.write(chalk.cyan('│') + '  ');
+            process.stdout.write(chalk.white(line));
+            process.stdout.write(`\u001b[${currentRow};${panelStartCol + panelWidth - 1}H`);
+            process.stdout.write(chalk.cyan('│'));
+            currentRow++;
+        }
 
         // Display subtasks if they exist
         if (task.subtasks && Object.keys(task.subtasks).length > 0) {
@@ -696,17 +460,20 @@ function updateStickyTasksPanel() {
                 process.stdout.write(chalk.cyan('│'));
                 currentRow++;
 
-                // Subtask summary line - indented
+                // Subtask summary lines with word wrapping - indented
                 const maxSubSummaryLength = panelWidth - 8;
-                const shortSubSummary =
-                    subSummary.length > maxSubSummaryLength ? subSummary.substring(0, maxSubSummaryLength - 3) + '...' : subSummary;
+                const wrappedSubSummary = wrapText(subSummary, maxSubSummaryLength);
 
-                process.stdout.write(`\u001b[${currentRow};${panelStartCol}H`);
-                process.stdout.write(chalk.cyan('│') + '     ');
-                process.stdout.write(chalk.gray(shortSubSummary));
-                process.stdout.write(`\u001b[${currentRow};${panelStartCol + panelWidth - 1}H`);
-                process.stdout.write(chalk.cyan('│'));
-                currentRow++;
+                for (const line of wrappedSubSummary) {
+                    if (currentRow >= panelHeight - 3) break; // Leave space for footer
+
+                    process.stdout.write(`\u001b[${currentRow};${panelStartCol}H`);
+                    process.stdout.write(chalk.cyan('│') + '     ');
+                    process.stdout.write(chalk.gray(line));
+                    process.stdout.write(`\u001b[${currentRow};${panelStartCol + panelWidth - 1}H`);
+                    process.stdout.write(chalk.cyan('│'));
+                    currentRow++;
+                }
             });
         }
 
@@ -775,4 +542,70 @@ function updateStickyTasksPanel() {
 function displayTasksList(tasksList: any) {
     currentTasks = tasksList || {};
     updateStickyTasksPanel();
+}
+
+//Token loom line wrapping plugin
+export class LineWrapperPlugin extends PluginBase {
+    name = 'line-wrapper';
+    private charsSinceNewline = 0;
+    private maxLineLength: number;
+    private needsWrap = false;
+
+    constructor(maxLineLength: number = 80) {
+        super();
+        this.maxLineLength = maxLineLength;
+    }
+
+    transform(event: any, api: PluginAPI): any | any[] | null {
+        // Only process text events and code fence chunks
+        if (event.type !== 'text' && event.type !== 'code-fence-chunk') {
+            return event;
+        }
+
+        const text = event.text;
+        let result = '';
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+
+            if (char === '\n') {
+                // Reset counter on newline
+                this.charsSinceNewline = 0;
+                this.needsWrap = false;
+                result += char;
+            } else if (this.needsWrap && (char === ' ' || char === '\t')) {
+                // We've hit our limit and found a space/tab, replace with newline
+                result += '\n';
+                this.charsSinceNewline = 0;
+                this.needsWrap = false;
+            } else {
+                // Regular character
+                result += char;
+                this.charsSinceNewline++;
+
+                // Check if we've exceeded the limit
+                if (this.charsSinceNewline >= this.maxLineLength) {
+                    this.needsWrap = true;
+                }
+            }
+        }
+
+        // Return the modified event
+        return {
+            ...event,
+            text: result,
+        };
+    }
+
+    onInit?(api: PluginAPI): void {
+        // Reset state when parser initializes
+        this.charsSinceNewline = 0;
+        this.needsWrap = false;
+    }
+
+    onDispose?(): void {
+        // Clean up state when plugin is disposed
+        this.charsSinceNewline = 0;
+        this.needsWrap = false;
+    }
 }

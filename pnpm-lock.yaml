@@ -56,6 +56,9 @@ importers:
       terminal-kit:
         specifier: ^3.1.2
         version: 3.1.2
+      tokenloom:
+        specifier: ^1.0.7
+        version: 1.0.7
     devDependencies:
       '@types/node':
         specifier: ^20.19.0
@@ -4940,6 +4943,10 @@ packages:
   token-types@6.0.0:
     resolution: {integrity: sha512-lbDrTLVsHhOMljPscd0yitpozq7Ga2M5Cvez5AjGg8GASBjtt6iERCAJ93yommPmz62fb45oFIXHEZ3u9bfJEA==}
     engines: {node: '>=14.16'}
+
+  tokenloom@1.0.7:
+    resolution: {integrity: sha512-XKbJYoqaOrHJeyBJ9kT0qxWk/PRaijKEX4G4MbluogpLEfS7jvJ5ab8HOW7v40gb+eHKi2OgI+Tx39kj8kmljg==}
+    engines: {node: '>=18'}
 
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
@@ -11253,6 +11260,8 @@ snapshots:
     dependencies:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
+
+  tokenloom@1.0.7: {}
 
   tr46@0.0.3: {}
 

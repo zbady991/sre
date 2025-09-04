@@ -19,7 +19,8 @@
         "dotenv": "^16.5.0",
         "ink": "^6.1.1",
         "react": "^19.1.1",
-        "terminal-kit": "^3.1.2"
+        "terminal-kit": "^3.1.2",
+        "tokenloom": "^1.0.7"
     },
     "devDependencies": {
         "@types/node": "^20.19.0",
