@@ -5,6 +5,13 @@ All notable changes to the SmythOS SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-04-09
+
+### Added
+
+-   **Planner Mode**: SDK Agents can use the Planner Mode, allowing them to plan their actions and tasks.
+    This features allows turning any agent into a planner agent.
+
 ## [1.0.4] - 2025-19-06
 
 ### Added
