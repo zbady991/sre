@@ -45,6 +45,29 @@ describe('SDK LLM Tests', () => {
         expect(result).toBeDefined();
         expect(result).toContain('Paris');
     });
+    it('LLM - Prompt with LLM behavior', async () => {
+        const llm = LLM.OpenAI('gpt-4o-mini', {
+            behavior: 'You start every answer with this prompt $> ',
+        });
+
+        const result = await llm.prompt('What is the capital of France?');
+
+        expect(result).toBeDefined();
+        expect(result).toContain('$>');
+    });
+
+    it('LLM - Prompt with LLM behavior override', async () => {
+        const llm = LLM.OpenAI('gpt-4o-mini', {
+            behavior: 'You start every answer with this prompt $> ',
+        });
+
+        const result = await llm.prompt('What is the capital of France?', {
+            behavior: 'You start every answer with this prompt [AGENT]> ',
+        });
+
+        expect(result).toBeDefined();
+        expect(result).toContain('[AGENT]>');
+    });
 
     it('LLM - Prompt with attachments', async () => {
         const llm = LLM.OpenAI('gpt-4o-mini', {

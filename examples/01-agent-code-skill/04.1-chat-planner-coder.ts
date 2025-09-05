@@ -265,7 +265,10 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
             parser.flush();
             console.log('\n');
             displayTasksList(currentTasks);
-            rl.prompt();
+            //wait for the parser to flush
+            parser.once('buffer-released', () => {
+                rl.prompt();
+            });
         });
 
         streamChat.on(TLLMEvent.Error, (error) => {
@@ -276,7 +279,6 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
         const toolCalls = {};
 
         streamChat.on(TLLMEvent.ToolCall, (toolCall) => {
-            displayTasksList(currentTasks);
             if (toolCall?.tool?.name.startsWith('_sre_')) {
                 return;
             }
@@ -290,6 +292,8 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
                 console.log(chalk.gray('\n[Calling Tool]'), chalk.gray(toolCall?.tool?.name), chalk.gray(args));
                 toolCalls[toolCall?.tool?.id] = { startTime: Date.now() };
             });
+
+            displayTasksList(currentTasks);
         });
 
         streamChat.on(TLLMEvent.ToolResult, (toolResult) => {
