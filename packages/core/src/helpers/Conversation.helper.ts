@@ -52,6 +52,7 @@ export class Conversation extends EventEmitter {
 
     private _reqMethods;
     private _toolsConfig;
+    private _toolStatusMap: Record<string, string> = {};
     private _endpoints;
     private _baseUrl;
 
@@ -459,7 +460,9 @@ export class Conversation extends EventEmitter {
                         //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
                         // TODO [Forhad]: Make sure toolsData[tool.index] and tool do the same thing
                         this.emit('beforeToolCall', { tool, args }, llmMessage); //deprecated
-                        this.emit(TLLMEvent.ToolCall, { tool, _llmRequest: llmMessage });
+
+                        const status = tool.name ? this._toolStatusMap?.[tool.name] : undefined;
+                        this.emit(TLLMEvent.ToolCall, { tool, status, _llmRequest: llmMessage });
 
                         const toolArgs = {
                             type: tool?.type,
@@ -980,6 +983,16 @@ export class Conversation extends EventEmitter {
         if (this.assistantName) {
             this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
         }
+
+        this._toolStatusMap = agentData?.data?.components
+            ?.filter((component) => component.name === 'APIEndpoint')
+            .reduce((map, component) => {
+                if (component?.data?.endpoint) {
+                    map[component.data.endpoint] =
+                        component?.data?.status_message || `Calling ${component?.data?.endpointLabel || component.data.endpoint}`;
+                }
+                return map;
+            }, {});
 
         const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', this._agentVersion, true).catch((error) => null);
         return this.patchSpec(spec);

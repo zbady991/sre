@@ -16,6 +16,7 @@ async function main() {
     const mdSkill = agent.addSkill({
         name: 'MarketData',
         description: 'Use this skill to get comprehensive market data and statistics for a cryptocurrency',
+        status_message: 'Getting market data...',
     });
 
     //Defining the inputs of the skill
