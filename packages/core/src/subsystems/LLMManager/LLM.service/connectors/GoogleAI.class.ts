@@ -32,8 +32,11 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { Logger } from '@sre/helpers/Log.helper';
 
 import { LLMConnector } from '../LLMConnector';
+
+const logger = Logger('GoogleAIConnector');
 
 const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
     'gemini-1.5-pro-exp-0801',
@@ -76,6 +79,7 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
             const prompt = body.messages;
             delete body.messages;
 
@@ -121,11 +125,13 @@ export class GoogleAIConnector extends LLMConnector {
                 usage,
             };
         } catch (error: any) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
         const emitter = new EventEmitter();
 
         const prompt = body.messages;
@@ -189,6 +195,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
+            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }

@@ -23,6 +23,9 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const logger = Logger('VertexAIConnector');
 
 //TODO: [AHMED/FORHAD]: test the usage reporting for VertexAI because by the time we were implementing the feature of usage reporting
 // we had no access to VertexAI so we assumed it is working (potential bug)
@@ -48,6 +51,7 @@ export class VertexAIConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
             const vertexAI = await this.getClient(context);
 
             // Separate contents from model configuration
@@ -101,6 +105,7 @@ export class VertexAIConnector extends LLMConnector {
                 useTool,
             };
         } catch (error) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }
@@ -110,6 +115,7 @@ export class VertexAIConnector extends LLMConnector {
 
         setTimeout(async () => {
             try {
+                logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
                 const vertexAI = await this.getClient(context);
 
                 // Separate contents from model configuration
@@ -174,6 +180,7 @@ export class VertexAIConnector extends LLMConnector {
                     emitter.emit('end', toolsData, usageData, finishReason);
                 }, 100);
             } catch (error) {
+                logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
                 emitter.emit('error', error);
             }
         }, 100);

@@ -19,6 +19,9 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const logger = Logger('xAIConnector');
 
 type ChatCompletionParams = {
     model: string;
@@ -96,6 +99,7 @@ export class xAIConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
             const grok = await this.getClient(context);
             const response = await grok.post('/chat/completions', body);
 
@@ -144,6 +148,7 @@ export class xAIConnector extends LLMConnector {
                 usage,
             };
         } catch (error) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }
@@ -152,6 +157,7 @@ export class xAIConnector extends LLMConnector {
         const emitter = new EventEmitter();
 
         try {
+            logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const grok = await this.getClient(context);
             const response = await grok.post(
                 '/chat/completions',
@@ -260,6 +266,7 @@ export class xAIConnector extends LLMConnector {
                 emitter.emit('error', error);
             });
         } catch (error) {
+            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
             emitter.emit('error', error);
         }
 

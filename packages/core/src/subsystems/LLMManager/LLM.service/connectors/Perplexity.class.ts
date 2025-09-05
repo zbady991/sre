@@ -19,6 +19,9 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const logger = Logger('PerplexityConnector');
 
 type ChatCompletionParams = {
     model: string;
@@ -57,6 +60,7 @@ export class PerplexityConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
             const perplexity = await this.getClient(context);
             const response = await perplexity.post('/chat/completions', body);
 
@@ -80,6 +84,7 @@ export class PerplexityConnector extends LLMConnector {
                 usage,
             };
         } catch (error) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }
@@ -91,6 +96,7 @@ export class PerplexityConnector extends LLMConnector {
 
         setTimeout(() => {
             try {
+                logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
                 this.request({ acRequest, body, context })
                     .then((respose) => {
                         const finishReason = respose.finishReason;
@@ -105,6 +111,7 @@ export class PerplexityConnector extends LLMConnector {
                     });
                 //emitter.emit('finishReason', respose.finishReason);
             } catch (error) {
+                logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
                 emitter.emit('error', error.message || error.toString());
             }
         }, 100);

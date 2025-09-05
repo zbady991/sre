@@ -29,6 +29,9 @@ import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { HandlerDependencies, TToolType } from './types';
 import { OpenAIApiInterfaceFactory, OpenAIApiInterface } from './apiInterfaces';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const logger = Logger('OpenAIConnector');
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
@@ -80,86 +83,98 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
-        const _body = body as OpenAI.ChatCompletionCreateParams;
+        try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
+            const _body = body as OpenAI.ChatCompletionCreateParams;
 
-        // #region Validate token limit
-        const messages = _body?.messages || [];
-        const lastMessage = messages[messages.length - 1];
-        const promptTokens = await this.computePromptTokens(messages, context);
+            // #region Validate token limit
+            const messages = _body?.messages || [];
+            const lastMessage = messages[messages.length - 1];
+            const promptTokens = await this.computePromptTokens(messages, context);
 
-        await this.validateTokenLimit({
-            acRequest,
-            promptTokens,
-            context,
-            maxTokens: _body.max_completion_tokens,
-        });
-        // #endregion Validate token limit
+            await this.validateTokenLimit({
+                acRequest,
+                promptTokens,
+                context,
+                maxTokens: _body.max_completion_tokens,
+            });
+            // #endregion Validate token limit
 
-        const responseInterface = this.getInterfaceType(context);
-        const apiInterface = this.getApiInterface(responseInterface, context);
+            const responseInterface = this.getInterfaceType(context);
+            const apiInterface = this.getApiInterface(responseInterface, context);
 
-        const result = await apiInterface.createRequest(body, context);
+            const result = await apiInterface.createRequest(body, context);
 
-        const message = result?.choices?.[0]?.message || result?.output_text;
-        const finishReason = result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop';
+            const message = result?.choices?.[0]?.message || { content: result?.output_text };
+            const finishReason = result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop';
 
-        let toolsData: ToolData[] = [];
-        let useTool = false;
+            let toolsData: ToolData[] = [];
+            let useTool = false;
 
-        if (finishReason === 'tool_calls') {
-            toolsData =
-                message?.tool_calls?.map((tool, index) => ({
-                    index,
-                    id: tool?.id,
-                    type: tool?.type,
-                    name: tool?.function?.name,
-                    arguments: tool?.function?.arguments,
-                    role: 'tool',
-                })) || [];
+            if (finishReason === 'tool_calls') {
+                toolsData =
+                    message?.tool_calls?.map((tool, index) => ({
+                        index,
+                        id: tool?.id,
+                        type: tool?.type,
+                        name: tool?.function?.name,
+                        arguments: tool?.function?.arguments,
+                        role: 'tool',
+                    })) || [];
 
-            useTool = true;
+                useTool = true;
+            }
+
+            const usage = result?.usage;
+            this.reportUsage(usage, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
+            });
+
+            return {
+                content: message?.content ?? '',
+                finishReason,
+                useTool,
+                toolsData,
+                message,
+                usage,
+            };
+        } catch (error) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
+            throw error;
         }
-
-        const usage = result?.usage;
-        this.reportUsage(usage, {
-            modelEntryName: context.modelEntryName,
-            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-            agentId: context.agentId,
-            teamId: context.teamId,
-        });
-
-        return {
-            content: message?.content ?? '',
-            finishReason,
-            useTool,
-            toolsData,
-            message,
-            usage,
-        };
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        // #region Validate token limit
-        const messages = body?.messages || body?.input || [];
-        const lastMessage = messages[messages.length - 1];
-        const promptTokens = await this.computePromptTokens(messages, context);
+        try {
+            logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
+            // #region Validate token limit
+            const messages = body?.messages || body?.input || [];
+            const lastMessage = messages[messages.length - 1];
+            const promptTokens = await this.computePromptTokens(messages, context);
 
-        await this.validateTokenLimit({
-            acRequest,
-            promptTokens,
-            context,
-            maxTokens: body.max_completion_tokens,
-        });
-        // #endregion Validate token limit
+            await this.validateTokenLimit({
+                acRequest,
+                promptTokens,
+                context,
+                maxTokens: body.max_completion_tokens,
+            });
+            // #endregion Validate token limit
 
-        const responseInterface = this.getInterfaceType(context);
-        const apiInterface = this.getApiInterface(responseInterface, context);
+            const responseInterface = this.getInterfaceType(context);
+            const apiInterface = this.getApiInterface(responseInterface, context);
 
-        const stream = await apiInterface.createStream(body, context);
+            const stream = await apiInterface.createStream(body, context);
 
-        const emitter = apiInterface.handleStream(stream, context);
+            const emitter = apiInterface.handleStream(stream, context);
 
-        return emitter;
+            return emitter;
+        } catch (error) {
+            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+            throw error;
+        }
     }
 
     // #region Image Generation, will be moved to a different subsystem
