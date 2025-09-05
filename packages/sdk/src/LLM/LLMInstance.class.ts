@@ -20,8 +20,20 @@ import { ChatOptions } from '../types/SDKTypes';
 import { findClosestModelInfo } from './Model';
 import * as fs from 'fs';
 
+export type TLLMCommandOptions = {
+    /**
+     * Used to describe the LLM behavior, this will be typically used as LLM system message.
+     */
+    behavior?: string;
+
+    /**
+     * List of files paths or urls to be processed by the LLM.
+     */
+    files?: string[];
+};
+
 class LLMCommand {
-    constructor(private _llm: LLMInstance, private _params: any, private _options?: any) {}
+    constructor(private _llm: LLMInstance, private _params: any, private _options?: TLLMCommandOptions) {}
 
     /**
      * Run the command and return the result as a promise.
@@ -141,6 +153,9 @@ export type TLLMInstanceParams = {
     /** the maximum output tokens that the model should generate */
     outputTokens?: number;
 
+    /** The behavior of the model, this will be typically used as LLM system message. */
+    behavior?: string;
+
     [key: string]: any;
 };
 
@@ -185,7 +200,9 @@ export class LLMInstance extends SDKObject {
     }
 
     protected async init() {
-        await super.init();
+        //false means we don't resolve the ready promise
+        //we will resolve it later in the init method
+        await super.init(false);
         // const llmConnector = ConnectorService.getLLMConnector(this._providerId);
         // this._candidate = this._candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
         // this._llmRequester = llmConnector.user(this._candidate);
@@ -205,6 +222,8 @@ export class LLMInstance extends SDKObject {
         const llmConnector = ConnectorService.getLLMConnector(this._providerId);
         this._llmRequester = llmConnector.user(this._candidate);
         this._modelSettings = adaptModelParams(this._modelSettings, this._providerId, builtInModelInfo);
+
+        this.initSignal(); //resolve the ready promise
     }
 
     /**
@@ -225,8 +244,14 @@ export class LLMInstance extends SDKObject {
      * stream.on('data', chunk => process.stdout.write(chunk));
      * ```
      */
-    public prompt(prompt: string, options?: any): LLMCommand {
-        return new LLMCommand(this, { ...this._modelSettings, messages: [{ role: 'user', content: prompt }] }, options);
+    public prompt(prompt: string, options?: TLLMCommandOptions): LLMCommand {
+        const messages = [];
+        const behavior = options?.behavior || this._modelSettings?.behavior;
+        if (behavior) {
+            messages.push({ role: 'system', content: behavior });
+        }
+        messages.push({ role: 'user', content: prompt });
+        return new LLMCommand(this, { ...this._modelSettings, messages }, options);
     }
 
     public chat(options?: ChatOptions | string) {

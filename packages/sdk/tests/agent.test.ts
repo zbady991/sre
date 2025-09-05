@@ -14,7 +14,7 @@ import { expect, describe, it } from 'vitest';
 describe('SDK Agent Tests', () => {
     it('imported agent', async () => {
         const agent = Agent.import('./packages/sdk/tests/data/AgentData/crypto-info-agent.smyth', {
-            model: Model.OpenAI('gpt-4o-mini', { maxTokens: 10 }),
+            model: Model.OpenAI('gpt-4o-mini', { maxTokens: 100 }),
         });
 
         //const result = await agent.prompt('Hello, Who are you ?');

@@ -27,11 +27,14 @@ export class SDKObject {
         this._readyPromise = new ControlledPromise<any>(this.init.bind(this));
     }
 
-    protected async init() {
+    protected async init(revolveReadyPromise: boolean = true) {
         //if the SRE instance is not initializing, initialize it with default settings
         if (!SRE.initializing) SRE.init({});
         await SRE.ready();
 
+        if (revolveReadyPromise) this._readyPromise.resolve(true);
+    }
+    protected async initSignal() {
         this._readyPromise.resolve(true);
     }
 
