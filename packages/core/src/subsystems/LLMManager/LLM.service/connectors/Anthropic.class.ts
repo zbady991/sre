@@ -25,6 +25,9 @@ import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const logger = Logger('AnthropicConnector');
 
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const LEGACY_THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
@@ -49,6 +52,7 @@ export class AnthropicConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
             const anthropic = await this.getClient(context);
             const result = await anthropic.messages.create(body);
             const message: Anthropic.MessageParam = {
@@ -104,12 +108,14 @@ export class AnthropicConnector extends LLMConnector {
                 usage,
             };
         } catch (error) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
+            logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const emitter = new EventEmitter();
             const usage_data = [];
 
@@ -199,6 +205,7 @@ export class AnthropicConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
+            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }

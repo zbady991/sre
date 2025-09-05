@@ -19,6 +19,9 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const logger = Logger('GroqConnector');
 
 type ChatCompletionCreateParams = {
     model: string;
@@ -48,105 +51,117 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
-        const groq = await this.getClient(context);
-        const result = await groq.chat.completions.create(body);
-        const message = result?.choices?.[0]?.message;
-        const finishReason = result?.choices?.[0]?.finish_reason;
-        const toolCalls = message?.tool_calls;
-        const usage = result.usage;
-        this.reportUsage(usage, {
-            modelEntryName: context.modelEntryName,
-            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-            agentId: context.agentId,
-            teamId: context.teamId,
-        });
+        try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
+            const groq = await this.getClient(context);
+            const result = await groq.chat.completions.create(body);
+            const message = result?.choices?.[0]?.message;
+            const finishReason = result?.choices?.[0]?.finish_reason;
+            const toolCalls = message?.tool_calls;
+            const usage = result.usage;
+            this.reportUsage(usage, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
+            });
 
-        let toolsData: ToolData[] = [];
-        let useTool = false;
+            let toolsData: ToolData[] = [];
+            let useTool = false;
 
-        if (toolCalls) {
-            toolsData = toolCalls.map((tool, index) => ({
-                index,
-                id: tool.id,
-                type: tool.type,
-                name: tool.function.name,
-                arguments: tool.function.arguments,
-                role: TLLMMessageRole.Assistant,
-            }));
-            useTool = true;
+            if (toolCalls) {
+                toolsData = toolCalls.map((tool, index) => ({
+                    index,
+                    id: tool.id,
+                    type: tool.type,
+                    name: tool.function.name,
+                    arguments: tool.function.arguments,
+                    role: TLLMMessageRole.Assistant,
+                }));
+                useTool = true;
+            }
+
+            return {
+                content: message?.content ?? '',
+                finishReason,
+                useTool,
+                toolsData,
+                message,
+                usage,
+            };
+        } catch (error) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
+            throw error;
         }
-
-        return {
-            content: message?.content ?? '',
-            finishReason,
-            useTool,
-            toolsData,
-            message,
-            usage,
-        };
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        const emitter = new EventEmitter();
-        const usage_data = [];
+        try {
+            logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
+            const emitter = new EventEmitter();
+            const usage_data = [];
 
-        const groq = await this.getClient(context);
-        const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
+            const groq = await this.getClient(context);
+            const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
 
-        let toolsData: ToolData[] = [];
+            let toolsData: ToolData[] = [];
 
-        (async () => {
-            for await (const chunk of stream as any) {
-                const delta = chunk.choices[0]?.delta;
-                const usage = chunk['x_groq']?.usage || chunk['usage'];
+            (async () => {
+                for await (const chunk of stream as any) {
+                    const delta = chunk.choices[0]?.delta;
+                    const usage = chunk['x_groq']?.usage || chunk['usage'];
 
-                if (usage) {
-                    usage_data.push(usage);
+                    if (usage) {
+                        usage_data.push(usage);
+                    }
+                    emitter.emit('data', delta);
+
+                    if (delta?.content) {
+                        emitter.emit('content', delta.content);
+                    }
+
+                    if (delta?.tool_calls) {
+                        delta.tool_calls.forEach((toolCall, index) => {
+                            if (!toolsData[index]) {
+                                toolsData[index] = {
+                                    index,
+                                    id: toolCall.id,
+                                    type: toolCall.type,
+                                    name: toolCall.function?.name,
+                                    arguments: toolCall.function?.arguments,
+                                    role: 'assistant',
+                                };
+                            } else {
+                                toolsData[index].arguments += toolCall.function?.arguments || '';
+                            }
+                        });
+                    }
                 }
-                emitter.emit('data', delta);
 
-                if (delta?.content) {
-                    emitter.emit('content', delta.content);
+                if (toolsData.length > 0) {
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
                 }
 
-                if (delta?.tool_calls) {
-                    delta.tool_calls.forEach((toolCall, index) => {
-                        if (!toolsData[index]) {
-                            toolsData[index] = {
-                                index,
-                                id: toolCall.id,
-                                type: toolCall.type,
-                                name: toolCall.function?.name,
-                                arguments: toolCall.function?.arguments,
-                                role: 'assistant',
-                            };
-                        } else {
-                            toolsData[index].arguments += toolCall.function?.arguments || '';
-                        }
+                usage_data.forEach((usage) => {
+                    // probably we can acc them and send them as one event
+                    this.reportUsage(usage, {
+                        modelEntryName: context.modelEntryName,
+                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId: context.agentId,
+                        teamId: context.teamId,
                     });
-                }
-            }
-
-            if (toolsData.length > 0) {
-                emitter.emit(TLLMEvent.ToolInfo, toolsData);
-            }
-
-            usage_data.forEach((usage) => {
-                // probably we can acc them and send them as one event
-                this.reportUsage(usage, {
-                    modelEntryName: context.modelEntryName,
-                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                    agentId: context.agentId,
-                    teamId: context.teamId,
                 });
-            });
 
-            setTimeout(() => {
-                emitter.emit('end', toolsData);
-            }, 100);
-        })();
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
+            })();
 
-        return emitter;
+            return emitter;
+        } catch (error: any) {
+            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+            throw error;
+        }
     }
 
     protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<ChatCompletionCreateParams> {

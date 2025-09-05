@@ -30,6 +30,9 @@ import { isJSONString } from '@sre/utils/general.utils';
 import { LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const logger = Logger('BedrockConnector');
 
 // TODO [Forhad]: Need to adjust some type definitions
 
@@ -50,6 +53,7 @@ export class BedrockConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
+            logger.debug(`request ${this.name}`, acRequest.candidate);
             const bedrock = await this.getClient(context);
             const command = new ConverseCommand(body);
             const response: ConverseCommandOutput = await bedrock.send(command);
@@ -91,6 +95,7 @@ export class BedrockConnector extends LLMConnector {
                 usage,
             };
         } catch (error: any) {
+            logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error?.error || error;
         }
     }
@@ -99,6 +104,7 @@ export class BedrockConnector extends LLMConnector {
         const emitter = new EventEmitter();
 
         try {
+            logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const bedrock = await this.getClient(context);
             const command = new ConverseStreamCommand(body);
             const response: ConverseStreamCommandOutput = await bedrock.send(command);
@@ -189,6 +195,7 @@ export class BedrockConnector extends LLMConnector {
             return emitter;
         } catch (error: unknown) {
             const typedError = error as Error;
+            logger.error(`streamRequest ${this.name}`, typedError, acRequest.candidate);
             emitter.emit(TLLMEvent.Error, typedError?.['error'] || typedError);
             return emitter;
         }

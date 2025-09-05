@@ -1,33 +1,32 @@
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { Logger } from '@sre/helpers/Log.helper';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import type {
-    TLLMConnectorParams,
-    TLLMMessageBlock,
-    TLLMToolResultMessageBlock,
-    ToolData,
-    APIKeySource,
-    TLLMModel,
-    ILLMRequestFuncParams,
-    TLLMChatResponse,
-    TLLMRequestBody,
-    TOpenAIToolsInfo,
-    TxAIToolsInfo,
-    TLLMPreparedParams,
-    TToolsInfo,
-} from '@sre/types/LLM.types';
-import EventEmitter from 'events';
-import { Readable } from 'stream';
+import { Logger } from '@sre/helpers/Log.helper';
+import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import type {
+    APIKeySource,
+    ILLMRequestFuncParams,
+    TLLMChatResponse,
+    TLLMConnectorParams,
+    TLLMMessageBlock,
+    TLLMModel,
+    TLLMPreparedParams,
+    TLLMRequestBody,
+    TLLMToolResultMessageBlock,
+    ToolData,
+    TOpenAIToolsInfo,
+    TToolsInfo,
+    TxAIToolsInfo,
+} from '@sre/types/LLM.types';
 import { TCustomLLMModel } from '@sre/types/LLM.types';
-import config from '@sre/config';
-import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+import EventEmitter from 'events';
+import { Readable } from 'stream';
 import { getLLMCredentials } from './LLMCredentials.helper';
 
-const console = Logger('LLMConnector');
+const logger = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
     // chatRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any>;
@@ -100,11 +99,12 @@ export abstract class LLMConnector extends Connector {
         this.vaultConnector = ConnectorService.getVaultConnector();
 
         if (!this.vaultConnector || !this.vaultConnector.valid) {
-            console.warn(`Vault Connector unavailable for ${candidate.id} `);
+            logger.warn(`Vault Connector unavailable for ${candidate.id} `);
         }
 
         const _request: ILLMConnectorRequest = {
             request: async (params: TLLMConnectorParams) => {
+                logger.debug(`request ${this.name}`, candidate);
                 const preparedParams = await this.prepareParams(candidate, params);
 
                 const provider = preparedParams.modelInfo.provider;
@@ -129,6 +129,7 @@ export abstract class LLMConnector extends Connector {
                 return response;
             },
             streamRequest: async (params: TLLMConnectorParams) => {
+                logger.debug(`streamRequest ${this.name}`, candidate);
                 const preparedParams = await this.prepareParams(candidate, params);
 
                 const provider = preparedParams.modelInfo.provider?.toLowerCase();
@@ -156,6 +157,7 @@ export abstract class LLMConnector extends Connector {
             },
 
             imageGenRequest: async (params: any) => {
+                logger.debug(`imageGenRequest ${this.name}`, candidate);
                 const preparedParams = await this.prepareParams(candidate, params);
 
                 const response = await this.imageGenRequest({
@@ -175,6 +177,7 @@ export abstract class LLMConnector extends Connector {
                 return response;
             },
             imageEditRequest: async (params: any) => {
+                logger.debug(`imageEditRequest ${this.name}`, candidate);
                 const preparedParams = await this.prepareParams(candidate, params);
 
                 const response = await this.imageEditRequest({
