@@ -137,6 +137,7 @@ class ChatCommand {
 
         this._conversation.on(TLLMEvent.ToolCall, toolCallHandler);
         this._conversation.on(TLLMEvent.ToolResult, toolResultHandler);
+        this._conversation.on(TLLMEvent.Usage, usageHandler);
         this._conversation.on(TLLMEvent.End, endHandler);
         this._conversation.on(TLLMEvent.Error, errorHandler);
         this._conversation.on(TLLMEvent.Content, contentHandler);

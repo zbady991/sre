@@ -203,6 +203,7 @@ class AgentCommand {
 
         conversation.on(TLLMEvent.ToolCall, toolCallHandler);
         conversation.on(TLLMEvent.ToolResult, toolResultHandler);
+        conversation.on(TLLMEvent.Usage, usageHandler);
         conversation.on(TLLMEvent.End, endHandler);
         conversation.on(TLLMEvent.Error, errorHandler);
         conversation.on(TLLMEvent.Content, contentHandler);

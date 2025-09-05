@@ -7,10 +7,10 @@ function normalizeEndpointName(name: string) {
     return name.replace(/[^a-zA-Z0-9]/g, '_');
 }
 
-
 export type TSkillSettings = {
     name: string;
     endpoint?: string;
+    status_message?: string;
     ai_exposed?: boolean;
     description?: string;
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -30,6 +30,7 @@ export function Skill(settings?: TSkillSettings, agent?: Agent) {
         settings: {
             ...settingsWithoutName,
             endpoint: normalizeEndpointName(settings?.endpoint || settings?.name),
+            status_message: settings?.status_message || '',
             ai_exposed: settings?.ai_exposed || true,
             method: settings?.method || 'POST',
         },
