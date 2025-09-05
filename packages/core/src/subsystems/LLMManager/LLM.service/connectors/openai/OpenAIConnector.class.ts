@@ -100,8 +100,8 @@ export class OpenAIConnector extends LLMConnector {
 
         const result = await apiInterface.createRequest(body, context);
 
-        const message = result?.choices?.[0]?.message;
-        const finishReason = result?.choices?.[0]?.finish_reason;
+        const message = result?.choices?.[0]?.message || result?.output_text;
+        const finishReason = result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop';
 
         let toolsData: ToolData[] = [];
         let useTool = false;
