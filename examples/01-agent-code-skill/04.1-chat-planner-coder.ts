@@ -258,15 +258,16 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
 
         streamChat.on(TLLMEvent.Content, (content) => {
             displayTasksList(currentTasks);
+
             parser.feed({ text: content });
         });
 
         streamChat.on(TLLMEvent.End, () => {
             parser.flush();
-            console.log('\n');
             displayTasksList(currentTasks);
             //wait for the parser to flush
             parser.once('buffer-released', () => {
+                console.log('\n\n');
                 rl.prompt();
             });
         });
@@ -298,6 +299,8 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
 
         streamChat.on(TLLMEvent.ToolResult, (toolResult) => {
             if (toolResult?.tool?.name.startsWith('_sre_')) {
+                console.log('\n');
+                displayTasksList(currentTasks);
                 return;
             }
 

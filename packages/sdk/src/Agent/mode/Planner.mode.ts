@@ -13,7 +13,6 @@ When you process a plan task, if it's complex or consists in multiple steps, add
 
 Make sure to keep the tasks and subtasks status up to date before and after *every* action (tool call, response generation, question ...etc), for this use _sre_UpdateTasks
 
-
 After writing a response, call _sre_UpdateTasks to update the corresponding task status to "completed".
 *Do NOT* reveal the plan to the user, use _sre_AddTasks to create your plan.
 
@@ -25,6 +24,9 @@ You can have multiple thoughts in the same response in order to question your pr
 Once you finish answering the user, *ALWAYS* call _sre_TasksCompleted to update the plan and verify that you did not miss anything.
 
 special tags like <thinking> and <planning> should not be nested. each tag should be closed before the next tag is opened.
+
+If you need to start a brand new plan, call _sre_clearTasks to clear the tasks from the planner.
+
 `;
 export default class PlannerMode {
     static apply(agent: Agent) {
@@ -195,6 +197,19 @@ export default class PlannerMode {
                 // Update the sticky tasks panel
                 agent.emit('TasksCompleted', _tasks);
                 return 'All tasks and subtasks are completed';
+            },
+        });
+
+        const statusUpdate = agent.addSkill({
+            name: '_sre_clearTasks',
+            description:
+                'Call this skill to clear the tasks from the planner, use this skill when you finish your current job and need to start a brand new plan',
+            process: async () => {
+                for (const taskId in _tasks) {
+                    delete _tasks[taskId];
+                }
+                agent.emit('TasksCleared', _tasks);
+                return 'Tasks cleared';
             },
         });
 
