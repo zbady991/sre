@@ -116,7 +116,8 @@ export class Component {
     }
     async postProcess(output, config, agent: Agent): Promise<any> {
         if (output?.result) {
-            delete output?.result?._debug;
+            if (!agent.agentRuntime?.debug) delete output?.result?._debug;
+
             if (!output?.result?._error) delete output?.result?._error;
         }
         return output;
